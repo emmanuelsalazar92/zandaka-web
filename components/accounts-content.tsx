@@ -144,7 +144,7 @@ export function AccountsContent() {
     setError(null)
 
     const payload = {
-      userId: 1, // TODO: cuando tengas auth real, esto sale del user session
+      userId: 1, 
       institutionId: Number(formData.institutionId),
       name: formData.name.trim(),
       currency: formData.currency,
@@ -161,7 +161,7 @@ export function AccountsContent() {
     })
 
     if (!res.ok) {
-      // Intentamos leer el error del backend si viene en JSON
+
       let msg = "Failed to create account"
       try {
         const err = await res.json()
@@ -172,8 +172,6 @@ export function AccountsContent() {
 
     const created = await res.json()
 
-    // Si el backend te devuelve el objeto creado (ideal), actualizamos la lista.
-    // Si NO te lo devuelve, podés hacer un fetchAccounts() (cuando exista GET).
     const instName =
       institutions.find((i) => i.id === payload.institutionId)?.name ?? "Unknown"
 
