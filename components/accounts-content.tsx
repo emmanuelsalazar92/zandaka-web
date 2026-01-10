@@ -101,9 +101,9 @@ export function AccountsContent() {
   const [editAccount, setEditAccount] = React.useState<any>(null)
   const [formData, setFormData] = React.useState({
     name: "",
-    institution: "",
+    institutionId: "" as string,
     currency: "CRC",
-    allowOverdraft: false,
+    allowOverdraft: true,
   })
 
   const fetchInstitutions = React.useCallback(async () => {
@@ -138,20 +138,64 @@ export function AccountsContent() {
     fetchInstitutions()
   }, [fetchInstitutions])
 
-  const handleCreate = () => {
-    const newAccount = {
-      id: Math.max(...accounts.map((a) => a.id)) + 1,
-      name: formData.name,
-      institution: formData.institution,
+  async function createAccount() {
+  try {
+    setLoading(true)
+    setError(null)
+
+    const payload = {
+      userId: 1, 
+      institutionId: Number(formData.institutionId),
+      name: formData.name.trim(),
       currency: formData.currency,
-      balance: 0,
-      active: true,
       allowOverdraft: formData.allowOverdraft,
     }
-    setAccounts([...accounts, newAccount])
+
+    const res = await fetch("http://localhost:3000/api/accounts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!res.ok) {
+
+      let msg = "Failed to create account"
+      try {
+        const err = await res.json()
+        msg = err?.message || msg
+      } catch {}
+      throw new Error(msg)
+    }
+
+    const created = await res.json()
+
+    const instName =
+      institutions.find((i) => i.id === payload.institutionId)?.name ?? "Unknown"
+
+    setAccounts((prev) => [
+      ...prev,
+      {
+        id: created?.id ?? Math.max(...prev.map((a) => a.id)) + 1,
+        name: created?.name ?? payload.name,
+        institution: instName,
+        currency: created?.currency ?? payload.currency,
+        balance: created?.balance ?? 0,
+        active: created?.active ?? true,
+        allowOverdraft: created?.allowOverdraft ?? payload.allowOverdraft,
+      },
+    ])
+
     setIsCreateOpen(false)
-    setFormData({ name: "", institution: "", currency: "CRC", allowOverdraft: false })
+    setFormData({ name: "", institutionId: "", currency: "CRC", allowOverdraft: true })
+  } catch (e: any) {
+    setError(e.message ?? "Unexpected error creating account")
+  } finally {
+    setLoading(false)
   }
+}
 
   const handleEdit = () => {
     setAccounts(
@@ -160,7 +204,7 @@ export function AccountsContent() {
           ? {
               ...acc,
               name: formData.name,
-              institution: formData.institution,
+              institution: formData.institutionId,
               allowOverdraft: formData.allowOverdraft,
             }
           : acc,
@@ -168,7 +212,7 @@ export function AccountsContent() {
     )
     setIsEditOpen(false)
     setEditAccount(null)
-    setFormData({ name: "", institution: "", currency: "CRC", allowOverdraft: false })
+    setFormData({ name: "", institutionId: "", currency: "CRC", allowOverdraft: false })
   }
 
   const handleDeactivate = () => {
@@ -182,7 +226,7 @@ export function AccountsContent() {
     setEditAccount(account)
     setFormData({
       name: account.name,
-      institution: account.institution,
+      institutionId: account.institution,
       currency: account.currency,
       allowOverdraft: account.allowOverdraft,
     })
@@ -238,15 +282,15 @@ export function AccountsContent() {
 
   {!loading && !error && (
                 <Select
-                  value={formData.institution}
-                  onValueChange={(value) => setFormData({ ...formData, institution: value })}
+                  value={formData.institutionId}
+                  onValueChange={(value) => setFormData({ ...formData, institutionId: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select institution" />
                   </SelectTrigger>
                   <SelectContent>
                     {institutions.map((inst) => (
-                      <SelectItem key={inst.id} value={inst.name}>
+                      <SelectItem key={inst.id} value={String(inst.id)}>
                         {inst.name}
                       </SelectItem>
                     ))}
@@ -283,8 +327,8 @@ export function AccountsContent() {
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCreate} disabled={!formData.name || !formData.institution}>
-                Create
+              <Button onClick={createAccount} disabled={!formData.name || !formData.institutionId || loading}>
+                {loading ? "Creating..." : "Create"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -369,7 +413,7 @@ export function AccountsContent() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="edit-institution">Institution</Label>
-              <Input value={formData.institution} disabled />
+              <Input value={formData.institutionId} disabled />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-name">Account Name</Label>
