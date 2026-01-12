@@ -82,6 +82,17 @@ type InstitutionUi = {
   status: "Active" | "Inactive"
 }
 
+type AccountsInfo = {
+  id: number,
+  name: string,
+  institution: string,
+  currency: string,
+  balance: number,
+  active: "Active" | "Inactive",
+  allowOverdraft: "Active" | "Inactive",
+  type: string,
+}
+
 function formatCurrency(amount: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -91,6 +102,7 @@ function formatCurrency(amount: number, currency: string) {
 }
 
 export function AccountsContent() {
+  const [AccountsInfo, setAccountsInfo] = React.useState<AccountsInfo[]>([])
   const [institutions, setInstitutions] = React.useState<InstitutionUi[]>([])
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -137,6 +149,42 @@ export function AccountsContent() {
   React.useEffect(() => {
     fetchInstitutions()
   }, [fetchInstitutions])
+
+    const fetchAccounts = React.useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+  
+      const res = await fetch("http://localhost:3000/api/accounts", {
+        headers: { Accept: "application/json" },
+      })
+  
+      if (!res.ok) throw new Error("Failed to load institutions")
+  
+      const data = await res.json()
+  
+      const mapped = data.map((x: any) => ({
+        id: x.id,
+        balance: 0,
+        institution: x.institution,
+        name: x.name,
+        currency: x.currency,
+        active: x.is_active === 1 ? "Active" : "Inactive",
+        allowOverdraft: x.allow_overdraft,
+        type: x.type,
+      }))
+  
+      setAccountsInfo(mapped)
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    fetchAccounts()
+  }, [fetchAccounts])
 
   const handleCreate = () => {
     const newAccount = {
@@ -190,15 +238,15 @@ export function AccountsContent() {
   }
 
   // Group accounts by institution
-  const groupedAccounts = accounts.reduce(
-    (acc, account) => {
-      if (!acc[account.institution]) {
-        acc[account.institution] = []
+  const groupedAccounts = AccountsInfo.reduce(
+    (acc, AccountsInfo) => {
+      if (!acc[AccountsInfo.institution]) {
+        acc[AccountsInfo.institution] = []
       }
-      acc[account.institution].push(account)
+      acc[AccountsInfo.institution].push(AccountsInfo)
       return acc
     },
-    {} as Record<string, typeof accounts>,
+    {} as Record<string, typeof AccountsInfo>,
   )
 
   return (
@@ -291,7 +339,7 @@ export function AccountsContent() {
         </Dialog>
       </div>
 
-      {accounts.length === 0 ? (
+      {AccountsInfo.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <p className="text-muted-foreground mb-4">No accounts yet</p>
