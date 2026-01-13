@@ -178,25 +178,48 @@ export function useAccounts() {
     }
   }
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!editAccount) return
 
-    setAccounts((prev) =>
-      prev.map((acc) =>
-        acc.id === editAccount.id
-          ? {
-              ...acc,
-              name: formData.name,
-              institution: formData.institutionId,
-              allowOverdraft: formData.allowOverdraft,
-            }
-          : acc,
-      ),
-    )
+    try {
+      setLoading(true)
+      setError(null)
 
-    setIsEditOpen(false)
-    setEditAccount(null)
-    setFormData(DEFAULT_FORM_DATA)
+      const res = await fetch(`${ACCOUNTS_URL}/${editAccount.id}`, {
+        method: "PATCH",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: formData.name.trim() }),
+      })
+
+      if (!res.ok) {
+        throw new Error("Failed to update account")
+      }
+
+      const updated = await res.json()
+
+      setAccounts((prev) =>
+        prev.map((acc) =>
+          acc.id === editAccount.id
+            ? {
+                ...acc,
+                name: updated?.name ?? formData.name,
+              }
+            : acc,
+        ),
+      )
+
+      setIsEditOpen(false)
+      setEditAccount(null)
+      setFormData(DEFAULT_FORM_DATA)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to update account"
+      setError(message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleDeactivate = () => {

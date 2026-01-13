@@ -33,9 +33,11 @@ const navItems = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = React.useState<"light" | "dark">("light")
+  const [mounted, setMounted] = React.useState(false)
   const pathname = usePathname()
 
   React.useEffect(() => {
+    setMounted(true)
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
     if (savedTheme) {
       setTheme(savedTheme)
@@ -63,7 +65,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
             const Icon = item.icon
-            const isActive = pathname === item.href
+            const isActive = mounted && pathname === item.href
             return (
               <Link
                 key={item.href}
@@ -105,7 +107,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <nav className="space-y-1 p-4">
                   {navItems.map((item) => {
                     const Icon = item.icon
-                    const isActive = pathname === item.href
+                    const isActive = mounted && pathname === item.href
                     return (
                       <Link
                         key={item.href}
@@ -124,11 +126,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SheetContent>
             </Sheet>
             <h1 className="text-lg font-semibold md:text-xl">
-              {navItems.find((item) => item.href === pathname)?.label || "Dashboard"}
+              {mounted
+                ? navItems.find((item) => item.href === pathname)?.label || "Dashboard"
+                : "Dashboard"}
             </h1>
           </div>
           <Button variant="ghost" size="icon" onClick={toggleTheme}>
-            {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            {mounted ? (
+              theme === "light" ? (
+                <Moon className="h-5 w-5" />
+              ) : (
+                <Sun className="h-5 w-5" />
+              )
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
           </Button>
         </header>
 
