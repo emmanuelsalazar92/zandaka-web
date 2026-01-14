@@ -1,10 +1,12 @@
 "use client"
 
+import { Plus, AlertTriangle, XCircle } from "lucide-react"
 import * as React from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -14,18 +16,65 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, AlertTriangle, XCircle } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
 // Mock data
 const mockEnvelopes = [
-  { id: 1, accountId: 1, account: "Main Checking", category: "Groceries", balance: 125000, active: true },
-  { id: 2, accountId: 1, account: "Main Checking", category: "Utilities", balance: 80000, active: true },
-  { id: 3, accountId: 1, account: "Main Checking", category: "Transportation", balance: -15000, active: true },
-  { id: 4, accountId: 2, account: "Credit Card", category: "Entertainment", balance: -50, active: true },
-  { id: 5, accountId: 3, account: "Savings", category: "Emergency Fund", balance: 500000, active: true },
+  {
+    id: 1,
+    accountId: 1,
+    account: "Main Checking",
+    category: "Groceries",
+    balance: 125000,
+    active: true,
+  },
+  {
+    id: 2,
+    accountId: 1,
+    account: "Main Checking",
+    category: "Utilities",
+    balance: 80000,
+    active: true,
+  },
+  {
+    id: 3,
+    accountId: 1,
+    account: "Main Checking",
+    category: "Transportation",
+    balance: -15000,
+    active: true,
+  },
+  {
+    id: 4,
+    accountId: 2,
+    account: "Credit Card",
+    category: "Entertainment",
+    balance: -50,
+    active: true,
+  },
+  {
+    id: 5,
+    accountId: 3,
+    account: "Savings",
+    category: "Emergency Fund",
+    balance: 500000,
+    active: true,
+  },
 ]
 
 const mockAccounts = [
@@ -64,7 +113,9 @@ export function EnvelopesContent() {
     category: "",
   })
 
-  const filteredEnvelopes = envelopes.filter((env) => env.accountId === Number.parseInt(selectedAccount))
+  const filteredEnvelopes = envelopes.filter(
+    (env) => env.accountId === Number.parseInt(selectedAccount),
+  )
 
   const handleLinkCategory = () => {
     const newEnvelope = {
@@ -93,14 +144,18 @@ export function EnvelopesContent() {
     }
   }
 
-  const selectedAccountName = mockAccounts.find((a) => a.id === Number.parseInt(selectedAccount))?.name
+  const selectedAccountName = mockAccounts.find(
+    (a) => a.id === Number.parseInt(selectedAccount),
+  )?.name
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Envelopes</h2>
-          <p className="text-muted-foreground">Link categories to accounts for envelope budgeting</p>
+          <p className="text-muted-foreground">
+            Link categories to accounts for envelope budgeting
+          </p>
         </div>
       </div>
 
@@ -147,7 +202,10 @@ export function EnvelopesContent() {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <label>Category</label>
-                    <Select value={formData.category} onValueChange={(value) => setFormData({ category: value })}>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value) => setFormData({ category: value })}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a category" />
                       </SelectTrigger>
@@ -193,7 +251,10 @@ export function EnvelopesContent() {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <label>Category</label>
-                    <Select value={formData.category} onValueChange={(value) => setFormData({ category: value })}>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value) => setFormData({ category: value })}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a category" />
                       </SelectTrigger>
@@ -241,7 +302,12 @@ export function EnvelopesContent() {
                     <TableRow key={envelope.id}>
                       <TableCell className="font-medium">{envelope.category}</TableCell>
                       <TableCell>
-                        <span className={cn("font-semibold", envelope.balance >= 0 ? "text-success" : "text-error")}>
+                        <span
+                          className={cn(
+                            "font-semibold",
+                            envelope.balance >= 0 ? "text-success" : "text-error",
+                          )}
+                        >
                           {formatCurrency(envelope.balance)}
                         </span>
                       </TableCell>
@@ -286,7 +352,8 @@ export function EnvelopesContent() {
             <DialogHeader>
               <DialogTitle>Unlink Envelope?</DialogTitle>
               <DialogDescription>
-                Remove {envelopes.find((e) => e.id === unlinkId)?.category} from {selectedAccountName}
+                Remove {envelopes.find((e) => e.id === unlinkId)?.category} from{" "}
+                {selectedAccountName}
               </DialogDescription>
             </DialogHeader>
             <div className="flex gap-2 justify-end">

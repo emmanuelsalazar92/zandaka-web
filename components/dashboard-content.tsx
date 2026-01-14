@@ -1,12 +1,20 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { AlertTriangle, TrendingDown, Wallet, AlertCircle } from "lucide-react"
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertTriangle, TrendingDown, Wallet, AlertCircle } from "lucide-react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
 // Mock data for demonstration
@@ -92,7 +100,9 @@ export function DashboardContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(summaryData.crc.total, "CRC")}</div>
-            <p className="text-xs text-muted-foreground">Spent: {formatCurrency(summaryData.crc.spent, "CRC")}</p>
+            <p className="text-xs text-muted-foreground">
+              Spent: {formatCurrency(summaryData.crc.spent, "CRC")}
+            </p>
           </CardContent>
         </Card>
 
@@ -103,7 +113,9 @@ export function DashboardContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(summaryData.usd.total, "USD")}</div>
-            <p className="text-xs text-muted-foreground">Spent: {formatCurrency(summaryData.usd.spent, "USD")}</p>
+            <p className="text-xs text-muted-foreground">
+              Spent: {formatCurrency(summaryData.usd.spent, "USD")}
+            </p>
           </CardContent>
         </Card>
 
@@ -113,7 +125,12 @@ export function DashboardContent() {
             <TrendingDown className="h-4 w-4 text-error" />
           </CardHeader>
           <CardContent>
-            <div className={cn("text-2xl font-bold", summaryData.negativeEnvelopes > 0 && "text-error")}>
+            <div
+              className={cn(
+                "text-2xl font-bold",
+                summaryData.negativeEnvelopes > 0 && "text-error",
+              )}
+            >
               {summaryData.negativeEnvelopes}
             </div>
             <p className="text-xs text-muted-foreground">Requires attention</p>
@@ -126,7 +143,12 @@ export function DashboardContent() {
             <AlertCircle className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className={cn("text-2xl font-bold", summaryData.inconsistencies > 0 && "text-warning")}>
+            <div
+              className={cn(
+                "text-2xl font-bold",
+                summaryData.inconsistencies > 0 && "text-warning",
+              )}
+            >
               {summaryData.inconsistencies}
             </div>
             <p className="text-xs text-muted-foreground">Open reconciliation issues</p>
@@ -176,7 +198,9 @@ export function DashboardContent() {
                   <TableRow key={i}>
                     <TableCell className="font-medium">{category.name}</TableCell>
                     <TableCell className="text-right">
-                      <span className="text-error">{formatCurrency(category.amount, category.currency)}</span>
+                      <span className="text-error">
+                        {formatCurrency(category.amount, category.currency)}
+                      </span>
                       <Badge variant="outline" className="ml-2">
                         {category.currency}
                       </Badge>
@@ -204,7 +228,9 @@ export function DashboardContent() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className={cn("font-semibold", tx.amount > 0 ? "text-success" : "text-error")}>
+                    <p
+                      className={cn("font-semibold", tx.amount > 0 ? "text-success" : "text-error")}
+                    >
                       {tx.amount > 0 ? "+" : ""}
                       {formatCurrency(Math.abs(tx.amount), tx.currency)}
                     </p>
@@ -229,7 +255,9 @@ export function DashboardContent() {
               {negativeEnvelopes.map((env, i) => (
                 <div key={i} className="text-sm">
                   <span className="font-medium">{env.account}</span> / {env.category}:{" "}
-                  <span className="font-semibold text-error">{formatCurrency(env.balance, env.currency)}</span>
+                  <span className="font-semibold text-error">
+                    {formatCurrency(env.balance, env.currency)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -246,7 +274,9 @@ export function DashboardContent() {
               {inconsistencies.map((inc, i) => (
                 <div key={i} className="text-sm">
                   <span className="font-medium">{inc.account}</span>: Difference of{" "}
-                  <span className="font-semibold text-warning">{formatCurrency(inc.difference, inc.currency)}</span>
+                  <span className="font-semibold text-warning">
+                    {formatCurrency(inc.difference, inc.currency)}
+                  </span>
                 </div>
               ))}
             </div>

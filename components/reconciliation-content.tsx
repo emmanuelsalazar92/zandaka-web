@@ -1,10 +1,11 @@
 "use client"
 
+import { Plus } from "lucide-react"
 import * as React from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -16,8 +17,21 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
 // Mock data
@@ -73,7 +87,9 @@ export function ReconciliationContent() {
     const realBalance = Number.parseFloat(formData.realBalance)
     const difference = realBalance - calculatedBalance
 
-    const existingIndex = reconciliations.findIndex((r) => r.account === account.name && r.date === formData.date)
+    const existingIndex = reconciliations.findIndex(
+      (r) => r.account === account.name && r.date === formData.date,
+    )
 
     if (existingIndex >= 0) {
       const updated = [...reconciliations]
@@ -157,7 +173,8 @@ export function ReconciliationContent() {
                   <p className="text-sm text-muted-foreground">Calculated Balance:</p>
                   <p className="text-lg font-semibold">
                     {formatCurrency(
-                      mockAccounts.find((a) => a.id === Number.parseInt(formData.account))?.balance || 0,
+                      mockAccounts.find((a) => a.id === Number.parseInt(formData.account))
+                        ?.balance || 0,
                       "CRC",
                     )}
                   </p>
@@ -178,7 +195,8 @@ export function ReconciliationContent() {
                   className={cn(
                     "rounded-lg p-3",
                     Number.parseFloat(formData.realBalance) -
-                      (mockAccounts.find((a) => a.id === Number.parseInt(formData.account))?.balance || 0) ===
+                      (mockAccounts.find((a) => a.id === Number.parseInt(formData.account))
+                        ?.balance || 0) ===
                       0
                       ? "bg-success/10"
                       : "bg-warning/10",
@@ -189,7 +207,8 @@ export function ReconciliationContent() {
                     className={cn(
                       "text-lg font-semibold",
                       Number.parseFloat(formData.realBalance) -
-                        (mockAccounts.find((a) => a.id === Number.parseInt(formData.account))?.balance || 0) ===
+                        (mockAccounts.find((a) => a.id === Number.parseInt(formData.account))
+                          ?.balance || 0) ===
                         0
                         ? "text-success"
                         : "text-warning",
@@ -197,7 +216,8 @@ export function ReconciliationContent() {
                   >
                     {formatCurrency(
                       Number.parseFloat(formData.realBalance) -
-                        (mockAccounts.find((a) => a.id === Number.parseInt(formData.account))?.balance || 0),
+                        (mockAccounts.find((a) => a.id === Number.parseInt(formData.account))
+                          ?.balance || 0),
                       "CRC",
                     )}
                   </p>
@@ -208,7 +228,10 @@ export function ReconciliationContent() {
               <Button variant="outline" onClick={() => setIsReconcileOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleReconcile} disabled={!formData.account || !formData.realBalance}>
+              <Button
+                onClick={handleReconcile}
+                disabled={!formData.account || !formData.realBalance}
+              >
                 Reconcile
               </Button>
             </DialogFooter>
@@ -241,7 +264,12 @@ export function ReconciliationContent() {
                   <TableCell>{formatCurrency(recon.calculatedBalance, "CRC")}</TableCell>
                   <TableCell>{formatCurrency(recon.realBalance, "CRC")}</TableCell>
                   <TableCell>
-                    <span className={cn("font-semibold", recon.difference === 0 ? "text-success" : "text-warning")}>
+                    <span
+                      className={cn(
+                        "font-semibold",
+                        recon.difference === 0 ? "text-success" : "text-warning",
+                      )}
+                    >
                       {recon.difference > 0 ? "+" : ""}
                       {formatCurrency(recon.difference, "CRC")}
                     </span>

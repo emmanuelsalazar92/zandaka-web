@@ -1,4 +1,6 @@
 import * as React from "react"
+
+import type { InstitutionUi } from "@/components/institutions/types/institutions.types"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,7 +11,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import type { InstitutionUi } from "@/components/institutions/types/institutions.types"
 
 type InstitutionDeactivateDialogProps = {
   open: boolean
@@ -33,11 +34,10 @@ export function InstitutionDeactivateDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            {isActive ? "Deactivate" : "Activate"} Institution?
-          </AlertDialogTitle>
+          <AlertDialogTitle>{isActive ? "Deactivate" : "Activate"} Institution?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will {isActive ? "deactivate" : "activate"} the institution. You can reverse this action at any time.
+            This will {isActive ? "deactivate" : "activate"} the institution. You can reverse this
+            action at any time.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

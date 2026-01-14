@@ -1,10 +1,10 @@
 "use client"
 
-import type React from "react"
-
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+
 import type { LucideIcon } from "lucide-react"
+import type React from "react"
 
 interface EmptyStateProps {
   icon?: LucideIcon
@@ -18,7 +18,14 @@ interface EmptyStateProps {
 /**
  * Reusable empty state component for consistent empty data display
  */
-export function EmptyState({ icon: Icon, title, description, actionLabel, onAction, children }: EmptyStateProps) {
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  children,
+}: EmptyStateProps) {
   return (
     <Card>
       <CardContent className="flex flex-col items-center justify-center py-12">

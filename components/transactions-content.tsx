@@ -1,10 +1,12 @@
 "use client"
 
+import { Plus, Trash2, AlertCircle } from "lucide-react"
 import * as React from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -16,9 +18,21 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Plus, Trash2, AlertCircle } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
 // Mock data
@@ -28,14 +42,24 @@ const mockTransactions = [
     date: "2026-01-02",
     type: "EXPENSE",
     description: "Supermarket",
-    lines: [{ accountId: 1, account: "Main Checking", envelopeId: 5, envelope: "Groceries", amount: -45000 }],
+    lines: [
+      {
+        accountId: 1,
+        account: "Main Checking",
+        envelopeId: 5,
+        envelope: "Groceries",
+        amount: -45000,
+      },
+    ],
   },
   {
     id: 2,
     date: "2026-01-02",
     type: "INCOME",
     description: "Salary",
-    lines: [{ accountId: 1, account: "Main Checking", envelopeId: 2, envelope: "Salary", amount: 500000 }],
+    lines: [
+      { accountId: 1, account: "Main Checking", envelopeId: 2, envelope: "Salary", amount: 500000 },
+    ],
   },
   {
     id: 3,
@@ -43,8 +67,20 @@ const mockTransactions = [
     type: "TRANSFER",
     description: "Transfer to Savings",
     lines: [
-      { accountId: 1, account: "Main Checking", envelopeId: 12, envelope: "Emergency Fund", amount: -100000 },
-      { accountId: 3, account: "Savings", envelopeId: 12, envelope: "Emergency Fund", amount: 100000 },
+      {
+        accountId: 1,
+        account: "Main Checking",
+        envelopeId: 12,
+        envelope: "Emergency Fund",
+        amount: -100000,
+      },
+      {
+        accountId: 3,
+        account: "Savings",
+        envelopeId: 12,
+        envelope: "Emergency Fund",
+        amount: 100000,
+      },
     ],
   },
 ]
@@ -120,7 +156,8 @@ export function TransactionsContent() {
     return formData.lines.reduce((sum, line) => sum + (Number.parseFloat(line.amount) || 0), 0)
   }
 
-  const isTransferValid = formData.type === "TRANSFER" && formData.lines.length === 2 && getTransactionLineSum() === 0
+  const isTransferValid =
+    formData.type === "TRANSFER" && formData.lines.length === 2 && getTransactionLineSum() === 0
   const isOtherValid =
     formData.type !== "TRANSFER" &&
     formData.lines.length >= 1 &&
@@ -140,8 +177,9 @@ export function TransactionsContent() {
         account: mockAccounts.find((a) => a.id === Number.parseInt(line.accountId))?.name || "",
         envelopeId: Number.parseInt(line.envelopeId),
         envelope:
-          mockEnvelopes[Number.parseInt(line.accountId)]?.find((e) => e.id === Number.parseInt(line.envelopeId))
-            ?.name || "",
+          mockEnvelopes[Number.parseInt(line.accountId)]?.find(
+            (e) => e.id === Number.parseInt(line.envelopeId),
+          )?.name || "",
         amount: Number.parseFloat(line.amount),
       })),
     }
@@ -187,7 +225,10 @@ export function TransactionsContent() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="type">Type</Label>
-                  <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value) => setFormData({ ...formData, type: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -292,7 +333,9 @@ export function TransactionsContent() {
                 {formData.type === "TRANSFER" && (
                   <div className="text-sm font-medium mt-2">
                     Total:{" "}
-                    <span className={cn(getTransactionLineSum() === 0 ? "text-success" : "text-error")}>
+                    <span
+                      className={cn(getTransactionLineSum() === 0 ? "text-success" : "text-error")}
+                    >
                       {getTransactionLineSum().toFixed(2)}
                     </span>
                   </div>
@@ -332,7 +375,9 @@ export function TransactionsContent() {
                 transaction.lines.map((line, lineIndex) => (
                   <TableRow key={`${transaction.id}-${lineIndex}`}>
                     <TableCell className="text-sm">{transaction.date}</TableCell>
-                    <TableCell className="font-medium">{lineIndex === 0 ? transaction.description : ""}</TableCell>
+                    <TableCell className="font-medium">
+                      {lineIndex === 0 ? transaction.description : ""}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs">
                         {transaction.type}
@@ -342,7 +387,12 @@ export function TransactionsContent() {
                       {line.account} / {line.envelope}
                     </TableCell>
                     <TableCell>
-                      <span className={cn("font-semibold", line.amount > 0 ? "text-success" : "text-error")}>
+                      <span
+                        className={cn(
+                          "font-semibold",
+                          line.amount > 0 ? "text-success" : "text-error",
+                        )}
+                      >
                         {line.amount > 0 ? "+" : ""}
                         {formatCurrency(line.amount, "CRC")}
                       </span>

@@ -1,10 +1,8 @@
-import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
-import type {
-  AccountFormData,
-  InstitutionUi,
-} from "@/components/accounts/types/accounts.types"
+
 import { AccountFormDialog } from "@/components/accounts/components/account-form-dialog"
+import type { AccountFormData, InstitutionUi } from "@/components/accounts/types/accounts.types"
+import { Button } from "@/components/ui/button"
 
 type AccountsHeaderProps = {
   isCreateOpen: boolean

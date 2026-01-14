@@ -1,4 +1,6 @@
 import * as React from "react"
+
+import type { AccountFormData, InstitutionUi } from "@/components/accounts/types/accounts.types"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -11,11 +13,13 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type {
-  AccountFormData,
-  InstitutionUi,
-} from "@/components/accounts/types/accounts.types"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 type AccountFormDialogProps = {
   open: boolean
@@ -76,7 +80,9 @@ export function AccountFormDialog({
                 {!loading && !error ? (
                   <Select
                     value={formData.institutionId}
-                    onValueChange={(value) => onFormDataChange({ ...formData, institutionId: value })}
+                    onValueChange={(value) =>
+                      onFormDataChange({ ...formData, institutionId: value })
+                    }
                   >
                     <SelectTrigger id={`${idPrefix}-institution`}>
                       <SelectValue placeholder="Select institution" />

@@ -1,11 +1,19 @@
+import { Edit2, XCircle } from "lucide-react"
 import * as React from "react"
+
+import { institutionTypeConfig } from "@/components/institutions/constants/institutionTypeConfig"
+import type { InstitutionUi } from "@/components/institutions/types/institutions.types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Edit2, XCircle } from "lucide-react"
-import { institutionTypeConfig } from "@/components/institutions/constants/institutionTypeConfig"
-import type { InstitutionUi } from "@/components/institutions/types/institutions.types"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 type InstitutionsTableProps = {
   institutions: InstitutionUi[]
@@ -62,7 +70,11 @@ export function InstitutionsTable({
                       <Button variant="ghost" size="sm" onClick={() => onEdit(institution)}>
                         <Edit2 className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => onDeactivate(institution.id)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDeactivate(institution.id)}
+                      >
                         <XCircle className="h-4 w-4" />
                       </Button>
                     </div>
