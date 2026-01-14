@@ -222,13 +222,37 @@ export function useAccounts() {
     }
   }
 
-  const handleDeactivate = () => {
+  const handleDeactivate = async () => {
     if (!deactivateId) return
 
-    setAccounts((prev) =>
-      prev.map((acc) => (acc.id === deactivateId ? { ...acc, active: !acc.active } : acc)),
-    )
-    setDeactivateId(null)
+    try {
+      setLoading(true)
+      setError(null)
+
+      const res = await fetch(`${ACCOUNTS_URL}/${deactivateId}/deactivate`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+      })
+
+      if (!res.ok) {
+        let message = "Failed to deactivate account"
+        try {
+          const err = await res.json()
+          message = err?.message || message
+        } catch {}
+        throw new Error(message)
+      }
+
+      await fetchAccounts()
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to deactivate account"
+      setError(message)
+    } finally {
+      setLoading(false)
+      setDeactivateId(null)
+    }
   }
 
   const openEdit = (account: AccountUi) => {
