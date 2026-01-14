@@ -10,7 +10,10 @@ export interface ReconciliationRecord {
 /**
  * Calculate reconciliation difference
  */
-export function calculateReconciliationDifference(calculatedBalance: number, realBalance: number): number {
+export function calculateReconciliationDifference(
+  calculatedBalance: number,
+  realBalance: number,
+): number {
   return realBalance - calculatedBalance
 }
 

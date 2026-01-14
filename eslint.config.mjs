@@ -1,10 +1,10 @@
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
-import tsParser from "@typescript-eslint/parser";
-import importPlugin from "eslint-plugin-import";
-import unusedImportsPlugin from "eslint-plugin-unused-imports";
-import prettierConfig from "eslint-config-prettier";
+import { defineConfig, globalIgnores } from "eslint/config"
+import nextVitals from "eslint-config-next/core-web-vitals"
+import nextTs from "eslint-config-next/typescript"
+import tsParser from "@typescript-eslint/parser"
+import importPlugin from "eslint-plugin-import"
+import unusedImportsPlugin from "eslint-plugin-unused-imports"
+import prettierConfig from "eslint-config-prettier"
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -75,6 +75,6 @@ const eslintConfig = defineConfig([
     },
   },
   prettierConfig,
-]);
+])
 
-export default eslintConfig;
+export default eslintConfig

@@ -53,7 +53,9 @@ export function calculateTransactionSum(lines: TransactionLine[]): number {
 /**
  * Group transactions by date
  */
-export function groupTransactionsByDate(transactions: Transaction[]): Record<string, Transaction[]> {
+export function groupTransactionsByDate(
+  transactions: Transaction[],
+): Record<string, Transaction[]> {
   return transactions.reduce(
     (acc, transaction) => {
       if (!acc[transaction.date]) {
