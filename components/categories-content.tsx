@@ -1,18 +1,8 @@
 "use client"
 
+import { Plus, Edit2, XCircle, ChevronDown, ChevronRight } from "lucide-react"
 import * as React from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,13 +13,43 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit2, XCircle, ChevronDown, ChevronRight } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+type Category = {
+  id: number
+  name: string
+  parent: number | null
+  active: boolean
+  isParent: boolean
+}
+
+type CategoryFormData = {
+  name: string
+  parent: number | null
+}
 
 // Mock data with parent/child structure
-const mockCategories = [
+const mockCategories: Category[] = [
   { id: 1, name: "Income", parent: null, active: true, isParent: true },
   { id: 2, name: "Salary", parent: 1, active: true, isParent: false },
   { id: 3, name: "Freelance", parent: 1, active: true, isParent: false },
@@ -46,13 +66,13 @@ const mockCategories = [
 ]
 
 export function CategoriesContent() {
-  const [categories, setCategories] = React.useState(mockCategories)
+  const [categories, setCategories] = React.useState<Category[]>(mockCategories)
   const [expandedParents, setExpandedParents] = React.useState<Set<number>>(new Set([1, 4, 8, 11]))
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [isEditOpen, setIsEditOpen] = React.useState(false)
   const [deactivateId, setDeactivateId] = React.useState<number | null>(null)
-  const [editCategory, setEditCategory] = React.useState<any>(null)
-  const [formData, setFormData] = React.useState({
+  const [editCategory, setEditCategory] = React.useState<Category | null>(null)
+  const [formData, setFormData] = React.useState<CategoryFormData>({
     name: "",
     parent: null,
   })
@@ -84,6 +104,7 @@ export function CategoriesContent() {
   }
 
   const handleEdit = () => {
+    if (!editCategory) return
     setCategories(
       categories.map((cat) =>
         cat.id === editCategory.id ? { ...cat, name: formData.name, parent: formData.parent } : cat,
@@ -96,12 +117,14 @@ export function CategoriesContent() {
 
   const handleDeactivate = () => {
     if (deactivateId) {
-      setCategories(categories.map((cat) => (cat.id === deactivateId ? { ...cat, active: !cat.active } : cat)))
+      setCategories(
+        categories.map((cat) => (cat.id === deactivateId ? { ...cat, active: !cat.active } : cat)),
+      )
       setDeactivateId(null)
     }
   }
 
-  const openEdit = (category: any) => {
+  const openEdit = (category: Category) => {
     setEditCategory(category)
     setFormData({
       name: category.name,
@@ -115,7 +138,9 @@ export function CategoriesContent() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Categories</h2>
-          <p className="text-muted-foreground">Manage your budget categories (parent/child structure)</p>
+          <p className="text-muted-foreground">
+            Manage your budget categories (parent/child structure)
+          </p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
@@ -127,7 +152,9 @@ export function CategoriesContent() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create Category</DialogTitle>
-              <DialogDescription>Add a new category. Subcategories are used for envelopes.</DialogDescription>
+              <DialogDescription>
+                Add a new category. Subcategories are used for envelopes.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -143,7 +170,9 @@ export function CategoriesContent() {
                 <Label htmlFor="parent">Parent Category (Optional)</Label>
                 <Select
                   value={formData.parent?.toString()}
-                  onValueChange={(value) => setFormData({ ...formData, parent: value ? Number.parseInt(value) : null })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, parent: value ? Number.parseInt(value) : null })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="None (top-level)" />
@@ -186,7 +215,8 @@ export function CategoriesContent() {
           <CardHeader>
             <CardTitle>Category Tree</CardTitle>
             <CardDescription>
-              Organize categories with parent/child relationships. Subcategories are used for envelopes.
+              Organize categories with parent/child relationships. Subcategories are used for
+              envelopes.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -204,7 +234,11 @@ export function CategoriesContent() {
                             onClick={() => toggleExpand(parent.id)}
                             className="text-muted-foreground hover:text-foreground"
                           >
-                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
                           </button>
                         )}
                         {children.length === 0 && <div className="w-4" />}
@@ -214,7 +248,12 @@ export function CategoriesContent() {
                         </Badge>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(parent)} className="h-8 w-8 p-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEdit(parent)}
+                          className="h-8 w-8 p-0"
+                        >
                           <Edit2 className="h-4 w-4" />
                         </Button>
                         <Button
@@ -243,7 +282,12 @@ export function CategoriesContent() {
                               </Badge>
                             </div>
                             <div className="flex gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => openEdit(child)} className="h-8 w-8 p-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEdit(child)}
+                                className="h-8 w-8 p-0"
+                              >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
                               <Button
@@ -287,7 +331,9 @@ export function CategoriesContent() {
               <Label htmlFor="edit-parent">Parent Category</Label>
               <Select
                 value={formData.parent?.toString()}
-                onValueChange={(value) => setFormData({ ...formData, parent: value ? Number.parseInt(value) : null })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, parent: value ? Number.parseInt(value) : null })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="None (top-level)" />
@@ -319,11 +365,13 @@ export function CategoriesContent() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {categories.find((c) => c.id === deactivateId)?.active ? "Deactivate" : "Activate"} Category?
+              {categories.find((c) => c.id === deactivateId)?.active ? "Deactivate" : "Activate"}{" "}
+              Category?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will {categories.find((c) => c.id === deactivateId)?.active ? "deactivate" : "activate"} the
-              category.
+              This will{" "}
+              {categories.find((c) => c.id === deactivateId)?.active ? "deactivate" : "activate"}{" "}
+              the category.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

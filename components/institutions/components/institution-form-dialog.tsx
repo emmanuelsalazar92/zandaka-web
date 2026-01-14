@@ -1,4 +1,9 @@
 import * as React from "react"
+
+import type {
+  InstitutionFormData,
+  InstitutionType,
+} from "@/components/institutions/types/institutions.types"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -11,8 +16,13 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { InstitutionFormData, InstitutionType } from "@/components/institutions/types/institutions.types"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 type InstitutionFormDialogProps = {
   open: boolean

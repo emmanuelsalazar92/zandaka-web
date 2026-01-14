@@ -1,10 +1,18 @@
+import { Edit2, XCircle } from "lucide-react"
+
+import type { AccountUi } from "@/components/accounts/types/accounts.types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Edit2, XCircle } from "lucide-react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import type { AccountUi } from "@/components/accounts/types/accounts.types"
 
 type AccountsTableProps = {
   accounts: AccountUi[]

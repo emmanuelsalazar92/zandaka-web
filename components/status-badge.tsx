@@ -1,5 +1,6 @@
-import type React from "react"
 import { Badge } from "@/components/ui/badge"
+
+import type React from "react"
 
 interface StatusBadgeProps {
   status: "active" | "inactive" | "pending" | "balanced" | "difference"

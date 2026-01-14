@@ -1,8 +1,9 @@
-import * as React from "react"
-import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
-import type { InstitutionFormData } from "@/components/institutions/types/institutions.types"
+import * as React from "react"
+
 import { InstitutionFormDialog } from "@/components/institutions/components/institution-form-dialog"
+import type { InstitutionFormData } from "@/components/institutions/types/institutions.types"
+import { Button } from "@/components/ui/button"
 
 type InstitutionsHeaderProps = {
   isCreateOpen: boolean

@@ -24,7 +24,7 @@ export function detectCurrency(amount: number): string {
 /**
  * Format large numbers with abbreviations (e.g., 1.2M, 500K)
  */
-export function formatCompactCurrency(amount: number, currency: string): string {
+export function formatCompactCurrency(amount: number, _currency: string): string {
   const absAmount = Math.abs(amount)
   let formatted: string
 

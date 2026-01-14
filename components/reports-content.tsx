@@ -1,9 +1,17 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertTriangle, AlertCircle } from "lucide-react"
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
 // Mock data for reports
@@ -65,7 +73,9 @@ export function ReportsContent() {
                   <TableRow key={i}>
                     <TableCell className="font-medium">{exp.category}</TableCell>
                     <TableCell className="text-right">
-                      <span className="text-error font-semibold">{formatCurrency(exp.amount, exp.currency)}</span>
+                      <span className="text-error font-semibold">
+                        {formatCurrency(exp.amount, exp.currency)}
+                      </span>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -93,7 +103,12 @@ export function ReportsContent() {
                   <TableRow key={i}>
                     <TableCell className="font-medium">{acc.account}</TableCell>
                     <TableCell className="text-right">
-                      <span className={cn("font-semibold", acc.balance >= 0 ? "text-success" : "text-error")}>
+                      <span
+                        className={cn(
+                          "font-semibold",
+                          acc.balance >= 0 ? "text-success" : "text-error",
+                        )}
+                      >
                         {formatCurrency(acc.balance, acc.currency)}
                       </span>
                     </TableCell>
@@ -115,7 +130,9 @@ export function ReportsContent() {
               {negativeEnvelopes.map((env, i) => (
                 <div key={i} className="text-sm">
                   <span className="font-medium">{env.account}</span> / {env.category}:{" "}
-                  <span className="font-semibold text-error">{formatCurrency(env.balance, env.currency)}</span>
+                  <span className="font-semibold text-error">
+                    {formatCurrency(env.balance, env.currency)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -133,7 +150,9 @@ export function ReportsContent() {
               {inconsistencies.map((inc, i) => (
                 <div key={i} className="text-sm">
                   <span className="font-medium">{inc.account}</span>: Difference of{" "}
-                  <span className="font-semibold text-warning">{formatCurrency(inc.difference, inc.currency)}</span>
+                  <span className="font-semibold text-warning">
+                    {formatCurrency(inc.difference, inc.currency)}
+                  </span>
                 </div>
               ))}
             </div>

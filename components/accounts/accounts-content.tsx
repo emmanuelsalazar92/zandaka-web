@@ -1,7 +1,7 @@
 "use client"
 
-import { AccountFormDialog } from "@/components/accounts/components/account-form-dialog"
 import { AccountDeactivateDialog } from "@/components/accounts/components/account-deactivate-dialog"
+import { AccountFormDialog } from "@/components/accounts/components/account-form-dialog"
 import { AccountsEmptyState } from "@/components/accounts/components/accounts-empty-state"
 import { AccountsHeader } from "@/components/accounts/components/accounts-header"
 import { AccountsTable } from "@/components/accounts/components/accounts-table"

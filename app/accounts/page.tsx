@@ -1,5 +1,5 @@
-import { AppLayout } from "@/components/app-layout"
 import { AccountsContent } from "@/components/accounts/accounts-content"
+import { AppLayout } from "@/components/app-layout"
 
 export default function AccountsPage() {
   return (

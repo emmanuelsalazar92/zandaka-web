@@ -1,3 +1,4 @@
+import type { AccountUi } from "@/components/accounts/types/accounts.types"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,7 +9,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import type { AccountUi } from "@/components/accounts/types/accounts.types"
 
 type AccountDeactivateDialogProps = {
   open: boolean
@@ -34,8 +34,8 @@ export function AccountDeactivateDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>{isActive ? "Deactivate" : "Activate"} Account?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will {isActive ? "deactivate" : "activate"} the account. You can reverse this action
-            at any time.
+            This will {isActive ? "deactivate" : "activate"} the account. You can reverse this
+            action at any time.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
