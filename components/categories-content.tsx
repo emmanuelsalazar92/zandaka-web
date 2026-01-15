@@ -48,26 +48,9 @@ type CategoryFormData = {
   parent: number | null
 }
 
-// Mock data with parent/child structure
-const mockCategories: Category[] = [
-  { id: 1, name: "Income", parent: null, active: true, isParent: true },
-  { id: 2, name: "Salary", parent: 1, active: true, isParent: false },
-  { id: 3, name: "Freelance", parent: 1, active: true, isParent: false },
-  { id: 4, name: "Essential (50%)", parent: null, active: true, isParent: true },
-  { id: 5, name: "Groceries", parent: 4, active: true, isParent: false },
-  { id: 6, name: "Utilities", parent: 4, active: true, isParent: false },
-  { id: 7, name: "Transportation", parent: 4, active: true, isParent: false },
-  { id: 8, name: "Personal (30%)", parent: null, active: true, isParent: true },
-  { id: 9, name: "Entertainment", parent: 8, active: true, isParent: false },
-  { id: 10, name: "Dining Out", parent: 8, active: true, isParent: false },
-  { id: 11, name: "Savings (20%)", parent: null, active: true, isParent: true },
-  { id: 12, name: "Emergency Fund", parent: 11, active: true, isParent: false },
-  { id: 13, name: "Investments", parent: 11, active: true, isParent: false },
-]
-
 export function CategoriesContent() {
-  const [categories, setCategories] = React.useState<Category[]>(mockCategories)
-  const [expandedParents, setExpandedParents] = React.useState<Set<number>>(new Set([1, 4, 8, 11]))
+  const [categories, setCategories] = React.useState<Category[]>([])
+  const [expandedParents, setExpandedParents] = React.useState<Set<number>>(new Set())
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [isEditOpen, setIsEditOpen] = React.useState(false)
   const [deactivateId, setDeactivateId] = React.useState<number | null>(null)
@@ -76,9 +59,47 @@ export function CategoriesContent() {
     name: "",
     parent: null,
   })
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [createError, setCreateError] = React.useState<string | null>(null)
+  const [loadError, setLoadError] = React.useState<string | null>(null)
+  const [isLoading, setIsLoading] = React.useState(true)
 
   const parentCategories = categories.filter((c) => c.parent === null)
   const getChildren = (parentId: number) => categories.filter((c) => c.parent === parentId)
+  const getNextId = (items: Category[]) =>
+    items.length ? Math.max(...items.map((item) => item.id)) + 1 : 1
+  const normalizeId = React.useCallback((value: unknown) => {
+    if (typeof value === "number") return value
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number.parseInt(value, 10)
+      return Number.isNaN(parsed) ? null : parsed
+    }
+    return null
+  }, [])
+  const mapApiCategory = React.useCallback(
+    (item: {
+      id: number | string
+      name: string
+      parentId?: number | string | null
+      parent_id?: number | string | null
+      parent?: number | string | { id?: number | string | null } | null
+      active?: boolean
+    }): Category => {
+      const parentValue =
+        item.parentId ??
+        item.parent_id ??
+        (typeof item.parent === "object" && item.parent ? item.parent.id : item.parent)
+      const parent = normalizeId(parentValue)
+      return {
+        id: normalizeId(item.id) ?? 0,
+        name: item.name,
+        parent,
+        active: typeof item.active === "boolean" ? item.active : true,
+        isParent: parent === null,
+      }
+    },
+    [normalizeId],
+  )
 
   const toggleExpand = (parentId: number) => {
     const newExpanded = new Set(expandedParents)
@@ -90,17 +111,108 @@ export function CategoriesContent() {
     setExpandedParents(newExpanded)
   }
 
-  const handleCreate = () => {
-    const newCategory = {
-      id: Math.max(...categories.map((c) => c.id)) + 1,
-      name: formData.name,
-      parent: formData.parent,
-      active: true,
-      isParent: false,
-    }
-    setCategories([...categories, newCategory])
-    setIsCreateOpen(false)
+  const resetForm = () => {
     setFormData({ name: "", parent: null })
+    setEditCategory(null)
+  }
+
+  React.useEffect(() => {
+    let isMounted = true
+    const controller = new AbortController()
+
+    const loadCategories = async () => {
+      setIsLoading(true)
+      setLoadError(null)
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/categories?activeOnly=true`,
+          {
+            headers: { accept: "application/json" },
+            signal: controller.signal,
+          },
+        )
+
+        if (!response.ok) {
+          const message = await response.text()
+          throw new Error(message || "Failed to load categories.")
+        }
+
+        const data = await response.json()
+        const items = Array.isArray(data) ? data : []
+        const mapped = items.map(mapApiCategory)
+        if (isMounted) {
+          setCategories(mapped)
+          setExpandedParents(
+            new Set(mapped.filter((item) => item.parent === null).map((item) => item.id)),
+          )
+        }
+      } catch (error) {
+        if (!isMounted || controller.signal.aborted) return
+        const message =
+          error instanceof Error && error.message ? error.message : "Failed to load categories."
+        setLoadError(message)
+      } finally {
+        if (isMounted) setIsLoading(false)
+      }
+    }
+
+    loadCategories()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [mapApiCategory])
+
+  const handleCreate = async () => {
+    if (!formData.name || isSaving) return
+    setIsSaving(true)
+    setCreateError(null)
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories`, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: 1,
+          name: formData.name,
+          parentId: formData.parent,
+        }),
+      })
+
+      if (!response.ok) {
+        const message = await response.text()
+        throw new Error(message || "Failed to create category.")
+      }
+
+      const data = await response.json()
+      const parentId = normalizeId(data?.parentId ?? data?.parent) ?? formData.parent ?? null
+
+      setCategories((prev) => {
+        const nextId = getNextId(prev)
+        const newCategory: Category = {
+          id: normalizeId(data?.id) ?? nextId,
+          name: typeof data?.name === "string" ? data.name : formData.name,
+          parent: parentId,
+          active: typeof data?.active === "boolean" ? data.active : true,
+          isParent: parentId === null,
+        }
+        return [...prev, newCategory]
+      })
+
+      setIsCreateOpen(false)
+      resetForm()
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message ? error.message : "Failed to create category."
+      setCreateError(message)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleEdit = () => {
@@ -142,7 +254,16 @@ export function CategoriesContent() {
             Manage your budget categories (parent/child structure)
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog
+          open={isCreateOpen}
+          onOpenChange={(open) => {
+            setIsCreateOpen(open)
+            if (!open) {
+              setCreateError(null)
+              resetForm()
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -169,16 +290,19 @@ export function CategoriesContent() {
               <div className="space-y-2">
                 <Label htmlFor="parent">Parent Category (Optional)</Label>
                 <Select
-                  value={formData.parent?.toString()}
+                  value={formData.parent === null ? NO_PARENT_VALUE : formData.parent?.toString()}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, parent: value ? Number.parseInt(value) : null })
+                    setFormData({
+                      ...formData,
+                      parent: value === NO_PARENT_VALUE ? null : Number.parseInt(value),
+                    })
                   }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="None (top-level)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None (top-level)</SelectItem>
+                    <SelectItem value={NO_PARENT_VALUE}>None (top-level)</SelectItem>
                     {parentCategories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id.toString()}>
                         {cat.name}
@@ -187,23 +311,39 @@ export function CategoriesContent() {
                   </SelectContent>
                 </Select>
               </div>
+              {createError && <p className="text-sm text-destructive">{createError}</p>}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsCreateOpen(false)
+                  resetForm()
+                  setCreateError(null)
+                }}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleCreate} disabled={!formData.name}>
-                Create
+              <Button onClick={handleCreate} disabled={!formData.name || isSaving}>
+                {isSaving ? "Creating..." : "Create"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {categories.length === 0 ? (
+      {isLoading ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">No categories yet</p>
+            <p className="text-muted-foreground">Loading categories...</p>
+          </CardContent>
+        </Card>
+      ) : categories.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-muted-foreground mb-4">
+              {loadError ? loadError : "No categories yet"}
+            </p>
             <Button onClick={() => setIsCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Add Your First Category
@@ -312,7 +452,13 @@ export function CategoriesContent() {
       )}
 
       {/* Edit Dialog */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+      <Dialog
+        open={isEditOpen}
+        onOpenChange={(open) => {
+          setIsEditOpen(open)
+          if (!open) resetForm()
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Category</DialogTitle>
@@ -330,16 +476,19 @@ export function CategoriesContent() {
             <div className="space-y-2">
               <Label htmlFor="edit-parent">Parent Category</Label>
               <Select
-                value={formData.parent?.toString()}
+                value={formData.parent === null ? NO_PARENT_VALUE : formData.parent?.toString()}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, parent: value ? Number.parseInt(value) : null })
+                  setFormData({
+                    ...formData,
+                    parent: value === NO_PARENT_VALUE ? null : Number.parseInt(value),
+                  })
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="None (top-level)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None (top-level)</SelectItem>
+                  <SelectItem value={NO_PARENT_VALUE}>None (top-level)</SelectItem>
                   {parentCategories
                     .filter((c) => c.id !== editCategory?.id)
                     .map((cat) => (
@@ -352,7 +501,13 @@ export function CategoriesContent() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditOpen(false)
+                resetForm()
+              }}
+            >
               Cancel
             </Button>
             <Button onClick={handleEdit}>Save Changes</Button>
@@ -383,3 +538,4 @@ export function CategoriesContent() {
     </div>
   )
 }
+const NO_PARENT_VALUE = "none"
