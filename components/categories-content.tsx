@@ -41,6 +41,7 @@ type Category = {
   parent: number | null
   active: boolean
   isParent: boolean
+  hasActiveChildren: boolean
 }
 
 type CategoryFormData = {
@@ -60,8 +61,10 @@ export function CategoriesContent() {
     parent: null,
   })
   const [isSaving, setIsSaving] = React.useState(false)
+  const [isDeactivating, setIsDeactivating] = React.useState(false)
   const [createError, setCreateError] = React.useState<string | null>(null)
   const [loadError, setLoadError] = React.useState<string | null>(null)
+  const [deactivateError, setDeactivateError] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
   const parentCategories = categories.filter((c) => c.parent === null)
@@ -84,6 +87,7 @@ export function CategoriesContent() {
       parent_id?: number | string | null
       parent?: number | string | { id?: number | string | null } | null
       active?: boolean
+      hasActiveChildren?: boolean
     }): Category => {
       const parentValue =
         item.parentId ??
@@ -96,6 +100,7 @@ export function CategoriesContent() {
         parent,
         active: typeof item.active === "boolean" ? item.active : true,
         isParent: parent === null,
+        hasActiveChildren: Boolean(item.hasActiveChildren),
       }
     },
     [normalizeId],
@@ -116,11 +121,8 @@ export function CategoriesContent() {
     setEditCategory(null)
   }
 
-  React.useEffect(() => {
-    let isMounted = true
-    const controller = new AbortController()
-
-    const loadCategories = async () => {
+  const loadCategories = React.useCallback(
+    async (signal?: AbortSignal) => {
       setIsLoading(true)
       setLoadError(null)
 
@@ -129,7 +131,7 @@ export function CategoriesContent() {
           `${process.env.NEXT_PUBLIC_API_URL}/api/categories?activeOnly=true`,
           {
             headers: { accept: "application/json" },
-            signal: controller.signal,
+            signal,
           },
         )
 
@@ -141,29 +143,29 @@ export function CategoriesContent() {
         const data = await response.json()
         const items = Array.isArray(data) ? data : []
         const mapped = items.map(mapApiCategory)
-        if (isMounted) {
-          setCategories(mapped)
-          setExpandedParents(
-            new Set(mapped.filter((item) => item.parent === null).map((item) => item.id)),
-          )
-        }
+        setCategories(mapped)
+        setExpandedParents(
+          new Set(mapped.filter((item) => item.parent === null).map((item) => item.id)),
+        )
       } catch (error) {
-        if (!isMounted || controller.signal.aborted) return
+        if (signal?.aborted) return
         const message =
           error instanceof Error && error.message ? error.message : "Failed to load categories."
         setLoadError(message)
       } finally {
-        if (isMounted) setIsLoading(false)
+        setIsLoading(false)
       }
-    }
+    },
+    [mapApiCategory],
+  )
 
-    loadCategories()
-
+  React.useEffect(() => {
+    const controller = new AbortController()
+    loadCategories(controller.signal)
     return () => {
-      isMounted = false
       controller.abort()
     }
-  }, [mapApiCategory])
+  }, [loadCategories])
 
   const handleCreate = async () => {
     if (!formData.name || isSaving) return
@@ -200,6 +202,7 @@ export function CategoriesContent() {
           parent: parentId,
           active: typeof data?.active === "boolean" ? data.active : true,
           isParent: parentId === null,
+          hasActiveChildren: false,
         }
         return [...prev, newCategory]
       })
@@ -227,12 +230,40 @@ export function CategoriesContent() {
     setFormData({ name: "", parent: null })
   }
 
-  const handleDeactivate = () => {
-    if (deactivateId) {
-      setCategories(
-        categories.map((cat) => (cat.id === deactivateId ? { ...cat, active: !cat.active } : cat)),
+  const handleDeactivate = async () => {
+    if (!deactivateId || isDeactivating) return
+    setIsDeactivating(true)
+    setDeactivateError(null)
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/categories/${deactivateId}/deactivate`,
+        {
+          method: "POST",
+          headers: { accept: "application/json" },
+        },
       )
+
+      if (!response.ok) {
+        let message = "Failed to deactivate category."
+        try {
+          const errorResponse = await response.json()
+          message = errorResponse?.error?.message || errorResponse?.message || message
+        } catch {}
+        if (response.status === 409) {
+          message = message || "Category has active subcategories."
+        }
+        throw new Error(message)
+      }
+
+      await loadCategories()
       setDeactivateId(null)
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message ? error.message : "Failed to deactivate category."
+      setDeactivateError(message)
+    } finally {
+      setIsDeactivating(false)
     }
   }
 
@@ -364,6 +395,9 @@ export function CategoriesContent() {
               {parentCategories.map((parent) => {
                 const children = getChildren(parent.id)
                 const isExpanded = expandedParents.has(parent.id)
+                const hasActiveChildren =
+                  parent.hasActiveChildren || children.some((child) => child.active)
+                const canDeactivate = !hasActiveChildren
 
                 return (
                   <div key={parent.id}>
@@ -396,14 +430,19 @@ export function CategoriesContent() {
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeactivateId(parent.id)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </Button>
+                        {canDeactivate && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setDeactivateId(parent.id)
+                              setDeactivateError(null)
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -433,7 +472,10 @@ export function CategoriesContent() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setDeactivateId(child.id)}
+                                onClick={() => {
+                                  setDeactivateId(child.id)
+                                  setDeactivateError(null)
+                                }}
                                 className="h-8 w-8 p-0"
                               >
                                 <XCircle className="h-4 w-4" />
@@ -516,7 +558,15 @@ export function CategoriesContent() {
       </Dialog>
 
       {/* Deactivate Confirmation */}
-      <AlertDialog open={deactivateId !== null} onOpenChange={() => setDeactivateId(null)}>
+      <AlertDialog
+        open={deactivateId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeactivateId(null)
+            setDeactivateError(null)
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -528,10 +578,23 @@ export function CategoriesContent() {
               {categories.find((c) => c.id === deactivateId)?.active ? "deactivate" : "activate"}{" "}
               the category.
             </AlertDialogDescription>
+            {deactivateError && (
+              <AlertDialogDescription className="text-destructive">
+                {deactivateError}
+              </AlertDialogDescription>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeactivate}>Confirm</AlertDialogAction>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                handleDeactivate()
+              }}
+              disabled={isDeactivating}
+            >
+              {isDeactivating ? "Confirming..." : "Confirm"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
