@@ -61,8 +61,10 @@ export function CategoriesContent() {
     parent: null,
   })
   const [isSaving, setIsSaving] = React.useState(false)
+  const [isEditing, setIsEditing] = React.useState(false)
   const [isDeactivating, setIsDeactivating] = React.useState(false)
   const [createError, setCreateError] = React.useState<string | null>(null)
+  const [editError, setEditError] = React.useState<string | null>(null)
   const [loadError, setLoadError] = React.useState<string | null>(null)
   const [deactivateError, setDeactivateError] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
@@ -218,16 +220,53 @@ export function CategoriesContent() {
     }
   }
 
-  const handleEdit = () => {
-    if (!editCategory) return
-    setCategories(
-      categories.map((cat) =>
-        cat.id === editCategory.id ? { ...cat, name: formData.name, parent: formData.parent } : cat,
-      ),
-    )
-    setIsEditOpen(false)
-    setEditCategory(null)
-    setFormData({ name: "", parent: null })
+  const handleEdit = async () => {
+    if (!editCategory || !formData.name || isEditing) return
+
+    const children = getChildren(editCategory.id)
+    const hasActiveChildren =
+      editCategory.hasActiveChildren || children.some((child) => child.active)
+    const isAttemptingToBeChild = editCategory.parent === null && formData.parent !== null
+
+    if (hasActiveChildren && isAttemptingToBeChild) {
+      setEditError("Parent categories with active subcategories cannot be moved.")
+      return
+    }
+
+    setIsEditing(true)
+    setEditError(null)
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/categories/${editCategory.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            parentId: formData.parent,
+          }),
+        },
+      )
+
+      if (!response.ok) {
+        const message = await response.text()
+        throw new Error(message || "Failed to update category.")
+      }
+
+      await loadCategories()
+      setIsEditOpen(false)
+      resetForm()
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message ? error.message : "Failed to update category."
+      setEditError(message)
+    } finally {
+      setIsEditing(false)
+    }
   }
 
   const handleDeactivate = async () => {
@@ -273,6 +312,7 @@ export function CategoriesContent() {
       name: category.name,
       parent: category.parent,
     })
+    setEditError(null)
     setIsEditOpen(true)
   }
 
@@ -498,7 +538,10 @@ export function CategoriesContent() {
         open={isEditOpen}
         onOpenChange={(open) => {
           setIsEditOpen(open)
-          if (!open) resetForm()
+          if (!open) {
+            resetForm()
+            setEditError(null)
+          }
         }}
       >
         <DialogContent>
@@ -518,6 +561,12 @@ export function CategoriesContent() {
             <div className="space-y-2">
               <Label htmlFor="edit-parent">Parent Category</Label>
               <Select
+                disabled={
+                  Boolean(editCategory) &&
+                  editCategory?.parent === null &&
+                  (editCategory?.hasActiveChildren ||
+                    getChildren(editCategory?.id ?? 0).some((child) => child.active))
+                }
                 value={formData.parent === null ? NO_PARENT_VALUE : formData.parent?.toString()}
                 onValueChange={(value) =>
                   setFormData({
@@ -540,7 +589,15 @@ export function CategoriesContent() {
                     ))}
                 </SelectContent>
               </Select>
+              {editCategory?.parent === null &&
+                (editCategory?.hasActiveChildren ||
+                  getChildren(editCategory?.id ?? 0).some((child) => child.active)) && (
+                  <p className="text-xs text-muted-foreground">
+                    Parent categories with active subcategories cannot be moved.
+                  </p>
+                )}
             </div>
+            {editError && <p className="text-sm text-destructive">{editError}</p>}
           </div>
           <DialogFooter>
             <Button
@@ -548,11 +605,14 @@ export function CategoriesContent() {
               onClick={() => {
                 setIsEditOpen(false)
                 resetForm()
+                setEditError(null)
               }}
             >
               Cancel
             </Button>
-            <Button onClick={handleEdit}>Save Changes</Button>
+            <Button onClick={handleEdit} disabled={!formData.name || isEditing}>
+              {isEditing ? "Saving..." : "Save Changes"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
