@@ -12,6 +12,7 @@ import {
   Menu,
   Moon,
   Sun,
+  CalendarRange,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -27,6 +28,7 @@ const navItems = [
   { icon: CreditCard, label: "Accounts", href: "/accounts" },
   { icon: FolderTree, label: "Categories", href: "/categories" },
   { icon: Mail, label: "Envelopes", href: "/envelopes" },
+  { icon: CalendarRange, label: "Planner", href: "/planner" },
   { icon: ArrowLeftRight, label: "Transactions", href: "/transactions" },
   { icon: CheckSquare, label: "Reconciliation", href: "/reconciliation" },
   { icon: BarChart3, label: "Reports", href: "/reports" },
@@ -34,11 +36,9 @@ const navItems = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = React.useState<"light" | "dark">("light")
-  const [mounted, setMounted] = React.useState(false)
   const pathname = usePathname()
 
   React.useEffect(() => {
-    setMounted(true)
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
     if (savedTheme) {
       setTheme(savedTheme)
@@ -66,7 +66,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
             const Icon = item.icon
-            const isActive = mounted && pathname === item.href
+            const isActive = pathname === item.href
             return (
               <Link
                 key={item.href}
@@ -108,7 +108,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <nav className="space-y-1 p-4">
                   {navItems.map((item) => {
                     const Icon = item.icon
-                    const isActive = mounted && pathname === item.href
+                    const isActive = pathname === item.href
                     return (
                       <Link
                         key={item.href}
@@ -127,21 +127,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SheetContent>
             </Sheet>
             <h1 className="text-lg font-semibold md:text-xl">
-              {mounted
-                ? navItems.find((item) => item.href === pathname)?.label || "Dashboard"
-                : "Dashboard"}
+              {navItems.find((item) => item.href === pathname)?.label || "Dashboard"}
             </h1>
           </div>
           <Button variant="ghost" size="icon" onClick={toggleTheme}>
-            {mounted ? (
-              theme === "light" ? (
-                <Moon className="h-5 w-5" />
-              ) : (
-                <Sun className="h-5 w-5" />
-              )
-            ) : (
-              <Moon className="h-5 w-5" />
-            )}
+            {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
           </Button>
         </header>
 
