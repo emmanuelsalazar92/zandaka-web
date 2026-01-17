@@ -77,13 +77,6 @@ const mockEnvelopes = [
   },
 ]
 
-const mockAccounts = [
-  { id: 1, name: "Main Checking" },
-  { id: 2, name: "Credit Card" },
-  { id: 3, name: "Savings" },
-  { id: 4, name: "Cash Wallet" },
-]
-
 const mockCategories = [
   "Groceries",
   "Utilities",
@@ -106,22 +99,76 @@ function formatCurrency(amount: number) {
 
 export function EnvelopesContent() {
   const [envelopes, setEnvelopes] = React.useState(mockEnvelopes)
-  const [selectedAccount, setSelectedAccount] = React.useState<string>("1")
+  const [accounts, setAccounts] = React.useState<{ id: number; name: string; active: boolean }[]>(
+    [],
+  )
+  const [accountsLoading, setAccountsLoading] = React.useState(false)
+  const [accountsError, setAccountsError] = React.useState<string | null>(null)
+  const [selectedAccount, setSelectedAccount] = React.useState<string>("")
   const [isLinkOpen, setIsLinkOpen] = React.useState(false)
   const [unlinkId, setUnlinkId] = React.useState<number | null>(null)
   const [formData, setFormData] = React.useState({
     category: "",
   })
 
-  const filteredEnvelopes = envelopes.filter(
-    (env) => env.accountId === Number.parseInt(selectedAccount),
-  )
+  React.useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        setAccountsLoading(true)
+        setAccountsError(null)
+        const res = await fetch("http://localhost:3000/api/accounts", {
+          headers: { Accept: "application/json" },
+        })
+        if (!res.ok) throw new Error("Failed to load accounts")
+        const data = (await res.json()) as {
+          id: number
+          name: string
+          is_active: number
+        }[]
+        setAccounts(
+          data.map((account) => ({
+            id: account.id,
+            name: account.name,
+            active: account.is_active === 1,
+          })),
+        )
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to load accounts"
+        setAccountsError(message)
+      } finally {
+        setAccountsLoading(false)
+      }
+    }
+
+    fetchAccounts()
+  }, [])
+
+  const activeAccounts = accounts.filter((account) => account.active)
+
+  React.useEffect(() => {
+    if (activeAccounts.length === 0) {
+      setSelectedAccount("")
+      return
+    }
+    setSelectedAccount((prev) =>
+      activeAccounts.some((account) => account.id.toString() === prev)
+        ? prev
+        : activeAccounts[0].id.toString(),
+    )
+  }, [activeAccounts])
+
+  const selectedAccountId = Number.parseInt(selectedAccount)
+  const isAccountSelected = !Number.isNaN(selectedAccountId)
+  const filteredEnvelopes = Number.isNaN(selectedAccountId)
+    ? []
+    : envelopes.filter((env) => env.accountId === selectedAccountId)
 
   const handleLinkCategory = () => {
+    if (Number.isNaN(selectedAccountId)) return
     const newEnvelope = {
       id: Math.max(...envelopes.map((e) => e.id)) + 1,
-      accountId: Number.parseInt(selectedAccount),
-      account: mockAccounts.find((a) => a.id === Number.parseInt(selectedAccount))?.name || "",
+      accountId: selectedAccountId,
+      account: accounts.find((a) => a.id === selectedAccountId)?.name || "",
       category: formData.category,
       balance: 0,
       active: true,
@@ -144,9 +191,8 @@ export function EnvelopesContent() {
     }
   }
 
-  const selectedAccountName = mockAccounts.find(
-    (a) => a.id === Number.parseInt(selectedAccount),
-  )?.name
+  const selectedAccountName = accounts.find((a) => a.id === selectedAccountId)?.name
+  const selectedAccountLabel = selectedAccountName ?? "this account"
 
   return (
     <div className="space-y-6">
@@ -166,28 +212,43 @@ export function EnvelopesContent() {
           <CardDescription>Choose an account to view and manage its envelopes</CardDescription>
         </CardHeader>
         <CardContent>
-          <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+          <Select
+            value={selectedAccount}
+            onValueChange={setSelectedAccount}
+            disabled={accountsLoading || activeAccounts.length === 0}
+          >
             <SelectTrigger className="w-64">
-              <SelectValue />
+              <SelectValue
+                placeholder={
+                  accountsLoading
+                    ? "Loading accounts..."
+                    : activeAccounts.length === 0
+                      ? "No active accounts"
+                      : "Select an account"
+                }
+              />
             </SelectTrigger>
             <SelectContent>
-              {mockAccounts.map((account) => (
+              {activeAccounts.map((account) => (
                 <SelectItem key={account.id} value={account.id.toString()}>
                   {account.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {accountsError && <p className="text-sm text-error mt-2">{accountsError}</p>}
         </CardContent>
       </Card>
 
       {filteredEnvelopes.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">No envelopes for {selectedAccountName} yet</p>
+            <p className="text-muted-foreground mb-4">
+              No envelopes for {selectedAccountLabel} yet
+            </p>
             <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button disabled={!isAccountSelected}>
                   <Plus className="mr-2 h-4 w-4" />
                   Link Category
                 </Button>
@@ -196,7 +257,7 @@ export function EnvelopesContent() {
                 <DialogHeader>
                   <DialogTitle>Link Category to Account</DialogTitle>
                   <DialogDescription>
-                    Create an envelope by linking a category to {selectedAccountName}
+                    Create an envelope by linking a category to {selectedAccountLabel}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -236,7 +297,7 @@ export function EnvelopesContent() {
           <div className="flex gap-2">
             <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button disabled={!isAccountSelected}>
                   <Plus className="mr-2 h-4 w-4" />
                   Link Category
                 </Button>
@@ -245,7 +306,7 @@ export function EnvelopesContent() {
                 <DialogHeader>
                   <DialogTitle>Link Category to Account</DialogTitle>
                   <DialogDescription>
-                    Create an envelope by linking a category to {selectedAccountName}
+                    Create an envelope by linking a category to {selectedAccountLabel}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -353,7 +414,7 @@ export function EnvelopesContent() {
               <DialogTitle>Unlink Envelope?</DialogTitle>
               <DialogDescription>
                 Remove {envelopes.find((e) => e.id === unlinkId)?.category} from{" "}
-                {selectedAccountName}
+                {selectedAccountLabel}
               </DialogDescription>
             </DialogHeader>
             <div className="flex gap-2 justify-end">
