@@ -77,17 +77,6 @@ const mockEnvelopes = [
   },
 ]
 
-const mockCategories = [
-  "Groceries",
-  "Utilities",
-  "Transportation",
-  "Entertainment",
-  "Emergency Fund",
-  "Salary",
-  "Dining Out",
-  "Investments",
-]
-
 function formatCurrency(amount: number) {
   const currency = amount >= -1000 ? "USD" : "CRC"
   return new Intl.NumberFormat("en-US", {
@@ -104,6 +93,11 @@ export function EnvelopesContent() {
   )
   const [accountsLoading, setAccountsLoading] = React.useState(false)
   const [accountsError, setAccountsError] = React.useState<string | null>(null)
+  const [categories, setCategories] = React.useState<
+    { id: number; name: string; parentId: number | null }[]
+  >([])
+  const [categoriesLoading, setCategoriesLoading] = React.useState(false)
+  const [categoriesError, setCategoriesError] = React.useState<string | null>(null)
   const [selectedAccount, setSelectedAccount] = React.useState<string>("")
   const [isLinkOpen, setIsLinkOpen] = React.useState(false)
   const [unlinkId, setUnlinkId] = React.useState<number | null>(null)
@@ -143,6 +137,47 @@ export function EnvelopesContent() {
     fetchAccounts()
   }, [])
 
+  React.useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setCategoriesLoading(true)
+        setCategoriesError(null)
+        const res = await fetch("http://localhost:3000/api/categories?activeOnly=true", {
+          headers: { Accept: "application/json" },
+        })
+        if (!res.ok) throw new Error("Failed to load categories")
+        const data = (await res.json()) as {
+          id: number
+          name: string
+          parentId?: number | null
+          parent_id?: number | null
+          parent?: { id?: number | null } | number | null
+        }[]
+        setCategories(
+          data.map((category) => ({
+            id: category.id,
+            name: category.name,
+            parentId:
+              category.parentId ??
+              category.parent_id ??
+              (typeof category.parent === "object" && category.parent
+                ? (category.parent.id ?? null)
+                : (category.parent ?? null)),
+          })),
+        )
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to load categories"
+        setCategoriesError(message)
+      } finally {
+        setCategoriesLoading(false)
+      }
+    }
+
+    fetchCategories()
+  }, [])
+
+  const selectableCategories = categories.filter((category) => category.parentId !== null)
+  const hasCategories = selectableCategories.length > 0
   const activeAccounts = accounts.filter((account) => account.active)
 
   React.useEffect(() => {
@@ -266,18 +301,28 @@ export function EnvelopesContent() {
                     <Select
                       value={formData.category}
                       onValueChange={(value) => setFormData({ category: value })}
+                      disabled={categoriesLoading || !hasCategories}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
+                        <SelectValue
+                          placeholder={
+                            categoriesLoading
+                              ? "Loading categories..."
+                              : !hasCategories
+                                ? "No active categories"
+                                : "Select a category"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {mockCategories.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {cat}
+                        {selectableCategories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.name}>
+                            {cat.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {categoriesError && <p className="text-sm text-error">{categoriesError}</p>}
                   </div>
                 </div>
                 <DialogFooter>
@@ -315,18 +360,28 @@ export function EnvelopesContent() {
                     <Select
                       value={formData.category}
                       onValueChange={(value) => setFormData({ category: value })}
+                      disabled={categoriesLoading || !hasCategories}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
+                        <SelectValue
+                          placeholder={
+                            categoriesLoading
+                              ? "Loading categories..."
+                              : !hasCategories
+                                ? "No active categories"
+                                : "Select a category"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {mockCategories.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {cat}
+                        {selectableCategories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.name}>
+                            {cat.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {categoriesError && <p className="text-sm text-error">{categoriesError}</p>}
                   </div>
                 </div>
                 <DialogFooter>
