@@ -101,8 +101,10 @@ export function EnvelopesContent() {
   const [selectedAccount, setSelectedAccount] = React.useState<string>("")
   const [isLinkOpen, setIsLinkOpen] = React.useState(false)
   const [unlinkId, setUnlinkId] = React.useState<number | null>(null)
+  const [isLinking, setIsLinking] = React.useState(false)
+  const [linkError, setLinkError] = React.useState<string | null>(null)
   const [formData, setFormData] = React.useState({
-    category: "",
+    categoryId: "",
   })
 
   React.useEffect(() => {
@@ -198,19 +200,68 @@ export function EnvelopesContent() {
     ? []
     : envelopes.filter((env) => env.accountId === selectedAccountId)
 
-  const handleLinkCategory = () => {
-    if (Number.isNaN(selectedAccountId)) return
-    const newEnvelope = {
-      id: Math.max(...envelopes.map((e) => e.id)) + 1,
-      accountId: selectedAccountId,
-      account: accounts.find((a) => a.id === selectedAccountId)?.name || "",
-      category: formData.category,
-      balance: 0,
-      active: true,
+  const handleLinkCategory = async () => {
+    if (Number.isNaN(selectedAccountId) || !formData.categoryId || isLinking) return
+
+    try {
+      setIsLinking(true)
+      setLinkError(null)
+      const res = await fetch(`http://localhost:3000/api/accounts/${selectedAccountId}/envelopes`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          categoryId: Number.parseInt(formData.categoryId, 10),
+        }),
+      })
+      if (!res.ok) {
+        let message = "Failed to link category"
+        try {
+          const err = (await res.json()) as {
+            error?: { message?: string }
+            message?: string
+          }
+          message = err?.error?.message || err?.message || message
+        } catch {}
+        throw new Error(message)
+      }
+      const data = (await res.json()) as {
+        id: number
+        account_id?: number
+        category_id?: number
+        is_active?: number
+      }
+
+      const linkedCategory = categories.find(
+        (cat) => cat.id === Number.parseInt(formData.categoryId, 10),
+      )
+
+      setEnvelopes((prev) => [
+        ...prev,
+        {
+          id:
+            typeof data.id === "number"
+              ? data.id
+              : prev.length
+                ? Math.max(...prev.map((e) => e.id)) + 1
+                : 1,
+          accountId: selectedAccountId,
+          account: accounts.find((a) => a.id === selectedAccountId)?.name || "",
+          category: linkedCategory?.name || "",
+          balance: 0,
+          active: data.is_active === 1,
+        },
+      ])
+      setIsLinkOpen(false)
+      setFormData({ categoryId: "" })
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to link category"
+      setLinkError(message)
+    } finally {
+      setIsLinking(false)
     }
-    setEnvelopes([...envelopes, newEnvelope])
-    setIsLinkOpen(false)
-    setFormData({ category: "" })
   }
 
   const handleUnlink = () => {
@@ -281,7 +332,16 @@ export function EnvelopesContent() {
             <p className="text-muted-foreground mb-4">
               No envelopes for {selectedAccountLabel} yet
             </p>
-            <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
+            <Dialog
+              open={isLinkOpen}
+              onOpenChange={(open) => {
+                setIsLinkOpen(open)
+                if (!open) {
+                  setFormData({ categoryId: "" })
+                  setLinkError(null)
+                }
+              }}
+            >
               <DialogTrigger asChild>
                 <Button disabled={!isAccountSelected}>
                   <Plus className="mr-2 h-4 w-4" />
@@ -299,8 +359,8 @@ export function EnvelopesContent() {
                   <div className="space-y-2">
                     <label>Category</label>
                     <Select
-                      value={formData.category}
-                      onValueChange={(value) => setFormData({ category: value })}
+                      value={formData.categoryId}
+                      onValueChange={(value) => setFormData({ categoryId: value })}
                       disabled={categoriesLoading || !hasCategories}
                     >
                       <SelectTrigger>
@@ -316,21 +376,29 @@ export function EnvelopesContent() {
                       </SelectTrigger>
                       <SelectContent>
                         {selectableCategories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.name}>
+                          <SelectItem key={cat.id} value={cat.id.toString()}>
                             {cat.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     {categoriesError && <p className="text-sm text-error">{categoriesError}</p>}
+                    {linkError && <p className="text-sm text-error">{linkError}</p>}
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsLinkOpen(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsLinkOpen(false)
+                      setFormData({ categoryId: "" })
+                      setLinkError(null)
+                    }}
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={handleLinkCategory} disabled={!formData.category}>
-                    Link Category
+                  <Button onClick={handleLinkCategory} disabled={!formData.categoryId || isLinking}>
+                    {isLinking ? "Linking..." : "Link Category"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -340,7 +408,16 @@ export function EnvelopesContent() {
       ) : (
         <>
           <div className="flex gap-2">
-            <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
+            <Dialog
+              open={isLinkOpen}
+              onOpenChange={(open) => {
+                setIsLinkOpen(open)
+                if (!open) {
+                  setFormData({ categoryId: "" })
+                  setLinkError(null)
+                }
+              }}
+            >
               <DialogTrigger asChild>
                 <Button disabled={!isAccountSelected}>
                   <Plus className="mr-2 h-4 w-4" />
@@ -358,8 +435,8 @@ export function EnvelopesContent() {
                   <div className="space-y-2">
                     <label>Category</label>
                     <Select
-                      value={formData.category}
-                      onValueChange={(value) => setFormData({ category: value })}
+                      value={formData.categoryId}
+                      onValueChange={(value) => setFormData({ categoryId: value })}
                       disabled={categoriesLoading || !hasCategories}
                     >
                       <SelectTrigger>
@@ -375,21 +452,29 @@ export function EnvelopesContent() {
                       </SelectTrigger>
                       <SelectContent>
                         {selectableCategories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.name}>
+                          <SelectItem key={cat.id} value={cat.id.toString()}>
                             {cat.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     {categoriesError && <p className="text-sm text-error">{categoriesError}</p>}
+                    {linkError && <p className="text-sm text-error">{linkError}</p>}
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsLinkOpen(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsLinkOpen(false)
+                      setFormData({ categoryId: "" })
+                      setLinkError(null)
+                    }}
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={handleLinkCategory} disabled={!formData.category}>
-                    Link Category
+                  <Button onClick={handleLinkCategory} disabled={!formData.categoryId || isLinking}>
+                    {isLinking ? "Linking..." : "Link Category"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
