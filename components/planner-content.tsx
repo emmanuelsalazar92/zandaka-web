@@ -436,12 +436,6 @@ export function PlannerContent() {
   }
 
   const handleApplyDistribution = () => {
-    console.log("Applying distribution:", {
-      month: `${months[selectedMonth]} ${selectedYear}`,
-      sourceAccount: sourceAccountId,
-      distributions: distributionMappings,
-      legalConfig: currentConfig,
-    })
     setIsApplyModalOpen(false)
   }
 
