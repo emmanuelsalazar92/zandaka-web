@@ -33,50 +33,6 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
-// Mock data
-const mockEnvelopes = [
-  {
-    id: 1,
-    accountId: 1,
-    account: "Main Checking",
-    category: "Groceries",
-    balance: 125000,
-    active: true,
-  },
-  {
-    id: 2,
-    accountId: 1,
-    account: "Main Checking",
-    category: "Utilities",
-    balance: 80000,
-    active: true,
-  },
-  {
-    id: 3,
-    accountId: 1,
-    account: "Main Checking",
-    category: "Transportation",
-    balance: -15000,
-    active: true,
-  },
-  {
-    id: 4,
-    accountId: 2,
-    account: "Credit Card",
-    category: "Entertainment",
-    balance: -50,
-    active: true,
-  },
-  {
-    id: 5,
-    accountId: 3,
-    account: "Savings",
-    category: "Emergency Fund",
-    balance: 500000,
-    active: true,
-  },
-]
-
 function formatCurrency(amount: number) {
   const currency = amount >= -1000 ? "USD" : "CRC"
   return new Intl.NumberFormat("en-US", {
@@ -86,8 +42,19 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
+type EnvelopeRow = {
+  id: number
+  accountId: number
+  categoryId: number
+  category: string
+  balance: number
+  active: boolean
+}
+
 export function EnvelopesContent() {
-  const [envelopes, setEnvelopes] = React.useState(mockEnvelopes)
+  const [envelopes, setEnvelopes] = React.useState<EnvelopeRow[]>([])
+  const [envelopesLoading, setEnvelopesLoading] = React.useState(false)
+  const [envelopesError, setEnvelopesError] = React.useState<string | null>(null)
   const [accounts, setAccounts] = React.useState<{ id: number; name: string; active: boolean }[]>(
     [],
   )
@@ -200,6 +167,49 @@ export function EnvelopesContent() {
     ? []
     : envelopes.filter((env) => env.accountId === selectedAccountId)
 
+  const fetchEnvelopes = React.useCallback(async (accountId: number) => {
+    try {
+      setEnvelopesLoading(true)
+      setEnvelopesError(null)
+      const res = await fetch(
+        `http://localhost:3000/api/reports/envelope-balances?accountId=${accountId}`,
+        { headers: { Accept: "application/json" } },
+      )
+      if (!res.ok) throw new Error("Failed to load envelope balances")
+      const data = (await res.json()) as {
+        envelopeId: number
+        categoryId: number
+        categoryName: string
+        balance: number
+      }[]
+      setEnvelopes(
+        data.map((item) => ({
+          id: item.envelopeId,
+          accountId,
+          categoryId: item.categoryId,
+          category: item.categoryName,
+          balance: item.balance,
+          active: true,
+        })),
+      )
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to load envelope balances"
+      setEnvelopesError(message)
+      setEnvelopes([])
+    } finally {
+      setEnvelopesLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (!isAccountSelected) {
+      setEnvelopes([])
+      setEnvelopesError(null)
+      return
+    }
+    fetchEnvelopes(selectedAccountId)
+  }, [fetchEnvelopes, isAccountSelected, selectedAccountId])
+
   const handleLinkCategory = async () => {
     if (Number.isNaN(selectedAccountId) || !formData.categoryId || isLinking) return
 
@@ -248,7 +258,7 @@ export function EnvelopesContent() {
                 ? Math.max(...prev.map((e) => e.id)) + 1
                 : 1,
           accountId: selectedAccountId,
-          account: accounts.find((a) => a.id === selectedAccountId)?.name || "",
+          categoryId: Number.parseInt(formData.categoryId, 10),
           category: linkedCategory?.name || "",
           balance: 0,
           active: data.is_active === 1,
@@ -256,6 +266,7 @@ export function EnvelopesContent() {
       ])
       setIsLinkOpen(false)
       setFormData({ categoryId: "" })
+      await fetchEnvelopes(selectedAccountId)
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to link category"
       setLinkError(message)
@@ -326,7 +337,15 @@ export function EnvelopesContent() {
         </CardContent>
       </Card>
 
-      {filteredEnvelopes.length === 0 ? (
+      {envelopesError && <p className="text-sm text-error">{envelopesError}</p>}
+
+      {envelopesLoading ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-muted-foreground">Loading envelopes...</p>
+          </CardContent>
+        </Card>
+      ) : filteredEnvelopes.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <p className="text-muted-foreground mb-4">
