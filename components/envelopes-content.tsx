@@ -4,6 +4,16 @@ import { Plus, AlertTriangle, XCircle } from "lucide-react"
 import * as React from "react"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -67,9 +77,11 @@ export function EnvelopesContent() {
   const [categoriesError, setCategoriesError] = React.useState<string | null>(null)
   const [selectedAccount, setSelectedAccount] = React.useState<string>("")
   const [isLinkOpen, setIsLinkOpen] = React.useState(false)
-  const [unlinkId, setUnlinkId] = React.useState<number | null>(null)
   const [isLinking, setIsLinking] = React.useState(false)
   const [linkError, setLinkError] = React.useState<string | null>(null)
+  const [deactivateId, setDeactivateId] = React.useState<number | null>(null)
+  const [isDeactivating, setIsDeactivating] = React.useState(false)
+  const [deactivateError, setDeactivateError] = React.useState<string | null>(null)
   const [formData, setFormData] = React.useState({
     categoryId: "",
   })
@@ -275,16 +287,43 @@ export function EnvelopesContent() {
     }
   }
 
-  const handleUnlink = () => {
-    if (unlinkId) {
-      const envelope = envelopes.find((e) => e.id === unlinkId)
-      if (envelope && envelope.balance !== 0) {
-        alert("Cannot unlink envelope with non-zero balance. Transfer the balance first.")
-        setUnlinkId(null)
-        return
+  const handleDeactivate = async () => {
+    if (!deactivateId || isDeactivating) return
+    const envelope = envelopes.find((item) => item.id === deactivateId)
+    if (!envelope) return
+    if (envelope.balance !== 0) {
+      setDeactivateError("Cannot deactivate an envelope with a non-zero balance.")
+      return
+    }
+
+    try {
+      setIsDeactivating(true)
+      setDeactivateError(null)
+      const res = await fetch(`http://localhost:3000/api/envelopes/${deactivateId}/deactivate`, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      })
+      if (!res.ok) {
+        let message = "Failed to deactivate envelope."
+        try {
+          const err = (await res.json()) as { error?: { message?: string }; message?: string }
+          message = err?.error?.message || err?.message || message
+        } catch {}
+        throw new Error(message)
       }
-      setEnvelopes(envelopes.filter((e) => e.id !== unlinkId))
-      setUnlinkId(null)
+      setEnvelopes((prev) =>
+        prev.map((item) => (item.id === deactivateId ? { ...item, active: false } : item)),
+      )
+      setDeactivateId(null)
+      if (!Number.isNaN(selectedAccountId)) {
+        await fetchEnvelopes(selectedAccountId)
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message ? error.message : "Failed to deactivate envelope."
+      setDeactivateError(message)
+    } finally {
+      setIsDeactivating(false)
     }
   }
 
@@ -518,36 +557,50 @@ export function EnvelopesContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEnvelopes.map((envelope) => (
-                    <TableRow key={envelope.id}>
-                      <TableCell className="font-medium">{envelope.category}</TableCell>
-                      <TableCell>
-                        <span
-                          className={cn(
-                            "font-semibold",
-                            envelope.balance >= 0 ? "text-success" : "text-error",
-                          )}
-                        >
-                          {formatCurrency(envelope.balance)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={envelope.active ? "default" : "secondary"}>
-                          {envelope.active ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setUnlinkId(envelope.id)}
-                          className={cn(envelope.balance !== 0 && "opacity-50")}
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredEnvelopes.map((envelope) => {
+                    const isDeactivateDisabled = envelope.balance !== 0 || !envelope.active
+                    const deactivateTitle = !envelope.active
+                      ? "Envelope already inactive"
+                      : envelope.balance !== 0
+                        ? "Balance must be zero to deactivate"
+                        : "Deactivate envelope"
+                    return (
+                      <TableRow key={envelope.id}>
+                        <TableCell className="font-medium">{envelope.category}</TableCell>
+                        <TableCell>
+                          <span
+                            className={cn(
+                              "font-semibold",
+                              envelope.balance >= 0 ? "text-success" : "text-error",
+                            )}
+                          >
+                            {formatCurrency(envelope.balance)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={envelope.active ? "default" : "secondary"}>
+                            {envelope.active ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (isDeactivateDisabled) return
+                              setDeactivateId(envelope.id)
+                              setDeactivateError(null)
+                            }}
+                            disabled={isDeactivateDisabled}
+                            className={cn(isDeactivateDisabled && "opacity-50")}
+                            title={deactivateTitle}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -565,28 +618,43 @@ export function EnvelopesContent() {
         </>
       )}
 
-      {/* Unlink Confirmation */}
-      {unlinkId && envelopes.find((e) => e.id === unlinkId)?.balance === 0 && (
-        <Dialog open={unlinkId !== null} onOpenChange={() => setUnlinkId(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Unlink Envelope?</DialogTitle>
-              <DialogDescription>
-                Remove {envelopes.find((e) => e.id === unlinkId)?.category} from{" "}
-                {selectedAccountLabel}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setUnlinkId(null)}>
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleUnlink}>
-                Unlink
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* Deactivate Confirmation */}
+      <AlertDialog
+        open={deactivateId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeactivateId(null)
+            setDeactivateError(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate Envelope?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deactivate {envelopes.find((e) => e.id === deactivateId)?.category} from{" "}
+              {selectedAccountLabel}
+            </AlertDialogDescription>
+            {deactivateError && (
+              <AlertDialogDescription className="text-destructive">
+                {deactivateError}
+              </AlertDialogDescription>
+            )}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                handleDeactivate()
+              }}
+              disabled={isDeactivating}
+            >
+              {isDeactivating ? "Deactivating..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
