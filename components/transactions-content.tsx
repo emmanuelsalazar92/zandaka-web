@@ -352,12 +352,6 @@ const mockTransactions = [
   },
 ]
 
-const mockAccounts = [
-  { id: 1, name: "Main Checking", currency: "CRC" },
-  { id: 2, name: "Credit Card", currency: "USD" },
-  { id: 3, name: "Savings", currency: "CRC" },
-]
-
 const mockEnvelopes: Record<number, { id: number; name: string }[]> = {
   1: [
     { id: 5, name: "Groceries" },
@@ -407,11 +401,16 @@ export function TransactionsContent() {
   const [transactions, setTransactions] = React.useState(mockTransactions)
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [isFiltersOpen, setIsFiltersOpen] = React.useState(false)
+  const [accounts, setAccounts] = React.useState<
+    { id: number; name: string; currency: string; active: boolean }[]
+  >([])
+  const [accountsLoading, setAccountsLoading] = React.useState(false)
+  const [accountsError, setAccountsError] = React.useState<string | null>(null)
   const [formData, setFormData] = React.useState({
     date: new Date().toISOString().split("T")[0],
     type: "EXPENSE",
     description: "",
-    lines: [{ accountId: "1", envelopeId: "", amount: "" }] as TransactionLine[],
+    lines: [{ accountId: "", envelopeId: "", amount: "" }] as TransactionLine[],
   })
 
   // Filter state - draft (UI) and applied (actual filter)
@@ -431,6 +430,60 @@ export function TransactionsContent() {
   // Pagination state
   const [currentPage, setCurrentPage] = React.useState(1)
   const [itemsPerPage, setItemsPerPage] = React.useState(10)
+
+  const activeAccounts = React.useMemo(
+    () => accounts.filter((account) => account.active),
+    [accounts],
+  )
+
+  React.useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        setAccountsLoading(true)
+        setAccountsError(null)
+        const res = await fetch("http://localhost:3000/api/accounts", {
+          headers: { Accept: "application/json" },
+        })
+        if (!res.ok) throw new Error("Failed to load accounts")
+        const data = (await res.json()) as {
+          id: number
+          name: string
+          currency: string
+          is_active: number
+        }[]
+        setAccounts(
+          data.map((account) => ({
+            id: account.id,
+            name: account.name,
+            currency: account.currency,
+            active: account.is_active === 1,
+          })),
+        )
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to load accounts"
+        setAccountsError(message)
+      } finally {
+        setAccountsLoading(false)
+      }
+    }
+
+    fetchAccounts()
+  }, [])
+
+  React.useEffect(() => {
+    setFormData((prev) => {
+      const nextLines = prev.lines.map((line) => {
+        const isValid = activeAccounts.some((account) => account.id.toString() === line.accountId)
+        if (isValid) return line
+        return { ...line, accountId: "" }
+      })
+      const hasChanges = nextLines.some(
+        (line, index) => line.accountId !== prev.lines[index]?.accountId,
+      )
+      if (!hasChanges) return prev
+      return { ...prev, lines: nextLines }
+    })
+  }, [activeAccounts])
 
   // Filter transactions
   const filteredTransactions = React.useMemo(() => {
@@ -525,7 +578,7 @@ export function TransactionsContent() {
   const handleAddLine = () => {
     setFormData({
       ...formData,
-      lines: [...formData.lines, { accountId: "1", envelopeId: "", amount: "" }],
+      lines: [...formData.lines, { accountId: "", envelopeId: "", amount: "" }],
     })
   }
 
@@ -554,6 +607,15 @@ export function TransactionsContent() {
     formData.lines.every((l) => l.accountId && l.envelopeId && l.amount)
   const isFormValid = (isTransferValid || isOtherValid) && formData.description && formData.date
 
+  const resetCreateForm = React.useCallback(() => {
+    setFormData({
+      date: new Date().toISOString().split("T")[0],
+      type: "EXPENSE",
+      description: "",
+      lines: [{ accountId: "", envelopeId: "", amount: "" }],
+    })
+  }, [])
+
   const handleCreate = () => {
     if (!isFormValid) return
 
@@ -564,7 +626,7 @@ export function TransactionsContent() {
       description: formData.description,
       lines: formData.lines.map((line) => ({
         accountId: Number.parseInt(line.accountId),
-        account: mockAccounts.find((a) => a.id === Number.parseInt(line.accountId))?.name || "",
+        account: accounts.find((a) => a.id === Number.parseInt(line.accountId))?.name || "",
         envelopeId: Number.parseInt(line.envelopeId),
         envelope:
           mockEnvelopes[Number.parseInt(line.accountId)]?.find(
@@ -574,13 +636,13 @@ export function TransactionsContent() {
       })),
     }
     setTransactions([...transactions, newTransaction])
+    resetCreateForm()
     setIsCreateOpen(false)
-    setFormData({
-      date: new Date().toISOString().split("T")[0],
-      type: "EXPENSE",
-      description: "",
-      lines: [{ accountId: "1", envelopeId: "", amount: "" }],
-    })
+  }
+
+  const handleCloseCreate = () => {
+    resetCreateForm()
+    setIsCreateOpen(false)
   }
 
   return (
@@ -604,7 +666,16 @@ export function TransactionsContent() {
               </Badge>
             )}
           </Button>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <Dialog
+            open={isCreateOpen}
+            onOpenChange={(open) => {
+              if (!open) {
+                handleCloseCreate()
+                return
+              }
+              setIsCreateOpen(open)
+            }}
+          >
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -681,18 +752,30 @@ export function TransactionsContent() {
                         <Select
                           value={line.accountId}
                           onValueChange={(value) => handleLineChange(index, "accountId", value)}
+                          disabled={accountsLoading || activeAccounts.length === 0}
                         >
                           <SelectTrigger className="h-9">
-                            <SelectValue />
+                            <SelectValue
+                              placeholder={
+                                accountsLoading
+                                  ? "Loading accounts..."
+                                  : activeAccounts.length === 0
+                                    ? "No active accounts"
+                                    : "Select Account"
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent>
-                            {mockAccounts.map((acc) => (
+                            {activeAccounts.map((acc) => (
                               <SelectItem key={acc.id} value={acc.id.toString()}>
                                 {acc.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        {accountsError && (
+                          <p className="text-xs text-error mt-1">{accountsError}</p>
+                        )}
                       </div>
                       <div className="flex-1 space-y-1">
                         <Label className="text-xs">Envelope</Label>
@@ -749,7 +832,7 @@ export function TransactionsContent() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                <Button variant="outline" onClick={handleCloseCreate}>
                   Cancel
                 </Button>
                 <Button onClick={handleCreate} disabled={!isFormValid}>
@@ -840,19 +923,29 @@ export function TransactionsContent() {
                     onValueChange={(value) =>
                       setDraftFilters({ ...draftFilters, accountId: value })
                     }
+                    disabled={accountsLoading || activeAccounts.length === 0}
                   >
                     <SelectTrigger className="h-9">
-                      <SelectValue />
+                      <SelectValue
+                        placeholder={
+                          accountsLoading
+                            ? "Loading accounts..."
+                            : activeAccounts.length === 0
+                              ? "No active accounts"
+                              : "Select account"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ALL">All Accounts</SelectItem>
-                      {mockAccounts.map((acc) => (
+                      {activeAccounts.map((acc) => (
                         <SelectItem key={acc.id} value={acc.id.toString()}>
                           {acc.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {accountsError && <p className="text-xs text-error mt-1">{accountsError}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Envelope</Label>
@@ -950,7 +1043,7 @@ export function TransactionsContent() {
                 )}
                 {filters.accountId !== "ALL" && (
                   <Badge variant="secondary" className="text-xs">
-                    {mockAccounts.find((a) => a.id.toString() === filters.accountId)?.name}
+                    {accounts.find((a) => a.id.toString() === filters.accountId)?.name}
                   </Badge>
                 )}
                 {filters.envelopeId !== "ALL" && (
