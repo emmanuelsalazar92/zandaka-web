@@ -20,6 +20,34 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Transactions Screen API
+
+The Transactions UI calls `GET /api/transactions` and expects `{ data, meta }` with server-side filters, pagination, and sorting.
+
+Required query params:
+
+- `userId` (int)
+
+Optional query params:
+
+- `from` / `to` (YYYY-MM-DD)
+- `type` (INCOME | EXPENSE | TRANSFER | ADJUSTMENT | ALL)
+- `accountId` (int)
+- `categoryId` (int) - "Envelope" in the UI
+- `q` (string) - description search, case-insensitive
+- `amountMin` (number, default 0)
+- `amountMax` (number)
+- `page` (int, default 1, min 1)
+- `pageSize` (10 | 25 | 50 | 100)
+- `sortBy` (date | amount | createdAt, default date)
+- `sortDir` (asc | desc, default desc)
+
+Example request:
+
+```text
+/api/transactions?userId=7&from=2026-01-01&to=2026-01-31&type=EXPENSE&accountId=3&categoryId=12&q=spotify&amountMin=0&amountMax=50000&page=2&pageSize=25&sortBy=date&sortDir=desc
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
