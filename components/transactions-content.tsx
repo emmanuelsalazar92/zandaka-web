@@ -352,23 +352,6 @@ const mockTransactions = [
   },
 ]
 
-const mockEnvelopes: Record<number, { id: number; name: string }[]> = {
-  1: [
-    { id: 5, name: "Groceries" },
-    { id: 6, name: "Utilities" },
-    { id: 7, name: "Transportation" },
-    { id: 2, name: "Salary" },
-  ],
-  2: [
-    { id: 9, name: "Entertainment" },
-    { id: 10, name: "Dining Out" },
-  ],
-  3: [
-    { id: 12, name: "Emergency Fund" },
-    { id: 13, name: "Investments" },
-  ],
-}
-
 function formatCurrency(amount: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -383,18 +366,6 @@ interface TransactionLine {
   amount: string
 }
 
-// All unique envelopes for filter
-const allEnvelopes = [
-  { id: 2, name: "Salary" },
-  { id: 5, name: "Groceries" },
-  { id: 6, name: "Utilities" },
-  { id: 7, name: "Transportation" },
-  { id: 9, name: "Entertainment" },
-  { id: 10, name: "Dining Out" },
-  { id: 12, name: "Emergency Fund" },
-  { id: 13, name: "Investments" },
-]
-
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
 
 export function TransactionsContent() {
@@ -406,6 +377,11 @@ export function TransactionsContent() {
   >([])
   const [accountsLoading, setAccountsLoading] = React.useState(false)
   const [accountsError, setAccountsError] = React.useState<string | null>(null)
+  const [envelopesByAccount, setEnvelopesByAccount] = React.useState<
+    Record<string, { id: number; name: string }[]>
+  >({})
+  const [envelopesLoading, setEnvelopesLoading] = React.useState<Record<string, boolean>>({})
+  const [envelopesError, setEnvelopesError] = React.useState<Record<string, string | null>>({})
   const [formData, setFormData] = React.useState({
     date: new Date().toISOString().split("T")[0],
     type: "EXPENSE",
@@ -470,12 +446,43 @@ export function TransactionsContent() {
     fetchAccounts()
   }, [])
 
+  const fetchEnvelopes = React.useCallback(
+    async (accountId: string) => {
+      if (!accountId || accountId === "ALL") return
+      if (envelopesByAccount[accountId] || envelopesLoading[accountId]) return
+
+      setEnvelopesLoading((prev) => ({ ...prev, [accountId]: true }))
+      setEnvelopesError((prev) => ({ ...prev, [accountId]: null }))
+      try {
+        const res = await fetch(
+          `http://localhost:3000/api/reports/envelope-balances?accountId=${accountId}`,
+          { headers: { Accept: "application/json" } },
+        )
+        if (!res.ok) throw new Error("Failed to load envelopes")
+        const data = (await res.json()) as {
+          envelopeId: number
+          categoryName: string
+        }[]
+        setEnvelopesByAccount((prev) => ({
+          ...prev,
+          [accountId]: data.map((env) => ({ id: env.envelopeId, name: env.categoryName })),
+        }))
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to load envelopes"
+        setEnvelopesError((prev) => ({ ...prev, [accountId]: message }))
+      } finally {
+        setEnvelopesLoading((prev) => ({ ...prev, [accountId]: false }))
+      }
+    },
+    [envelopesByAccount, envelopesLoading],
+  )
+
   React.useEffect(() => {
     setFormData((prev) => {
       const nextLines = prev.lines.map((line) => {
         const isValid = activeAccounts.some((account) => account.id.toString() === line.accountId)
         if (isValid) return line
-        return { ...line, accountId: "" }
+        return { ...line, accountId: "", envelopeId: "" }
       })
       const hasChanges = nextLines.some(
         (line, index) => line.accountId !== prev.lines[index]?.accountId,
@@ -484,6 +491,21 @@ export function TransactionsContent() {
       return { ...prev, lines: nextLines }
     })
   }, [activeAccounts])
+
+  React.useEffect(() => {
+    const accountIds = new Set(
+      formData.lines.map((line) => line.accountId).filter((accountId) => accountId),
+    )
+    accountIds.forEach((accountId) => {
+      void fetchEnvelopes(accountId)
+    })
+  }, [formData.lines, fetchEnvelopes])
+
+  React.useEffect(() => {
+    if (draftFilters.accountId && draftFilters.accountId !== "ALL") {
+      void fetchEnvelopes(draftFilters.accountId)
+    }
+  }, [draftFilters.accountId, fetchEnvelopes])
 
   // Filter transactions
   const filteredTransactions = React.useMemo(() => {
@@ -591,7 +613,11 @@ export function TransactionsContent() {
 
   const handleLineChange = (index: number, field: keyof TransactionLine, value: string) => {
     const newLines = [...formData.lines]
-    newLines[index] = { ...newLines[index], [field]: value }
+    if (field === "accountId") {
+      newLines[index] = { ...newLines[index], accountId: value, envelopeId: "" }
+    } else {
+      newLines[index] = { ...newLines[index], [field]: value }
+    }
     setFormData({ ...formData, lines: newLines })
   }
 
@@ -629,8 +655,8 @@ export function TransactionsContent() {
         account: accounts.find((a) => a.id === Number.parseInt(line.accountId))?.name || "",
         envelopeId: Number.parseInt(line.envelopeId),
         envelope:
-          mockEnvelopes[Number.parseInt(line.accountId)]?.find(
-            (e) => e.id === Number.parseInt(line.envelopeId),
+          envelopesByAccount[line.accountId]?.find(
+            (env) => env.id === Number.parseInt(line.envelopeId),
           )?.name || "",
         amount: Number.parseFloat(line.amount),
       })),
@@ -782,18 +808,32 @@ export function TransactionsContent() {
                         <Select
                           value={line.envelopeId}
                           onValueChange={(value) => handleLineChange(index, "envelopeId", value)}
+                          disabled={!line.accountId || envelopesLoading[line.accountId]}
                         >
                           <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Select envelope" />
+                            <SelectValue
+                              placeholder={
+                                !line.accountId
+                                  ? "Select account first"
+                                  : envelopesLoading[line.accountId]
+                                    ? "Loading envelopes..."
+                                    : "Select envelope"
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent>
-                            {mockEnvelopes[Number.parseInt(line.accountId)]?.map((env) => (
+                            {(envelopesByAccount[line.accountId] || []).map((env) => (
                               <SelectItem key={env.id} value={env.id.toString()}>
                                 {env.name}
                               </SelectItem>
-                            )) || []}
+                            ))}
                           </SelectContent>
                         </Select>
+                        {line.accountId && envelopesError[line.accountId] && (
+                          <p className="text-xs text-error mt-1">
+                            {envelopesError[line.accountId]}
+                          </p>
+                        )}
                       </div>
                       <div className="flex-1 space-y-1">
                         <Label className="text-xs">Amount</Label>
@@ -921,7 +961,7 @@ export function TransactionsContent() {
                   <Select
                     value={draftFilters.accountId}
                     onValueChange={(value) =>
-                      setDraftFilters({ ...draftFilters, accountId: value })
+                      setDraftFilters({ ...draftFilters, accountId: value, envelopeId: "ALL" })
                     }
                     disabled={accountsLoading || activeAccounts.length === 0}
                   >
@@ -954,19 +994,37 @@ export function TransactionsContent() {
                     onValueChange={(value) =>
                       setDraftFilters({ ...draftFilters, envelopeId: value })
                     }
+                    disabled={
+                      draftFilters.accountId === "ALL" ||
+                      draftFilters.accountId === "" ||
+                      envelopesLoading[draftFilters.accountId]
+                    }
                   >
                     <SelectTrigger className="h-9">
-                      <SelectValue />
+                      <SelectValue
+                        placeholder={
+                          draftFilters.accountId === "ALL" || draftFilters.accountId === ""
+                            ? "Select account first"
+                            : envelopesLoading[draftFilters.accountId]
+                              ? "Loading envelopes..."
+                              : "Select envelope"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ALL">All Envelopes</SelectItem>
-                      {allEnvelopes.map((env) => (
+                      {(envelopesByAccount[draftFilters.accountId] || []).map((env) => (
                         <SelectItem key={env.id} value={env.id.toString()}>
                           {env.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {draftFilters.accountId !== "ALL" && envelopesError[draftFilters.accountId] && (
+                    <p className="text-xs text-error mt-1">
+                      {envelopesError[draftFilters.accountId]}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1048,7 +1106,9 @@ export function TransactionsContent() {
                 )}
                 {filters.envelopeId !== "ALL" && (
                   <Badge variant="secondary" className="text-xs">
-                    {allEnvelopes.find((e) => e.id.toString() === filters.envelopeId)?.name}
+                    {envelopesByAccount[filters.accountId]?.find(
+                      (env) => env.id.toString() === filters.envelopeId,
+                    )?.name || filters.envelopeId}
                   </Badge>
                 )}
               </div>
