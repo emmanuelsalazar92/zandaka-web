@@ -59,6 +59,8 @@ interface TransactionLine {
   amount: string
 }
 
+type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER" | "ADJUSTMENT"
+
 interface ApiTransactionLine {
   account_id?: number
   envelope_id?: number
@@ -77,7 +79,7 @@ interface ApiTransaction {
   userId?: number
   date: string
   description: string
-  type: "INCOME" | "EXPENSE" | "TRANSFER" | "ADJUSTMENT"
+  type: TransactionType
   created_at?: string
   createdAt?: string
   lines: ApiTransactionLine[]
@@ -120,7 +122,7 @@ export function TransactionsContent() {
   const [envelopesError, setEnvelopesError] = React.useState<Record<string, string | null>>({})
   const [formData, setFormData] = React.useState({
     date: new Date().toISOString().split("T")[0],
-    type: "EXPENSE",
+    type: "EXPENSE" as TransactionType,
     description: "",
     lines: [{ accountId: "", envelopeId: "", amount: "" }] as TransactionLine[],
   })
@@ -514,7 +516,9 @@ export function TransactionsContent() {
                     <Label htmlFor="type">Type</Label>
                     <Select
                       value={formData.type}
-                      onValueChange={(value) => setFormData({ ...formData, type: value })}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, type: value as TransactionType })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
