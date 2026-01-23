@@ -45,313 +45,6 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
-// Mock data - expanded for pagination demo
-const mockTransactions = [
-  {
-    id: 1,
-    date: "2026-01-15",
-    type: "EXPENSE",
-    description: "Supermarket groceries",
-    lines: [
-      {
-        accountId: 1,
-        account: "Main Checking",
-        envelopeId: 5,
-        envelope: "Groceries",
-        amount: -45000,
-      },
-    ],
-  },
-  {
-    id: 2,
-    date: "2026-01-15",
-    type: "INCOME",
-    description: "Monthly Salary ENCORA",
-    lines: [
-      {
-        accountId: 1,
-        account: "Main Checking",
-        envelopeId: 2,
-        envelope: "Salary",
-        amount: 2227000,
-      },
-    ],
-  },
-  {
-    id: 3,
-    date: "2026-01-14",
-    type: "TRANSFER",
-    description: "Transfer to Savings",
-    lines: [
-      {
-        accountId: 1,
-        account: "Main Checking",
-        envelopeId: 12,
-        envelope: "Emergency Fund",
-        amount: -100000,
-      },
-      {
-        accountId: 3,
-        account: "Savings",
-        envelopeId: 12,
-        envelope: "Emergency Fund",
-        amount: 100000,
-      },
-    ],
-  },
-  {
-    id: 4,
-    date: "2026-01-13",
-    type: "EXPENSE",
-    description: "Netflix subscription",
-    lines: [
-      {
-        accountId: 2,
-        account: "Credit Card",
-        envelopeId: 9,
-        envelope: "Entertainment",
-        amount: -7650,
-      },
-    ],
-  },
-  {
-    id: 5,
-    date: "2026-01-12",
-    type: "EXPENSE",
-    description: "Electricity bill",
-    lines: [
-      {
-        accountId: 1,
-        account: "Main Checking",
-        envelopeId: 6,
-        envelope: "Utilities",
-        amount: -35000,
-      },
-    ],
-  },
-  {
-    id: 6,
-    date: "2026-01-11",
-    type: "EXPENSE",
-    description: "Gas station",
-    lines: [
-      {
-        accountId: 2,
-        account: "Credit Card",
-        envelopeId: 7,
-        envelope: "Transportation",
-        amount: -25000,
-      },
-    ],
-  },
-  {
-    id: 7,
-    date: "2026-01-10",
-    type: "EXPENSE",
-    description: "Restaurant dinner",
-    lines: [
-      {
-        accountId: 2,
-        account: "Credit Card",
-        envelopeId: 10,
-        envelope: "Dining Out",
-        amount: -18500,
-      },
-    ],
-  },
-  {
-    id: 8,
-    date: "2026-01-09",
-    type: "ADJUSTMENT",
-    description: "Bank fee correction",
-    lines: [
-      {
-        accountId: 1,
-        account: "Main Checking",
-        envelopeId: 6,
-        envelope: "Utilities",
-        amount: -1500,
-      },
-    ],
-  },
-  {
-    id: 9,
-    date: "2026-01-08",
-    type: "EXPENSE",
-    description: "Spotify premium",
-    lines: [
-      {
-        accountId: 2,
-        account: "Credit Card",
-        envelopeId: 9,
-        envelope: "Entertainment",
-        amount: -3800,
-      },
-    ],
-  },
-  {
-    id: 10,
-    date: "2026-01-07",
-    type: "EXPENSE",
-    description: "Phone bill",
-    lines: [
-      {
-        accountId: 1,
-        account: "Main Checking",
-        envelopeId: 6,
-        envelope: "Utilities",
-        amount: -8100,
-      },
-    ],
-  },
-  {
-    id: 11,
-    date: "2026-01-06",
-    type: "EXPENSE",
-    description: "Weekly groceries",
-    lines: [
-      {
-        accountId: 1,
-        account: "Main Checking",
-        envelopeId: 5,
-        envelope: "Groceries",
-        amount: -52000,
-      },
-    ],
-  },
-  {
-    id: 12,
-    date: "2026-01-05",
-    type: "TRANSFER",
-    description: "Investment contribution",
-    lines: [
-      {
-        accountId: 1,
-        account: "Main Checking",
-        envelopeId: 13,
-        envelope: "Investments",
-        amount: -150000,
-      },
-      { accountId: 3, account: "Savings", envelopeId: 13, envelope: "Investments", amount: 150000 },
-    ],
-  },
-  {
-    id: 13,
-    date: "2026-01-04",
-    type: "EXPENSE",
-    description: "ChatGPT Plus subscription",
-    lines: [
-      {
-        accountId: 2,
-        account: "Credit Card",
-        envelopeId: 9,
-        envelope: "Entertainment",
-        amount: -11750,
-      },
-    ],
-  },
-  {
-    id: 14,
-    date: "2026-01-03",
-    type: "EXPENSE",
-    description: "Uber ride",
-    lines: [
-      {
-        accountId: 2,
-        account: "Credit Card",
-        envelopeId: 7,
-        envelope: "Transportation",
-        amount: -4500,
-      },
-    ],
-  },
-  {
-    id: 15,
-    date: "2026-01-02",
-    type: "INCOME",
-    description: "Freelance payment",
-    lines: [
-      { accountId: 1, account: "Main Checking", envelopeId: 2, envelope: "Salary", amount: 85000 },
-    ],
-  },
-  {
-    id: 16,
-    date: "2026-01-01",
-    type: "EXPENSE",
-    description: "New Year dinner",
-    lines: [
-      {
-        accountId: 2,
-        account: "Credit Card",
-        envelopeId: 10,
-        envelope: "Dining Out",
-        amount: -45000,
-      },
-    ],
-  },
-  {
-    id: 17,
-    date: "2025-12-31",
-    type: "EXPENSE",
-    description: "HBO Max subscription",
-    lines: [
-      {
-        accountId: 2,
-        account: "Credit Card",
-        envelopeId: 9,
-        envelope: "Entertainment",
-        amount: -3000,
-      },
-    ],
-  },
-  {
-    id: 18,
-    date: "2025-12-30",
-    type: "EXPENSE",
-    description: "Pharmacy",
-    lines: [
-      {
-        accountId: 1,
-        account: "Main Checking",
-        envelopeId: 6,
-        envelope: "Utilities",
-        amount: -12000,
-      },
-    ],
-  },
-  {
-    id: 19,
-    date: "2025-12-29",
-    type: "EXPENSE",
-    description: "Internet bill",
-    lines: [
-      {
-        accountId: 1,
-        account: "Main Checking",
-        envelopeId: 6,
-        envelope: "Utilities",
-        amount: -15000,
-      },
-    ],
-  },
-  {
-    id: 20,
-    date: "2025-12-28",
-    type: "TRANSFER",
-    description: "Pension fund contribution",
-    lines: [
-      {
-        accountId: 1,
-        account: "Main Checking",
-        envelopeId: 13,
-        envelope: "Investments",
-        amount: -111350,
-      },
-      { accountId: 3, account: "Savings", envelopeId: 13, envelope: "Investments", amount: 111350 },
-    ],
-  },
-]
-
 function formatCurrency(amount: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -366,10 +59,53 @@ interface TransactionLine {
   amount: string
 }
 
+interface ApiTransactionLine {
+  account_id?: number
+  envelope_id?: number
+  amount: number
+  accountId?: number
+  envelopeId?: number
+  accountName?: string
+  account_name?: string
+  categoryName?: string
+  category_name?: string
+}
+
+interface ApiTransaction {
+  id: number
+  user_id?: number
+  userId?: number
+  date: string
+  description: string
+  type: "INCOME" | "EXPENSE" | "TRANSFER" | "ADJUSTMENT"
+  created_at?: string
+  createdAt?: string
+  lines: ApiTransactionLine[]
+}
+
+interface PaginationMeta {
+  page: number
+  pageSize: number
+  totalItems: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPrevPage: boolean
+}
+
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
 
 export function TransactionsContent() {
-  const [transactions, setTransactions] = React.useState(mockTransactions)
+  const [transactionsData, setTransactionsData] = React.useState<ApiTransaction[]>([])
+  const [transactionsLoading, setTransactionsLoading] = React.useState(false)
+  const [transactionsError, setTransactionsError] = React.useState<string | null>(null)
+  const [transactionsMeta, setTransactionsMeta] = React.useState<PaginationMeta>({
+    page: 1,
+    pageSize: 10,
+    totalItems: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  })
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [isFiltersOpen, setIsFiltersOpen] = React.useState(false)
   const [accounts, setAccounts] = React.useState<
@@ -378,7 +114,7 @@ export function TransactionsContent() {
   const [accountsLoading, setAccountsLoading] = React.useState(false)
   const [accountsError, setAccountsError] = React.useState<string | null>(null)
   const [envelopesByAccount, setEnvelopesByAccount] = React.useState<
-    Record<string, { id: number; name: string }[]>
+    Record<string, { id: number; name: string; categoryId: number }[]>
   >({})
   const [envelopesLoading, setEnvelopesLoading] = React.useState<Record<string, boolean>>({})
   const [envelopesError, setEnvelopesError] = React.useState<Record<string, string | null>>({})
@@ -406,11 +142,47 @@ export function TransactionsContent() {
   // Pagination state
   const [currentPage, setCurrentPage] = React.useState(1)
   const [itemsPerPage, setItemsPerPage] = React.useState(10)
+  const userId = 1
 
   const activeAccounts = React.useMemo(
     () => accounts.filter((account) => account.active),
     [accounts],
   )
+
+  const transactions = React.useMemo(() => {
+    return transactionsData.map((transaction) => {
+      const lines = transaction.lines.map((line) => {
+        const accountId = line.account_id ?? line.accountId ?? 0
+        const envelopeId = line.envelope_id ?? line.envelopeId ?? 0
+        const accountName =
+          line.account_name ??
+          line.accountName ??
+          accounts.find((account) => account.id === accountId)?.name ??
+          (accountId ? `Account ${accountId}` : "Unknown account")
+        const envelopeName =
+          line.category_name ??
+          line.categoryName ??
+          envelopesByAccount[accountId.toString()]?.find((env) => env.id === envelopeId)?.name ??
+          (envelopeId ? `Envelope ${envelopeId}` : "Unknown envelope")
+
+        return {
+          accountId,
+          account: accountName,
+          envelopeId,
+          envelope: envelopeName,
+          amount: line.amount,
+        }
+      })
+
+      return {
+        id: transaction.id,
+        date: transaction.date,
+        type: transaction.type,
+        description: transaction.description,
+        lines,
+      }
+    })
+  }, [transactionsData, accounts, envelopesByAccount])
 
   React.useEffect(() => {
     const fetchAccounts = async () => {
@@ -461,11 +233,16 @@ export function TransactionsContent() {
         if (!res.ok) throw new Error("Failed to load envelopes")
         const data = (await res.json()) as {
           envelopeId: number
+          categoryId: number
           categoryName: string
         }[]
         setEnvelopesByAccount((prev) => ({
           ...prev,
-          [accountId]: data.map((env) => ({ id: env.envelopeId, name: env.categoryName })),
+          [accountId]: data.map((env) => ({
+            id: env.envelopeId,
+            categoryId: env.categoryId,
+            name: env.categoryName,
+          })),
         }))
       } catch (e) {
         const message = e instanceof Error ? e.message : "Failed to load envelopes"
@@ -507,60 +284,54 @@ export function TransactionsContent() {
     }
   }, [draftFilters.accountId, fetchEnvelopes])
 
-  // Filter transactions
-  const filteredTransactions = React.useMemo(() => {
-    return transactions.filter((transaction) => {
-      // Date range filter
-      if (filters.dateFrom && transaction.date < filters.dateFrom) return false
-      if (filters.dateTo && transaction.date > filters.dateTo) return false
+  React.useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        setTransactionsLoading(true)
+        setTransactionsError(null)
 
-      // Keyword filter (description)
-      if (
-        filters.keyword &&
-        !transaction.description.toLowerCase().includes(filters.keyword.toLowerCase())
-      ) {
-        return false
-      }
+        // Build query params to mirror the Transactions UI filters.
+        const params = new URLSearchParams()
+        params.set("userId", userId.toString())
+        if (filters.dateFrom) params.set("from", filters.dateFrom)
+        if (filters.dateTo) params.set("to", filters.dateTo)
+        if (filters.type !== "ALL") params.set("type", filters.type)
+        if (filters.accountId !== "ALL") params.set("accountId", filters.accountId)
+        if (filters.envelopeId !== "ALL") params.set("categoryId", filters.envelopeId)
+        if (filters.keyword) params.set("q", filters.keyword)
+        if (filters.amountMin) params.set("amountMin", filters.amountMin)
+        if (filters.amountMax) params.set("amountMax", filters.amountMax)
+        params.set("page", currentPage.toString())
+        params.set("pageSize", itemsPerPage.toString())
+        params.set("sortBy", "date")
+        params.set("sortDir", "desc")
 
-      // Type filter
-      if (filters.type !== "ALL" && transaction.type !== filters.type) return false
-
-      // Account filter
-      if (filters.accountId !== "ALL") {
-        const hasAccount = transaction.lines.some(
-          (line) => line.accountId === Number.parseInt(filters.accountId),
-        )
-        if (!hasAccount) return false
-      }
-
-      // Envelope filter
-      if (filters.envelopeId !== "ALL") {
-        const hasEnvelope = transaction.lines.some(
-          (line) => line.envelopeId === Number.parseInt(filters.envelopeId),
-        )
-        if (!hasEnvelope) return false
-      }
-
-      // Amount range filter (checks if any line amount falls within range)
-      if (filters.amountMin || filters.amountMax) {
-        const minAmount = filters.amountMin ? Number.parseFloat(filters.amountMin) : -Infinity
-        const maxAmount = filters.amountMax ? Number.parseFloat(filters.amountMax) : Infinity
-        const hasAmountInRange = transaction.lines.some((line) => {
-          const absAmount = Math.abs(line.amount)
-          return absAmount >= minAmount && absAmount <= maxAmount
+        const res = await fetch(`http://localhost:3000/api/transactions?${params.toString()}`, {
+          headers: { Accept: "application/json" },
         })
-        if (!hasAmountInRange) return false
-      }
+        if (!res.ok) throw new Error("Failed to load transactions")
+        const data = (await res.json()) as { data: ApiTransaction[]; meta: PaginationMeta }
 
-      return true
-    })
-  }, [transactions, filters])
+        setTransactionsData(data.data)
+        setTransactionsMeta(data.meta)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to load transactions"
+        setTransactionsError(message)
+      } finally {
+        setTransactionsLoading(false)
+      }
+    }
+
+    void fetchTransactions()
+  }, [filters, currentPage, itemsPerPage, userId])
 
   // Pagination calculations
-  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex)
+  const totalPages = Math.max(transactionsMeta.totalPages || 0, 1)
+  const startIndex = transactionsMeta.totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1
+  const endIndex =
+    transactionsMeta.totalItems === 0
+      ? 0
+      : Math.min(startIndex + transactions.length - 1, transactionsMeta.totalItems)
 
   // Reset to page 1 when filters change
   React.useEffect(() => {
@@ -583,11 +354,13 @@ export function TransactionsContent() {
 
   const applyFilters = () => {
     setFilters({ ...draftFilters })
+    setCurrentPage(1)
   }
 
   const clearFilters = () => {
     setDraftFilters(defaultFilters)
     setFilters(defaultFilters)
+    setCurrentPage(1)
   }
 
   // Handle Enter key to apply filters
@@ -645,23 +418,36 @@ export function TransactionsContent() {
   const handleCreate = () => {
     if (!isFormValid) return
 
-    const newTransaction = {
-      id: Math.max(...transactions.map((t) => t.id)) + 1,
+    const nextId =
+      transactionsData.length === 0
+        ? 1
+        : Math.max(...transactionsData.map((transaction) => transaction.id)) + 1
+    const newTransaction: ApiTransaction = {
+      id: nextId,
       date: formData.date,
       type: formData.type,
       description: formData.description,
       lines: formData.lines.map((line) => ({
-        accountId: Number.parseInt(line.accountId),
-        account: accounts.find((a) => a.id === Number.parseInt(line.accountId))?.name || "",
-        envelopeId: Number.parseInt(line.envelopeId),
-        envelope:
+        account_id: Number.parseInt(line.accountId),
+        accountName:
+          accounts.find((account) => account.id === Number.parseInt(line.accountId))?.name || "",
+        envelope_id: Number.parseInt(line.envelopeId),
+        categoryName:
           envelopesByAccount[line.accountId]?.find(
             (env) => env.id === Number.parseInt(line.envelopeId),
           )?.name || "",
         amount: Number.parseFloat(line.amount),
       })),
     }
-    setTransactions([...transactions, newTransaction])
+    setTransactionsData((prev) => [...prev, newTransaction])
+    setTransactionsMeta((prev) => {
+      const totalItems = prev.totalItems + 1
+      return {
+        ...prev,
+        totalItems,
+        totalPages: Math.max(1, Math.ceil(totalItems / itemsPerPage)),
+      }
+    })
     resetCreateForm()
     setIsCreateOpen(false)
   }
@@ -1014,7 +800,7 @@ export function TransactionsContent() {
                     <SelectContent>
                       <SelectItem value="ALL">All Envelopes</SelectItem>
                       {(envelopesByAccount[draftFilters.accountId] || []).map((env) => (
-                        <SelectItem key={env.id} value={env.id.toString()}>
+                        <SelectItem key={env.categoryId} value={env.categoryId.toString()}>
                           {env.name}
                         </SelectItem>
                       ))}
@@ -1072,9 +858,9 @@ export function TransactionsContent() {
             <div>
               <CardTitle>Transactions</CardTitle>
               <CardDescription>
-                {filteredTransactions.length === transactions.length
-                  ? `${transactions.length} transaction(s)`
-                  : `${filteredTransactions.length} of ${transactions.length} transaction(s)`}
+                {transactionsMeta.totalItems === transactions.length
+                  ? `${transactionsMeta.totalItems} transaction(s)`
+                  : `${transactions.length} of ${transactionsMeta.totalItems} transaction(s)`}
               </CardDescription>
             </div>
             {activeFilterCount > 0 && (
@@ -1107,7 +893,7 @@ export function TransactionsContent() {
                 {filters.envelopeId !== "ALL" && (
                   <Badge variant="secondary" className="text-xs">
                     {envelopesByAccount[filters.accountId]?.find(
-                      (env) => env.id.toString() === filters.envelopeId,
+                      (env) => env.categoryId.toString() === filters.envelopeId,
                     )?.name || filters.envelopeId}
                   </Badge>
                 )}
@@ -1116,6 +902,15 @@ export function TransactionsContent() {
           </div>
         </CardHeader>
         <CardContent>
+          {transactionsError && (
+            <Alert className="mb-4 border-error/50 bg-error/5">
+              <AlertCircle className="h-4 w-4 text-error" />
+              <AlertDescription className="text-sm">{transactionsError}</AlertDescription>
+            </Alert>
+          )}
+          {transactionsLoading && (
+            <p className="text-sm text-muted-foreground mb-3">Loading transactions...</p>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
@@ -1127,7 +922,7 @@ export function TransactionsContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedTransactions.map((transaction) =>
+              {transactions.map((transaction) =>
                 transaction.lines.map((line, lineIndex) => (
                   <TableRow key={`${transaction.id}-${lineIndex}`}>
                     <TableCell className="text-sm">{transaction.date}</TableCell>
@@ -1160,7 +955,7 @@ export function TransactionsContent() {
           </Table>
 
           {/* Pagination */}
-          {filteredTransactions.length > 0 && (
+          {transactionsMeta.totalItems > 0 && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>Show</span>
@@ -1184,8 +979,7 @@ export function TransactionsContent() {
 
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">
-                  {startIndex + 1}-{Math.min(endIndex, filteredTransactions.length)} of{" "}
-                  {filteredTransactions.length}
+                  {startIndex}-{endIndex} of {transactionsMeta.totalItems}
                 </span>
                 <div className="flex items-center gap-1">
                   <Button
@@ -1235,7 +1029,7 @@ export function TransactionsContent() {
           )}
 
           {/* Empty state */}
-          {filteredTransactions.length === 0 && (
+          {transactionsMeta.totalItems === 0 && !transactionsLoading && (
             <div className="text-center py-8 text-muted-foreground">
               <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>No transactions found matching your filters</p>
