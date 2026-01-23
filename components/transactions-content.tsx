@@ -109,6 +109,8 @@ export function TransactionsContent() {
     hasPrevPage: false,
   })
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
+  const [createLoading, setCreateLoading] = React.useState(false)
+  const [createError, setCreateError] = React.useState<string | null>(null)
   const [isFiltersOpen, setIsFiltersOpen] = React.useState(false)
   const [accounts, setAccounts] = React.useState<
     { id: number; name: string; currency: string; active: boolean }[]
@@ -417,45 +419,65 @@ export function TransactionsContent() {
     })
   }, [])
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!isFormValid) return
 
-    const nextId =
-      transactionsData.length === 0
-        ? 1
-        : Math.max(...transactionsData.map((transaction) => transaction.id)) + 1
-    const newTransaction: ApiTransaction = {
-      id: nextId,
-      date: formData.date,
-      type: formData.type,
-      description: formData.description,
-      lines: formData.lines.map((line) => ({
-        account_id: Number.parseInt(line.accountId),
-        accountName:
-          accounts.find((account) => account.id === Number.parseInt(line.accountId))?.name || "",
-        envelope_id: Number.parseInt(line.envelopeId),
-        categoryName:
-          envelopesByAccount[line.accountId]?.find(
-            (env) => env.id === Number.parseInt(line.envelopeId),
-          )?.name || "",
-        amount: Number.parseFloat(line.amount),
-      })),
-    }
-    setTransactionsData((prev) => [...prev, newTransaction])
-    setTransactionsMeta((prev) => {
-      const totalItems = prev.totalItems + 1
-      return {
-        ...prev,
-        totalItems,
-        totalPages: Math.max(1, Math.ceil(totalItems / itemsPerPage)),
+    setCreateLoading(true)
+    setCreateError(null)
+    try {
+      const payload = {
+        userId,
+        date: formData.date,
+        type: formData.type,
+        description: formData.description,
+        lines: formData.lines.map((line) => ({
+          accountId: Number.parseInt(line.accountId),
+          envelopeId: Number.parseInt(line.envelopeId),
+          amount: Number.parseFloat(line.amount),
+        })),
       }
-    })
-    resetCreateForm()
-    setIsCreateOpen(false)
+      const res = await fetch("http://localhost:3000/api/transactions", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const message = await res.text()
+        throw new Error(message || "Failed to create transaction")
+      }
+      const data = (await res.json()) as {
+        transaction: ApiTransaction
+        lines: ApiTransactionLine[]
+      }
+      const created: ApiTransaction = {
+        ...data.transaction,
+        lines: data.lines,
+      }
+      setTransactionsData((prev) => [created, ...prev])
+      setTransactionsMeta((prev) => {
+        const totalItems = prev.totalItems + 1
+        return {
+          ...prev,
+          totalItems,
+          totalPages: Math.max(1, Math.ceil(totalItems / itemsPerPage)),
+        }
+      })
+      resetCreateForm()
+      setIsCreateOpen(false)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to create transaction"
+      setCreateError(message)
+    } finally {
+      setCreateLoading(false)
+    }
   }
 
   const handleCloseCreate = () => {
     resetCreateForm()
+    setCreateError(null)
     setIsCreateOpen(false)
   }
 
@@ -487,6 +509,7 @@ export function TransactionsContent() {
                 handleCloseCreate()
                 return
               }
+              setCreateError(null)
               setIsCreateOpen(open)
             }}
           >
@@ -502,6 +525,12 @@ export function TransactionsContent() {
                 <DialogDescription>Record a new transaction with ledger lines</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4 max-h-96 overflow-y-auto">
+                {createError && (
+                  <Alert className="border-error/50 bg-error/5">
+                    <AlertCircle className="h-4 w-4 text-error" />
+                    <AlertDescription className="text-sm">{createError}</AlertDescription>
+                  </Alert>
+                )}
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="date">Date</Label>
@@ -665,8 +694,8 @@ export function TransactionsContent() {
                 <Button variant="outline" onClick={handleCloseCreate}>
                   Cancel
                 </Button>
-                <Button onClick={handleCreate} disabled={!isFormValid}>
-                  Create Transaction
+                <Button onClick={handleCreate} disabled={!isFormValid || createLoading}>
+                  {createLoading ? "Creating..." : "Create Transaction"}
                 </Button>
               </DialogFooter>
             </DialogContent>
