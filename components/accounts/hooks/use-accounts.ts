@@ -9,6 +9,7 @@ import type {
 
 const API_BASE_URL = "http://localhost:3000/api"
 const ACCOUNTS_URL = `${API_BASE_URL}/accounts`
+const ACCOUNT_BALANCES_URL = `${API_BASE_URL}/reports/account-balances?isActive=true`
 const INSTITUTIONS_URL = `${API_BASE_URL}/institutions`
 const DEFAULT_FORM_DATA: AccountFormData = {
   name: "",
@@ -24,15 +25,17 @@ type ApiInstitution = {
   is_active: number
 }
 
-type ApiAccount = {
+type ApiAccountBalance = {
   id: number
+  user_id: number
+  institution_id: number
   name: string
-  institution: string
   currency: string
   is_active: number
-  allow_overdraft: boolean
-  balance?: number
-  type?: string | null
+  allow_overdraft: number
+  institution: string
+  type: string | null
+  balance: number
 }
 
 const toBoolean = (value: unknown) => {
@@ -57,17 +60,6 @@ export function useAccounts() {
     name: item.name,
     type: item.type,
     status: item.is_active === 1 ? "Active" : "Inactive",
-  })
-
-  const mapAccount = (item: ApiAccount): AccountUi => ({
-    id: item.id,
-    name: item.name,
-    institution: item.institution,
-    currency: item.currency,
-    balance: item.balance ?? 0,
-    active: item.is_active === 1,
-    allowOverdraft: toBoolean(item.allow_overdraft),
-    type: item.type ?? null,
   })
 
   const fetchInstitutions = React.useCallback(async () => {
@@ -96,14 +88,25 @@ export function useAccounts() {
       setLoading(true)
       setError(null)
 
-      const res = await fetch(ACCOUNTS_URL, {
+      const res = await fetch(ACCOUNT_BALANCES_URL, {
         headers: { Accept: "application/json" },
       })
 
       if (!res.ok) throw new Error("Failed to load accounts")
 
-      const data = (await res.json()) as ApiAccount[]
-      setAccounts(data.map(mapAccount))
+      const data = (await res.json()) as ApiAccountBalance[]
+      setAccounts(
+        data.map((account) => ({
+          id: account.id,
+          name: account.name,
+          institution: account.institution,
+          currency: account.currency,
+          balance: account.balance,
+          active: account.is_active === 1,
+          allowOverdraft: toBoolean(account.allow_overdraft),
+          type: account.type ?? null,
+        })),
+      )
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to load accounts"
       setError(message)
