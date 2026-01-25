@@ -95,6 +95,8 @@ interface PaginationMeta {
 }
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
+const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+const API_BASE_URL = `${API_ROOT}/api`
 
 export function TransactionsContent() {
   const [transactionsData, setTransactionsData] = React.useState<ApiTransaction[]>([])
@@ -193,7 +195,7 @@ export function TransactionsContent() {
       try {
         setAccountsLoading(true)
         setAccountsError(null)
-        const res = await fetch("http://localhost:3000/api/accounts", {
+        const res = await fetch(`${API_BASE_URL}/accounts`, {
           headers: { Accept: "application/json" },
         })
         if (!res.ok) throw new Error("Failed to load accounts")
@@ -231,7 +233,7 @@ export function TransactionsContent() {
       setEnvelopesError((prev) => ({ ...prev, [accountId]: null }))
       try {
         const res = await fetch(
-          `http://localhost:3000/api/reports/envelope-balances?accountId=${accountId}`,
+          `${API_BASE_URL}/reports/envelope-balances?accountId=${accountId}`,
           { headers: { Accept: "application/json" } },
         )
         if (!res.ok) throw new Error("Failed to load envelopes")
@@ -310,7 +312,7 @@ export function TransactionsContent() {
         params.set("sortBy", "date")
         params.set("sortDir", "desc")
 
-        const res = await fetch(`http://localhost:3000/api/transactions?${params.toString()}`, {
+        const res = await fetch(`${API_BASE_URL}/transactions?${params.toString()}`, {
           headers: { Accept: "application/json" },
         })
         if (!res.ok) throw new Error("Failed to load transactions")
@@ -436,7 +438,7 @@ export function TransactionsContent() {
           amount: Number.parseFloat(line.amount),
         })),
       }
-      const res = await fetch("http://localhost:3000/api/transactions", {
+      const res = await fetch(`${API_BASE_URL}/transactions`, {
         method: "POST",
         headers: {
           Accept: "application/json",

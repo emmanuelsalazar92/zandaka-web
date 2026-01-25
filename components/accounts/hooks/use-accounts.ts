@@ -7,7 +7,8 @@ import type {
   InstitutionUi,
 } from "@/components/accounts/types/accounts.types"
 
-const API_BASE_URL = "http://localhost:3000/api"
+const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+const API_BASE_URL = `${API_ROOT}/api`
 const ACCOUNTS_URL = `${API_BASE_URL}/accounts`
 const ACCOUNT_BALANCES_URL = `${API_BASE_URL}/reports/account-balances?isActive=true`
 const INSTITUTIONS_URL = `${API_BASE_URL}/institutions`
