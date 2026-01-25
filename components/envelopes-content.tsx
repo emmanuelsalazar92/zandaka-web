@@ -61,6 +61,9 @@ type EnvelopeRow = {
   active: boolean
 }
 
+const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+const API_BASE_URL = `${API_ROOT}/api`
+
 export function EnvelopesContent() {
   const [envelopes, setEnvelopes] = React.useState<EnvelopeRow[]>([])
   const [envelopesLoading, setEnvelopesLoading] = React.useState(false)
@@ -91,7 +94,7 @@ export function EnvelopesContent() {
       try {
         setAccountsLoading(true)
         setAccountsError(null)
-        const res = await fetch("http://localhost:3000/api/accounts", {
+        const res = await fetch(`${API_BASE_URL}/accounts`, {
           headers: { Accept: "application/json" },
         })
         if (!res.ok) throw new Error("Failed to load accounts")
@@ -123,7 +126,7 @@ export function EnvelopesContent() {
       try {
         setCategoriesLoading(true)
         setCategoriesError(null)
-        const res = await fetch("http://localhost:3000/api/categories?activeOnly=true", {
+        const res = await fetch(`${API_BASE_URL}/categories?activeOnly=true`, {
           headers: { Accept: "application/json" },
         })
         if (!res.ok) throw new Error("Failed to load categories")
@@ -183,10 +186,9 @@ export function EnvelopesContent() {
     try {
       setEnvelopesLoading(true)
       setEnvelopesError(null)
-      const res = await fetch(
-        `http://localhost:3000/api/reports/envelope-balances?accountId=${accountId}`,
-        { headers: { Accept: "application/json" } },
-      )
+      const res = await fetch(`${API_BASE_URL}/reports/envelope-balances?accountId=${accountId}`, {
+        headers: { Accept: "application/json" },
+      })
       if (!res.ok) throw new Error("Failed to load envelope balances")
       const data = (await res.json()) as {
         envelopeId: number
@@ -228,7 +230,7 @@ export function EnvelopesContent() {
     try {
       setIsLinking(true)
       setLinkError(null)
-      const res = await fetch(`http://localhost:3000/api/accounts/${selectedAccountId}/envelopes`, {
+      const res = await fetch(`${API_BASE_URL}/accounts/${selectedAccountId}/envelopes`, {
         method: "POST",
         headers: {
           Accept: "application/json",
@@ -299,7 +301,7 @@ export function EnvelopesContent() {
     try {
       setIsDeactivating(true)
       setDeactivateError(null)
-      const res = await fetch(`http://localhost:3000/api/envelopes/${deactivateId}/deactivate`, {
+      const res = await fetch(`${API_BASE_URL}/envelopes/${deactivateId}/deactivate`, {
         method: "POST",
         headers: { Accept: "application/json" },
       })

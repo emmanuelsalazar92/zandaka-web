@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 
-const navItems = [
+const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
   { icon: Building2, label: "Institutions", href: "/institutions" },
   { icon: CreditCard, label: "Accounts", href: "/accounts" },
@@ -35,6 +35,10 @@ const navItems = [
 ]
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const isPlannerEnabled = process.env.NEXT_PUBLIC_FEATURE_PLANNER === "true"
+  const navItems = isPlannerEnabled
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((item) => item.href !== "/planner")
   const [theme, setTheme] = React.useState<"light" | "dark">("light")
   const pathname = usePathname()
 
