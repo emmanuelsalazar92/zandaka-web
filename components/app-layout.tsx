@@ -65,7 +65,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
             <Mail className="h-5 w-5 text-sidebar-primary-foreground" />
           </div>
-          <span className="font-semibold text-lg text-sidebar-foreground">Envelope Budget</span>
+          <span className="font-semibold text-lg text-sidebar-foreground">Zandaka</span>
         </div>
         <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
@@ -107,7 +107,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
                     <Mail className="h-5 w-5 text-primary-foreground" />
                   </div>
-                  <span className="font-semibold text-lg">Envelope Budget</span>
+                  <span className="font-semibold text-lg">Zandaka</span>
                 </div>
                 <nav className="space-y-1 p-4">
                   {navItems.map((item) => {
