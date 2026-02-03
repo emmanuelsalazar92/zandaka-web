@@ -138,8 +138,19 @@ export function CategoriesContent() {
         )
 
         if (!response.ok) {
-          const message = await response.text()
-          throw new Error(message || "Failed to load categories.")
+          const contentType = response.headers.get("content-type") || ""
+          let message = "No se pudo cargar categorías. Intenta más tarde."
+          if (contentType.includes("application/json")) {
+            try {
+              const errorResponse = await response.json()
+              message =
+                errorResponse?.error?.message ||
+                errorResponse?.message ||
+                errorResponse?.error ||
+                message
+            } catch {}
+          }
+          throw new Error(message)
         }
 
         const data = await response.json()
@@ -151,9 +162,11 @@ export function CategoriesContent() {
         )
       } catch (error) {
         if (signal?.aborted) return
-        const message =
-          error instanceof Error && error.message ? error.message : "Failed to load categories."
-        setLoadError(message)
+        const fallbackMessage = "No se pudo cargar categorías. Intenta más tarde."
+        const rawMessage = error instanceof Error && error.message ? error.message : fallbackMessage
+        const isHtmlLike = /<!doctype\s+html|<html/i.test(rawMessage)
+        const isNetworkError = /failed to fetch|networkerror/i.test(rawMessage)
+        setLoadError(isHtmlLike || isNetworkError ? fallbackMessage : rawMessage)
       } finally {
         setIsLoading(false)
       }
