@@ -9,7 +9,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Envelope Budget - Personal Finance Manager",
+  title: "Zandaka - Personal Finance Manager",
   description: "Track your spending with envelope budgeting",
   generator: "v0.app",
   icons: {
