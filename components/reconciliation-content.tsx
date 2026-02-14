@@ -51,15 +51,16 @@ interface Account {
   name: string
   calculatedBalance: number
   currency: string
+  active: boolean
 }
 
 // Mock API functions - simulate backend calls
 async function fetchAccounts(): Promise<Account[]> {
   // GET /accounts
   return [
-    { id: 1, name: "Main Checking", calculatedBalance: 1250000, currency: "CRC" },
-    { id: 2, name: "Credit Card", calculatedBalance: -234000, currency: "CRC" },
-    { id: 3, name: "Savings", calculatedBalance: 500000, currency: "CRC" },
+    { id: 1, name: "Main Checking", calculatedBalance: 1250000, currency: "CRC", active: true },
+    { id: 2, name: "Credit Card", calculatedBalance: -234000, currency: "CRC", active: true },
+    { id: 3, name: "Savings", calculatedBalance: 500000, currency: "CRC", active: false },
   ]
 }
 
@@ -224,7 +225,8 @@ export function ReconciliationContent() {
   }
 
   // Available accounts for new reconciliation (only those without active unbalanced)
-  const availableAccountsForNew = accounts.filter((acc) => canCreateForAccount(acc.id))
+  const activeAccounts = accounts.filter((acc) => acc.active)
+  const availableAccountsForNew = activeAccounts.filter((acc) => canCreateForAccount(acc.id))
 
   // Check if any account has an active unbalanced reconciliation
   const hasAnyBlockedAccount = blockedAccountIds.size > 0
