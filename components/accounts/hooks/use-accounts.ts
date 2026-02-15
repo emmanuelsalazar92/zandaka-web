@@ -45,6 +45,23 @@ const toBoolean = (value: unknown) => {
   return Boolean(value)
 }
 
+const getApiErrorMessage = (payload: unknown, fallback: string) => {
+  if (!payload || typeof payload !== "object") return fallback
+
+  const directMessage = (payload as { message?: unknown }).message
+  if (typeof directMessage === "string" && directMessage.trim().length > 0) {
+    return directMessage
+  }
+
+  const nested = (payload as { error?: { message?: unknown } }).error
+  const nestedMessage = nested?.message
+  if (typeof nestedMessage === "string" && nestedMessage.trim().length > 0) {
+    return nestedMessage
+  }
+
+  return fallback
+}
+
 export function useAccounts() {
   const [accounts, setAccounts] = React.useState<AccountUi[]>([])
   const [institutions, setInstitutions] = React.useState<InstitutionUi[]>([])
@@ -53,6 +70,7 @@ export function useAccounts() {
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [isEditOpen, setIsEditOpen] = React.useState(false)
   const [deactivateId, setDeactivateId] = React.useState<number | null>(null)
+  const [deactivateError, setDeactivateError] = React.useState<string | null>(null)
   const [editAccount, setEditAccount] = React.useState<AccountUi | null>(null)
   const [formData, setFormData] = React.useState<AccountFormData>(DEFAULT_FORM_DATA)
 
@@ -233,6 +251,7 @@ export function useAccounts() {
     try {
       setLoading(true)
       setError(null)
+      setDeactivateError(null)
 
       const res = await fetch(`${ACCOUNTS_URL}/${deactivateId}/deactivate`, {
         method: "POST",
@@ -242,22 +261,29 @@ export function useAccounts() {
       })
 
       if (!res.ok) {
-        let message = "Failed to deactivate account"
-        try {
-          const err = await res.json()
-          message = err?.message || message
-        } catch {}
+        const err = await res.json().catch(() => null)
+        const message = getApiErrorMessage(err, "Failed to deactivate account")
         throw new Error(message)
       }
 
       await fetchAccounts()
+      setDeactivateId(null)
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to deactivate account"
-      setError(message)
+      setDeactivateError(message)
     } finally {
       setLoading(false)
-      setDeactivateId(null)
     }
+  }
+
+  const openDeactivate = (accountId: number) => {
+    setDeactivateError(null)
+    setDeactivateId(accountId)
+  }
+
+  const closeDeactivate = () => {
+    setDeactivateError(null)
+    setDeactivateId(null)
   }
 
   const openEdit = (account: AccountUi) => {
@@ -284,14 +310,16 @@ export function useAccounts() {
     isCreateOpen,
     isEditOpen,
     deactivateId,
+    deactivateError,
     formData,
     setIsCreateOpen,
-    setDeactivateId,
     setFormData,
     handleCreate,
     handleEdit,
     handleDeactivate,
     openEdit,
+    openDeactivate,
+    closeDeactivate,
     closeEdit,
   }
 }

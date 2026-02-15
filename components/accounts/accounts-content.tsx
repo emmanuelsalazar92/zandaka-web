@@ -16,14 +16,16 @@ export function AccountsContent() {
     isCreateOpen,
     isEditOpen,
     deactivateId,
+    deactivateError,
     formData,
     setIsCreateOpen,
-    setDeactivateId,
     setFormData,
     handleCreate,
     handleEdit,
     handleDeactivate,
     openEdit,
+    openDeactivate,
+    closeDeactivate,
     closeEdit,
   } = useAccounts()
 
@@ -49,7 +51,7 @@ export function AccountsContent() {
           loading={loading}
           error={error}
           onEdit={openEdit}
-          onDeactivate={setDeactivateId}
+          onDeactivate={openDeactivate}
         />
       )}
 
@@ -69,9 +71,11 @@ export function AccountsContent() {
 
       <AccountDeactivateDialog
         open={deactivateId !== null}
-        onOpenChange={(open) => (!open ? setDeactivateId(null) : null)}
+        onOpenChange={(open) => (!open ? closeDeactivate() : null)}
         accounts={accounts}
         deactivateId={deactivateId}
+        loading={loading}
+        error={deactivateError}
         onConfirm={handleDeactivate}
       />
     </div>

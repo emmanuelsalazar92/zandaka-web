@@ -1,7 +1,6 @@
 import type { AccountUi } from "@/components/accounts/types/accounts.types"
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -9,12 +8,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 
 type AccountDeactivateDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   accounts: AccountUi[]
   deactivateId: number | null
+  loading: boolean
+  error: string | null
   onConfirm: () => void
 }
 
@@ -23,6 +25,8 @@ export function AccountDeactivateDialog({
   onOpenChange,
   accounts,
   deactivateId,
+  loading,
+  error,
   onConfirm,
 }: AccountDeactivateDialogProps) {
   const account = accounts.find((item) => item.id === deactivateId)
@@ -37,10 +41,13 @@ export function AccountDeactivateDialog({
             This will {isActive ? "deactivate" : "activate"} the account. You can reverse this
             action at any time.
           </AlertDialogDescription>
+          {error ? <p className="text-sm text-error">{error}</p> : null}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Confirm</AlertDialogAction>
+          <Button type="button" onClick={onConfirm} disabled={loading}>
+            {loading ? "Processing..." : "Confirm"}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
