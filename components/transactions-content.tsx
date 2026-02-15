@@ -53,6 +53,12 @@ function formatCurrency(amount: number, currency: string) {
   }).format(amount)
 }
 
+function applyTypeSign(type: TransactionType, amount: number) {
+  if (type === "EXPENSE") return -Math.abs(amount)
+  if (type === "INCOME") return Math.abs(amount)
+  return amount
+}
+
 interface TransactionLine {
   accountId: string
   envelopeId: string
@@ -176,7 +182,7 @@ export function TransactionsContent() {
           account: accountName,
           envelopeId,
           envelope: envelopeName,
-          amount: line.amount,
+          amount: applyTypeSign(transaction.type, line.amount),
         }
       })
 
@@ -400,6 +406,18 @@ export function TransactionsContent() {
     setFormData({ ...formData, lines: newLines })
   }
 
+  const normalizeLineAmountForType = (index: number) => {
+    if (formData.type !== "INCOME" && formData.type !== "EXPENSE") return
+    const amount = Number.parseFloat(formData.lines[index]?.amount ?? "")
+    if (Number.isNaN(amount)) return
+    const newLines = [...formData.lines]
+    newLines[index] = {
+      ...newLines[index],
+      amount: applyTypeSign(formData.type, amount).toString(),
+    }
+    setFormData({ ...formData, lines: newLines })
+  }
+
   const getTransactionLineSum = () => {
     return formData.lines.reduce((sum, line) => sum + (Number.parseFloat(line.amount) || 0), 0)
   }
@@ -435,7 +453,7 @@ export function TransactionsContent() {
         lines: formData.lines.map((line) => ({
           accountId: Number.parseInt(line.accountId),
           envelopeId: Number.parseInt(line.envelopeId),
-          amount: Number.parseFloat(line.amount),
+          amount: applyTypeSign(formData.type, Number.parseFloat(line.amount)),
         })),
       }
       const res = await fetch(`${API_BASE_URL}/transactions`, {
@@ -663,6 +681,7 @@ export function TransactionsContent() {
                           placeholder="0.00"
                           value={line.amount}
                           onChange={(e) => handleLineChange(index, "amount", e.target.value)}
+                          onBlur={() => normalizeLineAmountForType(index)}
                           className="h-9"
                         />
                       </div>
