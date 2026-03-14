@@ -7,6 +7,7 @@ export type InstitutionUi = {
   name: string
   type: InstitutionType
   status: InstitutionStatus
+  activeAccountsCount: number
 }
 
 export type InstitutionFormData = {

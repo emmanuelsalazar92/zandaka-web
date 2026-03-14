@@ -15,15 +15,17 @@ export function InstitutionsContent() {
     isCreateOpen,
     isEditOpen,
     deactivateId,
+    deactivateError,
     formData,
     setIsCreateOpen,
-    setDeactivateId,
     setFormData,
     handleCreate,
     handleEdit,
     handleDeactivate,
     openEdit,
+    openDeactivate,
     closeEdit,
+    closeDeactivate,
   } = useInstitutions()
 
   return (
@@ -45,7 +47,7 @@ export function InstitutionsContent() {
           loading={loading}
           error={error}
           onEdit={openEdit}
-          onDeactivate={setDeactivateId}
+          onDeactivate={openDeactivate}
         />
       )}
 
@@ -60,9 +62,11 @@ export function InstitutionsContent() {
 
       <InstitutionDeactivateDialog
         open={deactivateId !== null}
-        onOpenChange={() => setDeactivateId(null)}
+        onOpenChange={closeDeactivate}
         institutions={institutions}
         deactivateId={deactivateId}
+        loading={loading}
+        error={deactivateError}
         onConfirm={handleDeactivate}
       />
     </div>
