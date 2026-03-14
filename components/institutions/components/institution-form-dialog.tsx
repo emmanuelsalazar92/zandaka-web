@@ -93,10 +93,20 @@ export function InstitutionFormDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            data-testid="Cancel Create Institution"
+            aria-label="Cancel Create Institution"
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={submitDisabled}>
+          <Button
+            onClick={onSubmit}
+            data-testid="Submit Create Institution"
+            aria-label="Submit Create Institution"
+            disabled={submitDisabled}
+          >
             {submitLabel}
           </Button>
         </DialogFooter>

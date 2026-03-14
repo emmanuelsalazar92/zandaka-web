@@ -40,7 +40,7 @@ export function InstitutionsHeader({
         onFormDataChange={onFormDataChange}
         idPrefix="create-institution"
         trigger={
-          <Button>
+          <Button data-testid="Add Institution" aria-label="Add Institution">
             <Plus className="mr-2 h-4 w-4" />
             Add Institution
           </Button>

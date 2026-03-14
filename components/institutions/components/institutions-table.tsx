@@ -67,12 +67,20 @@ export function InstitutionsTable({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => onEdit(institution)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        data-testid={"Edit-" + institution.id}
+                        aria-label={"Edit-" + institution.id}
+                        onClick={() => onEdit(institution)}
+                      >
                         <Edit2 className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
+                        data-testid={"Deactivate-" + institution.id}
+                        aria-label={"Deactivate-" + institution.id}
                         onClick={() => onDeactivate(institution.id)}
                       >
                         <XCircle className="h-4 w-4" />
