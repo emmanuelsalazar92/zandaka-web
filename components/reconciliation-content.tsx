@@ -54,14 +54,45 @@ interface Account {
   active: boolean
 }
 
-// Mock API functions - simulate backend calls
+type ApiAccount = {
+  id: number
+  name: string
+  currency?: string | null
+  is_active?: number | boolean
+  active?: boolean
+  calculated_balance?: number | null
+  calculatedBalance?: number | null
+  current_balance?: number | null
+  currentBalance?: number | null
+  balance?: number | null
+}
+
+const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+const API_BASE_URL = `${API_ROOT}/api`
+
 async function fetchAccounts(): Promise<Account[]> {
-  // GET /accounts
-  return [
-    { id: 1, name: "Main Checking", calculatedBalance: 1250000, currency: "CRC", active: true },
-    { id: 2, name: "Credit Card", calculatedBalance: -234000, currency: "CRC", active: true },
-    { id: 3, name: "Savings", calculatedBalance: 500000, currency: "CRC", active: false },
-  ]
+  const response = await fetch(`${API_BASE_URL}/accounts`, {
+    headers: { Accept: "application/json" },
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to load accounts")
+  }
+
+  const data = (await response.json()) as ApiAccount[]
+  return data.map((account) => ({
+    id: account.id,
+    name: account.name,
+    calculatedBalance:
+      account.calculated_balance ??
+      account.calculatedBalance ??
+      account.current_balance ??
+      account.currentBalance ??
+      account.balance ??
+      0,
+    currency: account.currency || "CRC",
+    active: account.is_active === 1 || account.is_active === true || account.active === true,
+  }))
 }
 
 async function fetchReconciliations(): Promise<Reconciliation[]> {
@@ -518,11 +549,16 @@ export function ReconciliationContent() {
                       <SelectValue placeholder="Select account" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableAccountsForNew.map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id.toString()}>
-                          {acc.name}
-                        </SelectItem>
-                      ))}
+                      {activeAccounts.map((acc) => {
+                        const isBlocked = !canCreateForAccount(acc.id)
+
+                        return (
+                          <SelectItem key={acc.id} value={acc.id.toString()} disabled={isBlocked}>
+                            {acc.name}
+                            {isBlocked ? " (Active reconciliation)" : ""}
+                          </SelectItem>
+                        )
+                      })}
                     </SelectContent>
                   </Select>
                 )}
