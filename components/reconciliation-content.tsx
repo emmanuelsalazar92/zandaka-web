@@ -1,12 +1,23 @@
 "use client"
 
-import { AlertCircle, RefreshCw, Scale } from "lucide-react"
+import { AlertCircle, Plus, RefreshCw, Scale } from "lucide-react"
 import * as React from "react"
 
 import { EmptyState } from "@/components/empty-state"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -22,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 interface Account {
@@ -72,6 +84,13 @@ interface ReconciliationHistoryItem {
   note: string | null
   createdAt: string | null
   closedAt: string | null
+}
+
+interface NewReconciliationForm {
+  accountId: string
+  date: string
+  realBalance: string
+  note: string
 }
 
 const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
@@ -125,6 +144,72 @@ function formatDate(date: string) {
   }).format(parsed)
 }
 
+function getDefaultReconciliationDate() {
+  return new Date().toISOString().split("T")[0] ?? ""
+}
+
+function parseRealBalance(value: string) {
+  const normalized = value.trim().replace(/\s+/g, "").replace(/,/g, ".")
+  if (!normalized) return null
+
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function getApiErrorMessage(payload: unknown, fallback: string) {
+  if (!payload || typeof payload !== "object") return fallback
+
+  const directMessage = (payload as { message?: unknown }).message
+  if (typeof directMessage === "string" && directMessage.trim().length > 0) {
+    return directMessage
+  }
+
+  const errorPayload = (payload as { error?: { message?: unknown; details?: unknown } }).error
+  const nestedMessage = errorPayload?.message
+  if (typeof nestedMessage === "string" && nestedMessage.trim().length > 0) {
+    return nestedMessage
+  }
+
+  const details = errorPayload?.details
+  if (Array.isArray(details) && details.length > 0) {
+    const firstDetail = details[0]
+    if (typeof firstDetail === "string" && firstDetail.trim().length > 0) {
+      return firstDetail
+    }
+
+    if (firstDetail && typeof firstDetail === "object") {
+      const detailMessage = (firstDetail as { message?: unknown }).message
+      if (typeof detailMessage === "string" && detailMessage.trim().length > 0) {
+        return detailMessage
+      }
+    }
+  }
+
+  return fallback
+}
+
+function normalizeReconciliation(
+  item: ApiReconciliation,
+  fallbackAccountId: number,
+): ReconciliationHistoryItem {
+  const calculatedBalance = toNumber(item.calculatedBalance ?? item.calculated_balance)
+  const realBalance = toNumber(item.realBalance ?? item.real_balance)
+  const difference = toNumber(item.difference ?? realBalance - calculatedBalance)
+
+  return {
+    id: item.id,
+    accountId: toNumber(item.accountId ?? item.account_id ?? fallbackAccountId),
+    date: item.date,
+    realBalance,
+    calculatedBalance,
+    difference,
+    status: normalizeStatus(item.status, difference),
+    note: item.note ?? null,
+    createdAt: item.createdAt ?? item.created_at ?? null,
+    closedAt: item.closedAt ?? item.closed_at ?? null,
+  }
+}
+
 async function fetchAccounts(): Promise<Account[]> {
   const response = await fetch(`${API_BASE_URL}/accounts`, {
     headers: { Accept: "application/json" },
@@ -160,25 +245,38 @@ async function fetchReconciliations(accountId: number): Promise<ReconciliationHi
 
   const data = (await response.json()) as ApiReconciliation[]
   return data
-    .map((item) => {
-      const calculatedBalance = toNumber(item.calculatedBalance ?? item.calculated_balance)
-      const realBalance = toNumber(item.realBalance ?? item.real_balance)
-      const difference = toNumber(item.difference ?? realBalance - calculatedBalance)
-
-      return {
-        id: item.id,
-        accountId: toNumber(item.accountId ?? item.account_id ?? accountId),
-        date: item.date,
-        realBalance,
-        calculatedBalance,
-        difference,
-        status: normalizeStatus(item.status, difference),
-        note: item.note ?? null,
-        createdAt: item.createdAt ?? item.created_at ?? null,
-        closedAt: item.closedAt ?? item.closed_at ?? null,
-      }
-    })
+    .map((item) => normalizeReconciliation(item, accountId))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+}
+
+async function createReconciliation(payload: {
+  accountId: number
+  date: string
+  realBalance: number
+  note?: string
+}): Promise<ReconciliationHistoryItem> {
+  const response = await fetch(`${API_BASE_URL}/reconciliations`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    let message = "Failed to create reconciliation"
+
+    try {
+      const payload = (await response.json()) as unknown
+      message = getApiErrorMessage(payload, message)
+    } catch {}
+
+    throw new Error(message)
+  }
+
+  const data = (await response.json()) as ApiReconciliation
+  return normalizeReconciliation(data, payload.accountId)
 }
 
 function StatusIndicator({ status }: { status: ReconciliationStatus }) {
@@ -202,11 +300,20 @@ export function ReconciliationContent() {
   const [accounts, setAccounts] = React.useState<Account[]>([])
   const [selectedAccountId, setSelectedAccountId] = React.useState("")
   const [reconciliations, setReconciliations] = React.useState<ReconciliationHistoryItem[]>([])
+  const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [accountsLoading, setAccountsLoading] = React.useState(true)
   const [historyLoading, setHistoryLoading] = React.useState(false)
+  const [createLoading, setCreateLoading] = React.useState(false)
   const [hasLoadedHistory, setHasLoadedHistory] = React.useState(false)
   const [accountsError, setAccountsError] = React.useState<string | null>(null)
   const [historyError, setHistoryError] = React.useState<string | null>(null)
+  const [createError, setCreateError] = React.useState<string | null>(null)
+  const [createForm, setCreateForm] = React.useState<NewReconciliationForm>({
+    accountId: "",
+    date: getDefaultReconciliationDate(),
+    realBalance: "",
+    note: "",
+  })
   const selectedAccountIdRef = React.useRef("")
 
   React.useEffect(() => {
@@ -222,6 +329,44 @@ export function ReconciliationContent() {
   const selectedAccount = React.useMemo(
     () => selectableAccounts.find((account) => account.id.toString() === selectedAccountId) ?? null,
     [selectableAccounts, selectedAccountId],
+  )
+
+  const parsedRealBalance = React.useMemo(
+    () => parseRealBalance(createForm.realBalance),
+    [createForm.realBalance],
+  )
+
+  const createFormErrors = React.useMemo(
+    () => ({
+      accountId: createForm.accountId ? "" : "Select an account.",
+      date: createForm.date ? "" : "Select a reconciliation date.",
+      realBalance:
+        createForm.realBalance.trim().length === 0
+          ? "Enter the real balance from the bank."
+          : parsedRealBalance === null
+            ? "Enter a valid numeric amount."
+            : "",
+    }),
+    [createForm.accountId, createForm.date, createForm.realBalance, parsedRealBalance],
+  )
+
+  const isCreateFormValid = React.useMemo(
+    () => Object.values(createFormErrors).every((value) => value.length === 0),
+    [createFormErrors],
+  )
+
+  const resetCreateForm = React.useCallback(
+    (accountId?: string) => {
+      setCreateForm({
+        accountId:
+          accountId || selectedAccountIdRef.current || selectableAccounts[0]?.id.toString() || "",
+        date: getDefaultReconciliationDate(),
+        realBalance: "",
+        note: "",
+      })
+      setCreateError(null)
+    },
+    [selectableAccounts],
   )
 
   const loadAccounts = React.useCallback(async () => {
@@ -285,6 +430,45 @@ export function ReconciliationContent() {
   React.useEffect(() => {
     void loadReconciliationHistory(selectedAccountId)
   }, [loadReconciliationHistory, selectedAccountId])
+
+  const handleOpenCreate = () => {
+    resetCreateForm(selectedAccountId || selectableAccounts[0]?.id.toString())
+    setIsCreateOpen(true)
+  }
+
+  const handleCreate = async () => {
+    if (!isCreateFormValid || parsedRealBalance === null) {
+      setCreateError("Complete the required fields with valid values.")
+      return
+    }
+
+    try {
+      setCreateLoading(true)
+      setCreateError(null)
+
+      const accountId = createForm.accountId
+      await createReconciliation({
+        accountId: Number(accountId),
+        date: createForm.date,
+        realBalance: parsedRealBalance,
+        note: createForm.note.trim() || undefined,
+      })
+
+      setIsCreateOpen(false)
+      resetCreateForm(accountId)
+
+      if (accountId === selectedAccountIdRef.current) {
+        await loadReconciliationHistory(accountId)
+      } else {
+        setSelectedAccountId(accountId)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create reconciliation"
+      setCreateError(message)
+    } finally {
+      setCreateLoading(false)
+    }
+  }
 
   const handleRefresh = async () => {
     const nextSelectedAccountId = await loadAccounts()
@@ -351,6 +535,11 @@ export function ReconciliationContent() {
               </SelectContent>
             </Select>
           </div>
+
+          <Button onClick={handleOpenCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Reconciliation
+          </Button>
 
           <Button
             variant="outline"
@@ -467,6 +656,142 @@ export function ReconciliationContent() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={isCreateOpen}
+        onOpenChange={(open) => {
+          if (createLoading) return
+          setIsCreateOpen(open)
+          if (!open) {
+            resetCreateForm(selectedAccountId || selectableAccounts[0]?.id.toString())
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>New Reconciliation</DialogTitle>
+            <DialogDescription>
+              Start a new reconciliation by selecting an account, date, and real bank balance.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {createError && (
+              <Alert className="border-warning/50 bg-warning/5">
+                <AlertCircle className="h-4 w-4 text-warning" />
+                <AlertDescription>{createError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="reconciliation-account">Account</Label>
+              <Select
+                value={createForm.accountId}
+                onValueChange={(value) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    accountId: value,
+                  }))
+                }
+              >
+                <SelectTrigger
+                  id="reconciliation-account"
+                  aria-invalid={Boolean(createFormErrors.accountId)}
+                >
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectableAccounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id.toString()}>
+                      {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {createFormErrors.accountId && (
+                <p className="text-xs text-destructive">{createFormErrors.accountId}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reconciliation-date">Reconciliation Date</Label>
+              <Input
+                id="reconciliation-date"
+                type="date"
+                value={createForm.date}
+                onChange={(event) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    date: event.target.value,
+                  }))
+                }
+                aria-invalid={Boolean(createFormErrors.date)}
+              />
+              {createFormErrors.date && (
+                <p className="text-xs text-destructive">{createFormErrors.date}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reconciliation-real-balance">Real Balance</Label>
+              <Input
+                id="reconciliation-real-balance"
+                type="text"
+                inputMode="decimal"
+                placeholder="e.g. 123456.78"
+                value={createForm.realBalance}
+                onChange={(event) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    realBalance: event.target.value,
+                  }))
+                }
+                className="font-mono"
+                aria-invalid={Boolean(createFormErrors.realBalance)}
+              />
+              {createFormErrors.realBalance ? (
+                <p className="text-xs text-destructive">{createFormErrors.realBalance}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Use digits with an optional decimal separator.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reconciliation-note">Note</Label>
+              <Textarea
+                id="reconciliation-note"
+                placeholder="Optional note for this reconciliation"
+                value={createForm.note}
+                onChange={(event) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    note: event.target.value,
+                  }))
+                }
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCreateOpen(false)
+                resetCreateForm(selectedAccountId || selectableAccounts[0]?.id.toString())
+              }}
+              disabled={createLoading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreate} disabled={!isCreateFormValid || createLoading}>
+              {createLoading ? "Creating..." : "Create Reconciliation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
