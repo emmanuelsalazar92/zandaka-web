@@ -103,13 +103,42 @@ function parseBacCredomatic(raw: string): ParsedTransaction[] {
 
   for (const line of lines) {
     const parts = line.split("\t")
-    if (parts.length < 6) continue
+
+    // Validate column count - must be exactly 6 columns
+    if (parts.length !== 6) {
+      transactions.push({
+        id: crypto.randomUUID(),
+        date: "",
+        description: line.substring(0, 50) + (line.length > 50 ? "..." : ""),
+        amount: 0,
+        type: "EXPENSE",
+        accountId: "",
+        envelopeId: "",
+        status: "error",
+        statusMessage: `Invalid format: expected 6 columns, got ${parts.length}`,
+      })
+      continue
+    }
 
     const [datePart, refCode, desc, debitStr, creditStr] = parts
+    // parts[5] is balance - ignored
 
     // Parse date (DD/MM/YYYY)
     const dateMatch = datePart.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-    if (!dateMatch) continue
+    if (!dateMatch) {
+      transactions.push({
+        id: crypto.randomUUID(),
+        date: "",
+        description: `${refCode} ${desc}`.trim(),
+        amount: 0,
+        type: "EXPENSE",
+        accountId: "",
+        envelopeId: "",
+        status: "error",
+        statusMessage: `Invalid date format: ${datePart}`,
+      })
+      continue
+    }
 
     const [, day, month, year] = dateMatch
     const date = `${year}-${month}-${day}`
@@ -121,17 +150,48 @@ function parseBacCredomatic(raw: string): ParsedTransaction[] {
     const debit = parseFloat(debitStr.replace(/,/g, "")) || 0
     const credit = parseFloat(creditStr.replace(/,/g, "")) || 0
 
-    // Calculate amount: debit is negative, credit is positive
-    let amount = 0
-    if (debit > 0) {
-      amount = -debit
-    } else if (credit > 0) {
-      amount = credit
-    } else {
-      continue // Skip rows with no amount
+    // Validation: both debit and credit have values
+    if (debit > 0 && credit > 0) {
+      transactions.push({
+        id: crypto.randomUUID(),
+        date,
+        description,
+        amount: 0,
+        type: "EXPENSE",
+        accountId: "",
+        envelopeId: "",
+        status: "warning",
+        statusMessage: "Both debit and credit have values",
+      })
+      continue
     }
 
-    const type: TransactionType = amount < 0 ? "EXPENSE" : "INCOME"
+    // Validation: both debit and credit are zero
+    if (debit === 0 && credit === 0) {
+      transactions.push({
+        id: crypto.randomUUID(),
+        date,
+        description,
+        amount: 0,
+        type: "EXPENSE",
+        accountId: "",
+        envelopeId: "",
+        status: "warning",
+        statusMessage: "Both debit and credit are zero",
+      })
+      continue
+    }
+
+    // Calculate amount: debit is negative (expense), credit is positive (income)
+    let amount = 0
+    let type: TransactionType = "EXPENSE"
+    if (debit > 0 && credit === 0) {
+      amount = -debit
+      type = "EXPENSE"
+    } else if (credit > 0 && debit === 0) {
+      amount = credit
+      type = "INCOME"
+    }
 
     transactions.push({
       id: crypto.randomUUID(),
