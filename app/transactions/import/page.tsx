@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea, ScrollAreaViewport } from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select,
   SelectContent,
@@ -483,7 +483,6 @@ export default function ImportTransactionsPage() {
                 </div>
               ) : (
                 <ScrollArea className="h-[400px]">
-                  <ScrollAreaViewport>
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -630,7 +629,6 @@ export default function ImportTransactionsPage() {
                         ))}
                       </TableBody>
                     </Table>
-                  </ScrollAreaViewport>
                 </ScrollArea>
               )}
 
