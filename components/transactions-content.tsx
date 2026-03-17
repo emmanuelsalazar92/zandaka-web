@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import * as React from "react"
 
+import { ImportTransactionsModal } from "@/components/import-transactions-modal"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -522,6 +523,7 @@ export function TransactionsContent() {
               </Badge>
             )}
           </Button>
+          <ImportTransactionsModal />
           <Dialog
             open={isCreateOpen}
             onOpenChange={(open) => {
