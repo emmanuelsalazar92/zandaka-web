@@ -9,10 +9,11 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Upload,
 } from "lucide-react"
+import Link from "next/link"
 import * as React from "react"
 
-import { ImportTransactionsModal } from "@/components/import-transactions-modal"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -523,7 +524,12 @@ export function TransactionsContent() {
               </Badge>
             )}
           </Button>
-          <ImportTransactionsModal />
+          <Button variant="outline" asChild>
+            <Link href="/transactions/import">
+              <Upload className="mr-2 h-4 w-4" />
+              Import
+            </Link>
+          </Button>
           <Dialog
             open={isCreateOpen}
             onOpenChange={(open) => {
