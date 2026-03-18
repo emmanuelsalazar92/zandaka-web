@@ -9,7 +9,9 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Upload,
 } from "lucide-react"
+import Link from "next/link"
 import * as React from "react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -521,6 +523,12 @@ export function TransactionsContent() {
                 {activeFilterCount}
               </Badge>
             )}
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/transactions/import">
+              <Upload className="mr-2 h-4 w-4" />
+              Import
+            </Link>
           </Button>
           <Dialog
             open={isCreateOpen}
