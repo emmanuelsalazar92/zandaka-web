@@ -287,7 +287,8 @@ export default function ImportTransactionsPage() {
           })),
         )
       } catch (e) {
-        console.error("Failed to fetch accounts:", e)
+        const message = e instanceof Error ? e.message : "Failed to load accounts"
+        setImportError(message)
       } finally {
         setAccountsLoading(false)
       }
@@ -321,7 +322,8 @@ export default function ImportTransactionsPage() {
           })),
         }))
       } catch (e) {
-        console.error("Failed to fetch envelopes:", e)
+        const message = e instanceof Error ? e.message : "Failed to load envelopes"
+        setImportError(message)
       } finally {
         setEnvelopesLoading((prev) => ({ ...prev, [accountId]: false }))
       }
@@ -410,10 +412,6 @@ export default function ImportTransactionsPage() {
         envelopesByAccount,
       )
       if (validationError) {
-        console.error("Skipping invalid import transaction", {
-          transactionId: transaction.id,
-          reason: validationError,
-        })
         failedCount += 1
         continue
       }
@@ -430,23 +428,14 @@ export default function ImportTransactionsPage() {
         })
 
         if (!res.ok) {
-          const message = await res.text()
+          await res.text()
           failedCount += 1
-          console.error("Failed to import transaction", {
-            transactionId: transaction.id,
-            message: message || "Failed to create transaction",
-          })
           continue
         }
 
         successCount += 1
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to import transaction"
+      } catch {
         failedCount += 1
-        console.error("Failed to import transaction", {
-          transactionId: transaction.id,
-          message,
-        })
       }
     }
 
