@@ -27,6 +27,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
+import { toast } from "@/components/ui/use-toast"
+import { formatIsoDateOnly } from "@/lib/date-only"
+import {
+  buildTransactionImportPayload,
+  getImportRowValidationError,
+} from "@/lib/transaction-import-helpers"
 
 type BankFormat = "grupo-mutual" | "bac-credomatic"
 type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER" | "ADJUSTMENT"
@@ -46,9 +52,13 @@ interface ParsedTransaction {
 
 const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
 const API_BASE_URL = `${API_ROOT}/api`
+const CURRENT_USER_ID = 1
 
 function parseGrupoMutual(raw: string): ParsedTransaction[] {
-  const lines = raw.split("\n").map((l) => l.trim()).filter((l) => l.length > 0)
+  const lines = raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
   const transactions: ParsedTransaction[] = []
 
   // Process in blocks of 5 lines
@@ -67,10 +77,7 @@ function parseGrupoMutual(raw: string): ParsedTransaction[] {
     const date = `${year}-${month}-${day}`
 
     // Parse amount - remove currency symbol and thousand separators
-    let amountStr = amountLine
-      .replace(/₡/g, "")
-      .replace(/\s/g, "")
-      .replace(/,/g, "")
+    let amountStr = amountLine.replace(/₡/g, "").replace(/\s/g, "").replace(/,/g, "")
 
     // Handle negative format (₡- 432,500.00)
     const isNegative = amountStr.includes("-")
@@ -98,7 +105,10 @@ function parseGrupoMutual(raw: string): ParsedTransaction[] {
 }
 
 function parseBacCredomatic(raw: string): ParsedTransaction[] {
-  const lines = raw.split("\n").map((l) => l.trim()).filter((l) => l.length > 0)
+  const lines = raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
   const transactions: ParsedTransaction[] = []
 
   for (const line of lines) {
@@ -238,7 +248,19 @@ export default function ImportTransactionsPage() {
 
   const activeAccounts = React.useMemo(
     () => accounts.filter((account) => account.active),
-    [accounts]
+    [accounts],
+  )
+  const importCandidates = React.useMemo(
+    () => transactions.filter((transaction) => transaction.status !== "error"),
+    [transactions],
+  )
+  const importableTransactions = React.useMemo(
+    () =>
+      importCandidates.filter(
+        (transaction) =>
+          !getImportRowValidationError(transaction, activeAccounts, envelopesByAccount),
+      ),
+    [activeAccounts, envelopesByAccount, importCandidates],
   )
 
   // Fetch accounts on mount
@@ -262,7 +284,7 @@ export default function ImportTransactionsPage() {
             name: account.name,
             currency: account.currency,
             active: account.is_active === 1,
-          }))
+          })),
         )
       } catch (e) {
         console.error("Failed to fetch accounts:", e)
@@ -282,7 +304,7 @@ export default function ImportTransactionsPage() {
       try {
         const res = await fetch(
           `${API_BASE_URL}/reports/envelope-balances?accountId=${accountId}`,
-          { headers: { Accept: "application/json" } }
+          { headers: { Accept: "application/json" } },
         )
         if (!res.ok) throw new Error("Failed to load envelopes")
         const data = (await res.json()) as {
@@ -304,7 +326,7 @@ export default function ImportTransactionsPage() {
         setEnvelopesLoading((prev) => ({ ...prev, [accountId]: false }))
       }
     },
-    [envelopesByAccount, envelopesLoading]
+    [envelopesByAccount, envelopesLoading],
   )
 
   const handleProcess = () => {
@@ -350,16 +372,14 @@ export default function ImportTransactionsPage() {
           updated.statusMessage = undefined
         } else if (updated.accountId || updated.envelopeId) {
           updated.status = "warning"
-          updated.statusMessage = updated.accountId
-            ? "Select envelope"
-            : "Select account"
+          updated.statusMessage = updated.accountId ? "Select envelope" : "Select account"
         } else {
           updated.status = "warning"
           updated.statusMessage = "Select account and envelope"
         }
 
         return updated
-      })
+      }),
     )
   }
 
@@ -372,32 +392,34 @@ export default function ImportTransactionsPage() {
   const validCount = transactions.filter((t) => t.status === "valid").length
   const warningCount = transactions.filter((t) => t.status === "warning").length
   const errorCount = transactions.filter((t) => t.status === "error").length
-
-  const validTransactions = transactions.filter((t) => t.status === "valid")
+  const importableCount = importableTransactions.length
 
   const handleImport = async () => {
-    if (validTransactions.length === 0) return
+    if (importableTransactions.length === 0) return
 
     setIsImporting(true)
     setImportError(null)
 
-    try {
-      // Import transactions one by one
-      for (const transaction of validTransactions) {
-        const payload = {
-          userId: 1,
-          date: transaction.date,
-          type: transaction.type,
-          description: transaction.description,
-          lines: [
-            {
-              accountId: parseInt(transaction.accountId),
-              envelopeId: parseInt(transaction.envelopeId),
-              amount: transaction.amount,
-            },
-          ],
-        }
+    let successCount = 0
+    let failedCount = 0
 
+    for (const transaction of importCandidates) {
+      const validationError = getImportRowValidationError(
+        transaction,
+        activeAccounts,
+        envelopesByAccount,
+      )
+      if (validationError) {
+        console.error("Skipping invalid import transaction", {
+          transactionId: transaction.id,
+          reason: validationError,
+        })
+        failedCount += 1
+        continue
+      }
+
+      try {
+        const payload = buildTransactionImportPayload(transaction, CURRENT_USER_ID)
         const res = await fetch(`${API_BASE_URL}/transactions`, {
           method: "POST",
           headers: {
@@ -409,18 +431,49 @@ export default function ImportTransactionsPage() {
 
         if (!res.ok) {
           const message = await res.text()
-          throw new Error(message || "Failed to create transaction")
+          failedCount += 1
+          console.error("Failed to import transaction", {
+            transactionId: transaction.id,
+            message: message || "Failed to create transaction",
+          })
+          continue
         }
-      }
 
-      // Redirect back to transactions page
-      router.push("/transactions")
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to import transactions"
-      setImportError(message)
-    } finally {
-      setIsImporting(false)
+        successCount += 1
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to import transaction"
+        failedCount += 1
+        console.error("Failed to import transaction", {
+          transactionId: transaction.id,
+          message,
+        })
+      }
     }
+
+    setIsImporting(false)
+
+    if (successCount === 0) {
+      const summary = `Imported 0 transactions, ${failedCount} failed`
+      setImportError(summary)
+      toast({
+        title: "Import failed",
+        description: summary,
+        variant: "destructive",
+      })
+      return
+    }
+
+    const description =
+      failedCount === 0
+        ? `${successCount} transactions imported successfully`
+        : `Imported ${successCount} transactions, ${failedCount} failed`
+
+    toast({
+      title: failedCount === 0 ? "Import complete" : "Import completed with issues",
+      description,
+      variant: failedCount === 0 ? "default" : "destructive",
+    })
+    router.push("/transactions")
   }
 
   return (
@@ -462,10 +515,7 @@ export default function ImportTransactionsPage() {
             <div className="flex items-end gap-4">
               <div className="w-64 space-y-2">
                 <label className="text-sm font-medium">Bank Format</label>
-                <Select
-                  value={bankFormat}
-                  onValueChange={(v) => setBankFormat(v as BankFormat)}
-                >
+                <Select value={bankFormat} onValueChange={(v) => setBankFormat(v as BankFormat)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -509,9 +559,7 @@ export default function ImportTransactionsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Transaction Preview</CardTitle>
-                  <CardDescription>
-                    Review and edit transactions before importing
-                  </CardDescription>
+                  <CardDescription>Review and edit transactions before importing</CardDescription>
                 </div>
                 <div className="flex gap-2">
                   <Badge variant="secondary" className="gap-1">
@@ -537,158 +585,142 @@ export default function ImportTransactionsPage() {
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <AlertCircle className="h-12 w-12 mb-4" />
                   <p>No transactions could be parsed from the input.</p>
-                  <p className="text-sm">
-                    Please check the format and try again.
-                  </p>
+                  <p className="text-sm">Please check the format and try again.</p>
                 </div>
               ) : (
                 <ScrollArea className="h-[400px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[100px]">Date</TableHead>
-                          <TableHead className="min-w-[200px]">Description</TableHead>
-                          <TableHead className="w-[120px] text-right">Amount</TableHead>
-                          <TableHead className="w-[160px]">Account</TableHead>
-                          <TableHead className="w-[160px]">Envelope</TableHead>
-                          <TableHead className="w-[100px]">Type</TableHead>
-                          <TableHead className="w-[120px]">Status</TableHead>
-                          <TableHead className="w-[50px]"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {transactions.map((transaction) => (
-                          <TableRow key={transaction.id}>
-                            <TableCell className="font-medium">
-                              {new Date(transaction.date).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                              })}
-                            </TableCell>
-                            <TableCell className="max-w-[300px] truncate" title={transaction.description}>
-                              {transaction.description}
-                            </TableCell>
-                            <TableCell
-                              className={`text-right font-mono ${
-                                transaction.amount < 0
-                                  ? "text-red-600"
-                                  : "text-emerald-600"
-                              }`}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[100px]">Date</TableHead>
+                        <TableHead className="min-w-[200px]">Description</TableHead>
+                        <TableHead className="w-[120px] text-right">Amount</TableHead>
+                        <TableHead className="w-[160px]">Account</TableHead>
+                        <TableHead className="w-[160px]">Envelope</TableHead>
+                        <TableHead className="w-[100px]">Type</TableHead>
+                        <TableHead className="w-[120px]">Status</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {transactions.map((transaction) => (
+                        <TableRow key={transaction.id}>
+                          <TableCell className="font-medium">
+                            {formatIsoDateOnly(transaction.date)}
+                          </TableCell>
+                          <TableCell
+                            className="max-w-[300px] truncate"
+                            title={transaction.description}
+                          >
+                            {transaction.description}
+                          </TableCell>
+                          <TableCell
+                            className={`text-right font-mono ${
+                              transaction.amount < 0 ? "text-red-600" : "text-emerald-600"
+                            }`}
+                          >
+                            {formatCurrency(transaction.amount)}
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={transaction.accountId}
+                              onValueChange={(v) =>
+                                updateTransaction(transaction.id, "accountId", v)
+                              }
+                              disabled={accountsLoading}
                             >
-                              {formatCurrency(transaction.amount)}
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={transaction.accountId}
-                                onValueChange={(v) =>
-                                  updateTransaction(transaction.id, "accountId", v)
-                                }
-                                disabled={accountsLoading}
-                              >
-                                <SelectTrigger className="h-8">
-                                  <SelectValue placeholder="Select..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {activeAccounts.map((account) => (
-                                    <SelectItem
-                                      key={account.id}
-                                      value={account.id.toString()}
-                                    >
-                                      {account.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={transaction.envelopeId}
-                                onValueChange={(v) =>
-                                  updateTransaction(transaction.id, "envelopeId", v)
-                                }
-                                disabled={
-                                  !transaction.accountId ||
-                                  envelopesLoading[transaction.accountId]
-                                }
-                              >
-                                <SelectTrigger className="h-8">
-                                  <SelectValue placeholder="Select..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {(
-                                    envelopesByAccount[transaction.accountId] || []
-                                  ).map((envelope) => (
-                                    <SelectItem
-                                      key={envelope.id}
-                                      value={envelope.id.toString()}
-                                    >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Select..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {activeAccounts.map((account) => (
+                                  <SelectItem key={account.id} value={account.id.toString()}>
+                                    {account.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={transaction.envelopeId}
+                              onValueChange={(v) =>
+                                updateTransaction(transaction.id, "envelopeId", v)
+                              }
+                              disabled={
+                                !transaction.accountId || envelopesLoading[transaction.accountId]
+                              }
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Select..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(envelopesByAccount[transaction.accountId] || []).map(
+                                  (envelope) => (
+                                    <SelectItem key={envelope.id} value={envelope.id.toString()}>
                                       {envelope.name}
                                     </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={transaction.type}
-                                onValueChange={(v) =>
-                                  updateTransaction(
-                                    transaction.id,
-                                    "type",
-                                    v as TransactionType
-                                  )
-                                }
+                                  ),
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={transaction.type}
+                              onValueChange={(v) =>
+                                updateTransaction(transaction.id, "type", v as TransactionType)
+                              }
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="EXPENSE">Expense</SelectItem>
+                                <SelectItem value="INCOME">Income</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            {transaction.status === "valid" && (
+                              <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">
+                                <Check className="mr-1 h-3 w-3" />
+                                Valid
+                              </Badge>
+                            )}
+                            {transaction.status === "warning" && (
+                              <Badge
+                                className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
+                                title={transaction.statusMessage}
                               >
-                                <SelectTrigger className="h-8">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="EXPENSE">Expense</SelectItem>
-                                  <SelectItem value="INCOME">Income</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              {transaction.status === "valid" && (
-                                <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">
-                                  <Check className="mr-1 h-3 w-3" />
-                                  Valid
-                                </Badge>
-                              )}
-                              {transaction.status === "warning" && (
-                                <Badge
-                                  className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
-                                  title={transaction.statusMessage}
-                                >
-                                  <AlertCircle className="mr-1 h-3 w-3" />
-                                  Warning
-                                </Badge>
-                              )}
-                              {transaction.status === "error" && (
-                                <Badge
-                                  className="bg-red-500/10 text-red-600 hover:bg-red-500/20"
-                                  title={transaction.statusMessage}
-                                >
-                                  <X className="mr-1 h-3 w-3" />
-                                  Error
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={() => removeTransaction(transaction.id)}
+                                <AlertCircle className="mr-1 h-3 w-3" />
+                                Warning
+                              </Badge>
+                            )}
+                            {transaction.status === "error" && (
+                              <Badge
+                                className="bg-red-500/10 text-red-600 hover:bg-red-500/20"
+                                title={transaction.statusMessage}
                               >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                                <X className="mr-1 h-3 w-3" />
+                                Error
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => removeTransaction(transaction.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </ScrollArea>
               )}
 
@@ -696,13 +728,11 @@ export default function ImportTransactionsPage() {
               {transactions.length > 0 && (
                 <div className="flex items-center justify-between border-t pt-4 mt-4">
                   <p className="text-sm text-muted-foreground">
-                    Only valid transactions will be imported ({validCount} of {totalCount})
+                    Non-error rows with valid account, envelope, date, and amount will be imported (
+                    {importableCount} ready)
                   </p>
-                  <Button
-                    onClick={handleImport}
-                    disabled={validCount === 0 || isImporting}
-                  >
-                    {isImporting ? "Importing..." : `Import Valid Transactions (${validCount})`}
+                  <Button onClick={handleImport} disabled={importableCount === 0 || isImporting}>
+                    {isImporting ? "Importing..." : `Import Transactions (${importableCount})`}
                   </Button>
                 </div>
               )}

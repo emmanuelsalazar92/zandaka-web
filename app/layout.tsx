@@ -1,8 +1,11 @@
 import { Analytics } from "@vercel/analytics/next"
 import { Geist, Geist_Mono } from "next/font/google"
 
+import { Toaster } from "@/components/ui/toaster"
+
 import type { Metadata } from "next"
 import type React from "react"
+
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -40,6 +43,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`} suppressHydrationWarning>
         {children}
+        <Toaster />
         <Analytics />
       </body>
     </html>
