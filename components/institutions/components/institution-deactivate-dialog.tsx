@@ -37,7 +37,7 @@ export function InstitutionDeactivateDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent data-testid="deactivate-form" aria-label="deactivate-form">
         <AlertDialogHeader>
           <AlertDialogTitle>{isActive ? "Deactivate" : "Activate"} Institution?</AlertDialogTitle>
           <AlertDialogDescription>
@@ -53,7 +53,13 @@ export function InstitutionDeactivateDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button type="button" onClick={onConfirm} disabled={loading || isBlocked}>
+          <Button
+            data-testid="deactivate-submit"
+            aria-label="deactivate-submit"
+            type="button"
+            onClick={onConfirm}
+            disabled={loading || isBlocked}
+          >
             {loading ? "Processing..." : "Confirm"}
           </Button>
         </AlertDialogFooter>

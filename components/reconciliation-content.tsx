@@ -120,10 +120,10 @@ function normalizeStatus(
 }
 
 function formatCurrency(amount: number, currency = "CRC") {
-  return new Intl.NumberFormat("es-CR", {
+  return new Intl.NumberFormat(currency === "CRC" ? "es-CR" : "en-US", {
     style: "currency",
     currency,
-    minimumFractionDigits: currency === "CRC" ? 0 : 2,
+    minimumFractionDigits: 2,
   }).format(amount)
 }
 

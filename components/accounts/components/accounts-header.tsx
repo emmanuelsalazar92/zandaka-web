@@ -49,7 +49,7 @@ export function AccountsHeader({
         mode="create"
         idPrefix="create-account"
         trigger={
-          <Button>
+          <Button data-testid="add-account" aria-label="add-account">
             <Plus className="mr-2 h-4 w-4" />
             Add Account
           </Button>

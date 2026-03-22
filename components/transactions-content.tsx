@@ -48,10 +48,10 @@ import {
 import { cn } from "@/lib/utils"
 
 function formatCurrency(amount: number, currency: string) {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(currency === "CRC" ? "es-CR" : "en-US", {
     style: "currency",
     currency: currency,
-    minimumFractionDigits: currency === "CRC" ? 0 : 2,
+    minimumFractionDigits: 2,
   }).format(amount)
 }
 

@@ -13,7 +13,11 @@ export function InstitutionsEmptyState({ onCreateClick }: InstitutionsEmptyState
     <Card>
       <CardContent className="flex flex-col items-center justify-center py-12">
         <p className="text-muted-foreground mb-4">No institutions yet</p>
-        <Button onClick={onCreateClick}>
+        <Button
+          onClick={onCreateClick}
+          data-testid="add-your-first-institution"
+          aria-label="add-your-first-institution"
+        >
           <Plus className="mr-2 h-4 w-4" />
           Add Your First Institution
         </Button>
