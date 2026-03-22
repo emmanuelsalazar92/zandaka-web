@@ -14,6 +14,7 @@ import {
   Sun,
   CalendarRange,
 } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import * as React from "react"
@@ -62,8 +63,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 flex-col border-r border-sidebar-border bg-sidebar">
         <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
-            <Mail className="h-5 w-5 text-sidebar-primary-foreground" />
+          <div className="flex h-10 w-10 items-center justify-center">
+            <Image
+              src="/favicon.ico"
+              alt="Zandaka"
+              width={40}
+              height={40}
+              className="h-10 w-10 object-contain"
+            />
           </div>
           <span className="font-semibold text-lg text-sidebar-foreground">Zandaka</span>
         </div>
@@ -106,8 +113,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SheetTrigger>
               <SheetContent side="left" className="w-64 p-0">
                 <div className="flex h-16 items-center gap-2 border-b px-6">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                    <Mail className="h-5 w-5 text-primary-foreground" />
+                  <div className="flex h-10 w-10 items-center justify-center">
+                    <Image
+                      src="/favicon.ico"
+                      alt="Zandaka"
+                      width={40}
+                      height={40}
+                      className="h-10 w-10 object-contain"
+                    />
                   </div>
                   <span className="font-semibold text-lg">Zandaka</span>
                 </div>
