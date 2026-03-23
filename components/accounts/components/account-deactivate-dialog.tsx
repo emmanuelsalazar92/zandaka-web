@@ -34,7 +34,7 @@ export function AccountDeactivateDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent data-testid="deactivate-form" aria-label="deactivate-form">
         <AlertDialogHeader>
           <AlertDialogTitle>{isActive ? "Deactivate" : "Activate"} Account?</AlertDialogTitle>
           <AlertDialogDescription>
@@ -45,7 +45,13 @@ export function AccountDeactivateDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button type="button" onClick={onConfirm} disabled={loading}>
+          <Button
+            type="button"
+            data-testid="deactivate-submit"
+            aria-label="deactivate-submit"
+            onClick={onConfirm}
+            disabled={loading}
+          >
             {loading ? "Processing..." : "Confirm"}
           </Button>
         </AlertDialogFooter>

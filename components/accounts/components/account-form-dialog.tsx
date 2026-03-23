@@ -102,7 +102,13 @@ export function AccountFormDialog({
                 ) : null}
               </>
             ) : (
-              <Input id={`${idPrefix}-institution`} value={formData.institutionId} disabled />
+              <Input
+                id={`${idPrefix}-institution`}
+                data-testid="select-institution"
+                aria-label="select-institution"
+                value={formData.institutionId}
+                disabled
+              />
             )}
           </div>
 
@@ -138,7 +144,13 @@ export function AccountFormDialog({
                 </SelectContent>
               </Select>
             ) : (
-              <Input id={`${idPrefix}-currency`} value={formData.currency} disabled />
+              <Input
+                id={`${idPrefix}-currency`}
+                data-testid="select-currency"
+                aria-label="select-currency"
+                value={formData.currency}
+                disabled
+              />
             )}
           </div>
         </div>

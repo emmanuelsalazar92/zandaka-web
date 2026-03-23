@@ -98,12 +98,20 @@ export function AccountsTable({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => onEdit(account)}>
+                            <Button
+                              variant="ghost"
+                              data-testid={"Edit-" + account.id}
+                              aria-label={"Edit-" + account.id}
+                              size="sm"
+                              onClick={() => onEdit(account)}
+                            >
                               <Edit2 className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
+                              data-testid={"Deactivate-" + account.id}
+                              aria-label={"Deactivate-" + account.id}
                               onClick={() => onDeactivate(account.id)}
                             >
                               <XCircle className="h-4 w-4" />
