@@ -9,7 +9,6 @@ import {
   ArrowLeftRight,
   CheckSquare,
   BarChart3,
-  Menu,
   Moon,
   Sun,
   CalendarRange,
@@ -20,8 +19,21 @@ import { usePathname } from "next/navigation"
 import * as React from "react"
 
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { cn } from "@/lib/utils"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar"
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
@@ -35,13 +47,79 @@ const NAV_ITEMS = [
   { icon: BarChart3, label: "Reports", href: "/reports" },
 ]
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+function AppSidebar() {
+  const isPlannerEnabled = process.env.NEXT_PUBLIC_FEATURE_PLANNER === "true"
+  const navItems = isPlannerEnabled
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((item) => item.href !== "/planner")
+  const pathname = usePathname()
+  const { state } = useSidebar()
+
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="border-b border-sidebar-border">
+        <div className="flex h-12 items-center gap-2 px-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center">
+            <Image
+              src="/favicon.ico"
+              alt="Zandaka"
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain"
+            />
+          </div>
+          <span
+            className={`font-semibold text-lg text-sidebar-foreground transition-opacity duration-200 ${
+              state === "collapsed" ? "opacity-0" : "opacity-100"
+            }`}
+          >
+            Zandaka
+          </span>
+        </div>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname === item.href
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.label}
+                    >
+                      <Link
+                        href={item.href}
+                        data-testid={`nav-${item.href.replace("/", "") || "dashboard"}`}
+                        aria-label={item.label}
+                      >
+                        <Icon className="h-5 w-5" />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarRail />
+    </Sidebar>
+  )
+}
+
+function AppHeader() {
+  const pathname = usePathname()
   const isPlannerEnabled = process.env.NEXT_PUBLIC_FEATURE_PLANNER === "true"
   const navItems = isPlannerEnabled
     ? NAV_ITEMS
     : NAV_ITEMS.filter((item) => item.href !== "/planner")
   const [theme, setTheme] = React.useState<"light" | "dark">("light")
-  const pathname = usePathname()
+  const { state } = useSidebar()
 
   React.useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
@@ -59,104 +137,45 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 flex-col border-r border-sidebar-border bg-sidebar">
-        <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-6">
-          <div className="flex h-10 w-10 items-center justify-center">
-            <Image
-              src="/favicon.ico"
-              alt="Zandaka"
-              width={40}
-              height={40}
-              className="h-10 w-10 object-contain"
-            />
-          </div>
-          <span className="font-semibold text-lg text-sidebar-foreground">Zandaka</span>
-        </div>
-        <nav className="flex-1 space-y-1 p-4">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                data-testid={`nav-${item.href.replace("/", "")}`}
-                aria-label={item.label}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/50",
-                )}
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col">
-        {/* Header */}
-        <header className="flex h-16 items-center justify-between border-b bg-card px-4 md:px-6">
-          <div className="flex items-center gap-4">
-            {/* Mobile Menu */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-64 p-0">
-                <div className="flex h-16 items-center gap-2 border-b px-6">
-                  <div className="flex h-10 w-10 items-center justify-center">
-                    <Image
-                      src="/favicon.ico"
-                      alt="Zandaka"
-                      width={40}
-                      height={40}
-                      className="h-10 w-10 object-contain"
-                    />
-                  </div>
-                  <span className="font-semibold text-lg">Zandaka</span>
-                </div>
-                <nav className="space-y-1 p-4">
-                  {navItems.map((item) => {
-                    const Icon = item.icon
-                    const isActive = pathname === item.href
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                          isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50",
-                        )}
-                      >
-                        <Icon className="h-5 w-5" />
-                        {item.label}
-                      </Link>
-                    )
-                  })}
-                </nav>
-              </SheetContent>
-            </Sheet>
-            <h1 className="text-lg font-semibold md:text-xl">
-              {navItems.find((item) => item.href === pathname)?.label || "Dashboard"}
-            </h1>
-          </div>
-          <Button variant="ghost" size="icon" onClick={toggleTheme}>
-            {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-          </Button>
-        </header>
-
-        {/* Page Content */}
-        <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+    <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-4 md:px-6">
+      <div className="flex items-center gap-4">
+        <SidebarTrigger
+          className="-ml-1"
+          aria-expanded={state === "expanded"}
+          aria-label="Toggle sidebar"
+        />
+        <h1 className="text-lg font-semibold md:text-xl">
+          {navItems.find((item) => item.href === pathname)?.label || "Dashboard"}
+        </h1>
       </div>
-    </div>
+      <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+        {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+      </Button>
+    </header>
+  )
+}
+
+export function AppLayout({ children }: { children: React.ReactNode }) {
+  const [defaultOpen, setDefaultOpen] = React.useState(true)
+
+  React.useEffect(() => {
+    const savedState = localStorage.getItem("sidebar:collapsed")
+    if (savedState !== null) {
+      setDefaultOpen(savedState !== "true")
+    }
+  }, [])
+
+  const handleOpenChange = (open: boolean) => {
+    localStorage.setItem("sidebar:collapsed", String(!open))
+  }
+
+  return (
+    <SidebarProvider defaultOpen={defaultOpen} onOpenChange={handleOpenChange}>
+      <AppSidebar />
+      <SidebarInset>
+        <AppHeader />
+        <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
