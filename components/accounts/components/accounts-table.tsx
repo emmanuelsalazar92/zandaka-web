@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { formatCurrency } from "@/lib/currency-formatter"
 import { cn } from "@/lib/utils"
 
 type AccountsTableProps = {
@@ -20,14 +21,6 @@ type AccountsTableProps = {
   error: string | null
   onEdit: (account: AccountUi) => void
   onDeactivate: (accountId: number) => void
-}
-
-function formatCurrency(amount: number, currency: string) {
-  return new Intl.NumberFormat(currency === "CRC" ? "es-CR" : "en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount)
 }
 
 export function AccountsTable({

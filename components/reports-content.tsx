@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { formatCurrency } from "@/lib/currency-formatter"
 import { cn } from "@/lib/utils"
 
 // Mock data for reports
@@ -36,14 +37,6 @@ const negativeEnvelopes = [
 ]
 
 const inconsistencies = [{ account: "Main Checking", difference: 5000, currency: "CRC" }]
-
-function formatCurrency(amount: number, currency: string) {
-  return new Intl.NumberFormat(currency === "CRC" ? "es-CR" : "en-US", {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: 2,
-  }).format(amount)
-}
 
 export function ReportsContent() {
   return (

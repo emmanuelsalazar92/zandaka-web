@@ -45,15 +45,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { formatCurrency } from "@/lib/currency-formatter"
 import { cn } from "@/lib/utils"
-
-function formatCurrency(amount: number, currency: string) {
-  return new Intl.NumberFormat(currency === "CRC" ? "es-CR" : "en-US", {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: 2,
-  }).format(amount)
-}
 
 function applyTypeSign(type: TransactionType, amount: number) {
   if (type === "EXPENSE") return -Math.abs(amount)

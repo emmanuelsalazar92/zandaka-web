@@ -34,6 +34,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
+import { formatCurrency, formatSignedCurrency } from "@/lib/currency-formatter"
 import { cn } from "@/lib/utils"
 
 interface Account {
@@ -117,20 +118,6 @@ function normalizeStatus(
 ): ReconciliationStatus {
   if (status?.toUpperCase() === "BALANCED") return "BALANCED"
   return isBalanced(difference) ? "BALANCED" : "DIFFERENCE"
-}
-
-function formatCurrency(amount: number, currency = "CRC") {
-  return new Intl.NumberFormat(currency === "CRC" ? "es-CR" : "en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount)
-}
-
-function formatSignedCurrency(amount: number, currency = "CRC") {
-  const formatted = formatCurrency(Math.abs(amount), currency)
-  if (isBalanced(amount)) return formatted
-  return `${amount > 0 ? "+" : "-"}${formatted}`
 }
 
 function formatDate(date: string) {

@@ -41,16 +41,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { formatCurrency } from "@/lib/currency-formatter"
 import { cn } from "@/lib/utils"
-
-function formatCurrency(amount: number) {
-  const currency = amount >= -1000 ? "USD" : "CRC"
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: 2,
-  }).format(amount)
-}
 
 type EnvelopeRow = {
   id: number
@@ -58,6 +50,7 @@ type EnvelopeRow = {
   categoryId: number
   category: string
   balance: number
+  currency: string
   active: boolean
 }
 
@@ -68,9 +61,9 @@ export function EnvelopesContent() {
   const [envelopes, setEnvelopes] = React.useState<EnvelopeRow[]>([])
   const [envelopesLoading, setEnvelopesLoading] = React.useState(false)
   const [envelopesError, setEnvelopesError] = React.useState<string | null>(null)
-  const [accounts, setAccounts] = React.useState<{ id: number; name: string; active: boolean }[]>(
-    [],
-  )
+  const [accounts, setAccounts] = React.useState<
+    { id: number; name: string; currency: string; active: boolean }[]
+  >([])
   const [accountsLoading, setAccountsLoading] = React.useState(false)
   const [accountsError, setAccountsError] = React.useState<string | null>(null)
   const [categories, setCategories] = React.useState<
@@ -101,12 +94,14 @@ export function EnvelopesContent() {
         const data = (await res.json()) as {
           id: number
           name: string
+          currency: string
           is_active: number
         }[]
         setAccounts(
           data.map((account) => ({
             id: account.id,
             name: account.name,
+            currency: account.currency,
             active: account.is_active === 1,
           })),
         )
@@ -195,6 +190,7 @@ export function EnvelopesContent() {
         categoryId: number
         categoryName: string
         balance: number
+        currency: string
       }[]
       setEnvelopes(
         data.map((item) => ({
@@ -203,6 +199,7 @@ export function EnvelopesContent() {
           categoryId: item.categoryId,
           category: item.categoryName,
           balance: item.balance,
+          currency: item.currency,
           active: true,
         })),
       )
@@ -275,6 +272,7 @@ export function EnvelopesContent() {
           categoryId: Number.parseInt(formData.categoryId, 10),
           category: linkedCategory?.name || "",
           balance: 0,
+          currency: selectedAccountCurrency,
           active: data.is_active === 1,
         },
       ])
@@ -329,7 +327,9 @@ export function EnvelopesContent() {
     }
   }
 
-  const selectedAccountName = accounts.find((a) => a.id === selectedAccountId)?.name
+  const selectedAccountData = accounts.find((account) => account.id === selectedAccountId)
+  const selectedAccountName = selectedAccountData?.name
+  const selectedAccountCurrency = selectedAccountData?.currency ?? "CRC"
   const selectedAccountLabel = selectedAccountName ?? "this account"
 
   return (
@@ -576,7 +576,7 @@ export function EnvelopesContent() {
                               envelope.balance >= 0 ? "text-success" : "text-error",
                             )}
                           >
-                            {formatCurrency(envelope.balance)}
+                            {formatCurrency(envelope.balance, envelope.currency)}
                           </span>
                         </TableCell>
                         <TableCell>
