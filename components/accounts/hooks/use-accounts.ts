@@ -37,6 +37,8 @@ type ApiAccountBalance = {
   institution: string
   type: string | null
   balance: number
+  has_active_envelopes: boolean
+  active_envelopes_count: number
 }
 
 const toBoolean = (value: unknown) => {
@@ -122,6 +124,8 @@ export function useAccounts() {
           currency: account.currency,
           balance: account.balance,
           active: account.is_active === 1,
+          hasActiveEnvelopes: toBoolean(account.has_active_envelopes),
+          activeEnvelopesCount: account.active_envelopes_count ?? 0,
           allowOverdraft: toBoolean(account.allow_overdraft),
           type: account.type ?? null,
         })),
@@ -186,6 +190,8 @@ export function useAccounts() {
           currency: created?.currency ?? payload.currency,
           balance: created?.balance ?? 0,
           active: toBoolean(created?.active ?? true),
+          hasActiveEnvelopes: false,
+          activeEnvelopesCount: 0,
           allowOverdraft: toBoolean(created?.allowOverdraft ?? payload.allowOverdraft),
           type: created?.type ?? null,
         },
@@ -247,6 +253,12 @@ export function useAccounts() {
 
   const handleDeactivate = async () => {
     if (!deactivateId) return
+
+    const currentAccount = accounts.find((account) => account.id === deactivateId)
+    if (currentAccount?.active && currentAccount.hasActiveEnvelopes) {
+      setDeactivateError("Deactivate all active envelopes before deactivating this account.")
+      return
+    }
 
     try {
       setLoading(true)

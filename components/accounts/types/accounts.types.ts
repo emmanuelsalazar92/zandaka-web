@@ -14,6 +14,8 @@ export type AccountUi = {
   currency: string
   balance: number
   active: boolean
+  hasActiveEnvelopes: boolean
+  activeEnvelopesCount: number
   allowOverdraft: boolean
   type: string | null
 }
