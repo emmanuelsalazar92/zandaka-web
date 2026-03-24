@@ -56,7 +56,7 @@ export function InstitutionFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent>
+      <DialogContent data-testid="institution-form" aria-label="institution-form">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -66,6 +66,8 @@ export function InstitutionFormDialog({
             <Label htmlFor={`${idPrefix}-name`}>Institution Name</Label>
             <Input
               id={`${idPrefix}-name`}
+              data-testid="institution-name"
+              aria-label="institution-name"
               placeholder="e.g., Banco Nacional"
               value={formData.name}
               onChange={(e) => onFormDataChange({ ...formData, name: e.target.value })}
@@ -79,7 +81,11 @@ export function InstitutionFormDialog({
                 onFormDataChange({ ...formData, type: value as InstitutionType })
               }
             >
-              <SelectTrigger id={`${idPrefix}-type`}>
+              <SelectTrigger
+                id={`${idPrefix}-type`}
+                data-testid="institution-type"
+                aria-label="institution-type"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -103,8 +109,8 @@ export function InstitutionFormDialog({
           </Button>
           <Button
             onClick={onSubmit}
-            data-testid="Submit Create Institution"
-            aria-label="Submit Create Institution"
+            data-testid="submit-create-institution"
+            aria-label="submit-create-institution"
             disabled={submitDisabled}
           >
             {submitLabel}

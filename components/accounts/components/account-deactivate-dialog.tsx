@@ -31,21 +31,33 @@ export function AccountDeactivateDialog({
 }: AccountDeactivateDialogProps) {
   const account = accounts.find((item) => item.id === deactivateId)
   const isActive = account?.active ?? true
+  const isBlocked = isActive && (account?.activeEnvelopesCount || 0) > 0
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent data-testid="deactivate-form" aria-label="deactivate-form">
         <AlertDialogHeader>
           <AlertDialogTitle>{isActive ? "Deactivate" : "Activate"} Account?</AlertDialogTitle>
           <AlertDialogDescription>
             This will {isActive ? "deactivate" : "activate"} the account. You can reverse this
             action at any time.
           </AlertDialogDescription>
+          {isBlocked ? (
+            <p className="text-sm text-error">
+              Deactivate all active envelopes before deactivating this account.
+            </p>
+          ) : null}
           {error ? <p className="text-sm text-error">{error}</p> : null}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button type="button" onClick={onConfirm} disabled={loading}>
+          <Button
+            type="button"
+            data-testid="deactivate-submit"
+            aria-label="deactivate-submit"
+            onClick={onConfirm}
+            disabled={loading || isBlocked}
+          >
             {loading ? "Processing..." : "Confirm"}
           </Button>
         </AlertDialogFooter>

@@ -61,7 +61,7 @@ export function AccountFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent>
+      <DialogContent data-testid="account-form" aria-label="account-form">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -84,7 +84,11 @@ export function AccountFormDialog({
                       onFormDataChange({ ...formData, institutionId: value })
                     }
                   >
-                    <SelectTrigger id={`${idPrefix}-institution`}>
+                    <SelectTrigger
+                      id={`${idPrefix}-institution`}
+                      data-testid="select-institution"
+                      aria-label="select-institution"
+                    >
                       <SelectValue placeholder="Select institution" />
                     </SelectTrigger>
                     <SelectContent>
@@ -98,7 +102,13 @@ export function AccountFormDialog({
                 ) : null}
               </>
             ) : (
-              <Input id={`${idPrefix}-institution`} value={formData.institutionId} disabled />
+              <Input
+                id={`${idPrefix}-institution`}
+                data-testid="select-institution"
+                aria-label="select-institution"
+                value={formData.institutionId}
+                disabled
+              />
             )}
           </div>
 
@@ -107,6 +117,8 @@ export function AccountFormDialog({
             <Input
               id={`${idPrefix}-name`}
               placeholder="e.g., Main Checking"
+              data-testid="account-name"
+              aria-label="account-name"
               value={formData.name}
               onChange={(e) => onFormDataChange({ ...formData, name: e.target.value })}
             />
@@ -119,7 +131,11 @@ export function AccountFormDialog({
                 value={formData.currency}
                 onValueChange={(value) => onFormDataChange({ ...formData, currency: value })}
               >
-                <SelectTrigger id={`${idPrefix}-currency`}>
+                <SelectTrigger
+                  id={`${idPrefix}-currency`}
+                  data-testid="select-currency"
+                  aria-label="select-currency"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -128,7 +144,13 @@ export function AccountFormDialog({
                 </SelectContent>
               </Select>
             ) : (
-              <Input id={`${idPrefix}-currency`} value={formData.currency} disabled />
+              <Input
+                id={`${idPrefix}-currency`}
+                data-testid="select-currency"
+                aria-label="select-currency"
+                value={formData.currency}
+                disabled
+              />
             )}
           </div>
         </div>
@@ -136,7 +158,12 @@ export function AccountFormDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={submitDisabled}>
+          <Button
+            onClick={onSubmit}
+            data-testid="submit-create-account"
+            aria-label="submit-create-account"
+            disabled={submitDisabled}
+          >
             {submitLabel}
           </Button>
         </DialogFooter>

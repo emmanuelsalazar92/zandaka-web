@@ -18,7 +18,7 @@ export function BalanceBadge({ amount, currency, className, showSign = true }: B
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: currency,
-      minimumFractionDigits: currency === "CRC" ? 0 : 2,
+      minimumFractionDigits: 2,
     }).format(Math.abs(amt))
   }
 

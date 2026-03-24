@@ -23,10 +23,10 @@ type AccountsTableProps = {
 }
 
 function formatCurrency(amount: number, currency: string) {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(currency === "CRC" ? "es-CR" : "en-US", {
     style: "currency",
     currency,
-    minimumFractionDigits: currency === "CRC" ? 0 : 2,
+    minimumFractionDigits: 2,
   }).format(amount)
 }
 
@@ -75,43 +75,60 @@ export function AccountsTable({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {instAccounts.map((account) => (
-                      <TableRow key={account.id}>
-                        <TableCell className="font-medium">{account.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{account.currency}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={cn(
-                              "font-semibold",
-                              account.balance >= 0 ? "text-success" : "text-error",
-                            )}
-                          >
-                            {formatCurrency(account.balance, account.currency)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={account.active ? "default" : "secondary"}>
-                            {account.active ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => onEdit(account)}>
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onDeactivate(account.id)}
+                    {instAccounts.map((account) => {
+                      const disableDeactivate = account.active && account.hasActiveEnvelopes
+                      const deactivateTitle = disableDeactivate
+                        ? "Deactivate all active envelopes before deactivating this account"
+                        : undefined
+
+                      return (
+                        <TableRow key={account.id}>
+                          <TableCell className="font-medium">{account.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{account.currency}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={cn(
+                                "font-semibold",
+                                account.balance >= 0 ? "text-success" : "text-error",
+                              )}
                             >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              {formatCurrency(account.balance, account.currency)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={account.active ? "default" : "secondary"}>
+                              {account.active ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                data-testid={"Edit-" + account.id}
+                                aria-label={"Edit-" + account.id}
+                                size="sm"
+                                onClick={() => onEdit(account)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                data-testid={"Deactivate-" + account.id}
+                                aria-label={"Deactivate-" + account.id}
+                                disabled={disableDeactivate}
+                                title={deactivateTitle}
+                                onClick={() => onDeactivate(account.id)}
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
