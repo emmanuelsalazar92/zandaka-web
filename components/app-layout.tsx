@@ -156,21 +156,8 @@ function AppHeader() {
 }
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const [defaultOpen, setDefaultOpen] = React.useState(true)
-
-  React.useEffect(() => {
-    const savedState = localStorage.getItem("sidebar:collapsed")
-    if (savedState !== null) {
-      setDefaultOpen(savedState !== "true")
-    }
-  }, [])
-
-  const handleOpenChange = (open: boolean) => {
-    localStorage.setItem("sidebar:collapsed", String(!open))
-  }
-
   return (
-    <SidebarProvider defaultOpen={defaultOpen} onOpenChange={handleOpenChange}>
+    <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
         <AppHeader />
