@@ -58,7 +58,7 @@ function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex h-12 items-center gap-2 px-2">
+        <div className="flex h-12 items-center gap-2 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center">
             <Image
               src="/favicon.ico"
@@ -69,9 +69,7 @@ function AppSidebar() {
             />
           </div>
           <span
-            className={`font-semibold text-lg text-sidebar-foreground transition-opacity duration-200 ${
-              state === "collapsed" ? "opacity-0" : "opacity-100"
-            }`}
+            className={`font-semibold text-lg text-sidebar-foreground transition-opacity duration-200 group-data-[collapsible=icon]:hidden`}
           >
             Zandaka
           </span>
@@ -159,9 +157,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="flex flex-col">
         <AppHeader />
-        <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+        <div className="flex-1 overflow-auto p-4 md:p-6">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   )
