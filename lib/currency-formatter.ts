@@ -11,6 +11,7 @@ export function formatCurrency(amount: number, currency: string): string {
  */
 export function formatSignedCurrency(amount: number, currency: string): string {
   const formatted = formatCurrency(Math.abs(amount), currency)
+  if (Math.abs(amount) < 0.01) return formatted
   return amount > 0 ? `+${formatted}` : `-${formatted}`
 }
 
