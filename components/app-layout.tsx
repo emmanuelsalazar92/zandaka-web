@@ -53,7 +53,6 @@ function AppSidebar() {
     ? NAV_ITEMS
     : NAV_ITEMS.filter((item) => item.href !== "/planner")
   const pathname = usePathname()
-  const { state } = useSidebar()
 
   return (
     <Sidebar collapsible="icon">
@@ -84,11 +83,7 @@ function AppSidebar() {
                 const isActive = pathname === item.href
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      tooltip={item.label}
-                    >
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
                       <Link
                         href={item.href}
                         data-testid={`nav-${item.href.replace("/", "") || "dashboard"}`}
