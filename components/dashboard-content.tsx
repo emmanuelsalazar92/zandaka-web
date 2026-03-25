@@ -6,8 +6,6 @@ import * as React from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Table,
   TableBody,
@@ -21,11 +19,6 @@ import { cn } from "@/lib/utils"
 
 const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
 const API_BASE_URL = `${API_ROOT}/api`
-
-// Remaining dashboard sections still use temporary mock data.
-const summaryData = {
-  negativeEnvelopes: 2,
-}
 
 const topCategories = [
   { name: "Groceries", amount: 125000, currency: "CRC" },
@@ -76,23 +69,45 @@ const negativeEnvelopes = [
 
 const inconsistencies = [{ account: "Main Checking", difference: 5000, currency: "CRC" }]
 
+type CurrencyCode = "CRC" | "USD"
+
+type ExchangeRateResponse = {
+  compra: number
+  venta: number
+  fecha: string
+}
+
 export function DashboardContent() {
-  const [exchangeRate, setExchangeRate] = React.useState("530")
   const [totals, setTotals] = React.useState({
     CRC: 0,
     USD: 0,
   })
+  const [negativeEnvelopeCount, setNegativeEnvelopeCount] = React.useState(0)
   const [activeInconsistenciesCount, setActiveInconsistenciesCount] = React.useState(0)
-  const [totalsLoading, setTotalsLoading] = React.useState(true)
-  const [totalsError, setTotalsError] = React.useState<string | null>(null)
+  const [preferredCurrency, setPreferredCurrency] = React.useState<CurrencyCode | null>(null)
+  const [exchangeRate, setExchangeRate] = React.useState<ExchangeRateResponse | null>(null)
+  const [summaryLoading, setSummaryLoading] = React.useState(true)
+  const [summaryError, setSummaryError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const fetchDashboardSummary = async () => {
       try {
-        setTotalsLoading(true)
-        setTotalsError(null)
+        setSummaryLoading(true)
+        setSummaryError(null)
 
-        const [crcRes, usdRes, activeInconsistenciesRes] = await Promise.all([
+        const today = new Date()
+        const day = today.getDate()
+        const month = today.getMonth() + 1
+        const year = today.getFullYear()
+
+        const [
+          crcRes,
+          usdRes,
+          activeInconsistenciesRes,
+          negativeEnvelopesRes,
+          preferredCurrencyRes,
+          exchangeRateRes,
+        ] = await Promise.all([
           fetch(`${API_BASE_URL}/reports/envelope-total?currency=CRC`, {
             headers: { Accept: "application/json" },
           }),
@@ -102,16 +117,42 @@ export function DashboardContent() {
           fetch(`${API_BASE_URL}/reports/active-inconsistencies`, {
             headers: { Accept: "application/json" },
           }),
+          fetch(`${API_BASE_URL}/reports/negative-envelopes`, {
+            headers: { Accept: "application/json" },
+          }),
+          fetch(`${API_BASE_URL}/users/preferred-currency`, {
+            headers: { Accept: "application/json" },
+          }),
+          fetch(`${API_BASE_URL}/exchange-rate/${day}/${month}/${year}`, {
+            headers: { Accept: "application/json" },
+          }),
         ])
 
-        if (!crcRes.ok || !usdRes.ok || !activeInconsistenciesRes.ok) {
-          throw new Error("Failed to load dashboard totals")
+        if (
+          !crcRes.ok ||
+          !usdRes.ok ||
+          !negativeEnvelopesRes.ok ||
+          !activeInconsistenciesRes.ok ||
+          !preferredCurrencyRes.ok ||
+          !exchangeRateRes.ok
+        ) {
+          throw new Error("Failed to load dashboard summary")
         }
 
-        const [crcData, usdData, activeInconsistenciesData] = (await Promise.all([
+        const [
+          crcData,
+          usdData,
+          activeInconsistenciesData,
+          negativeEnvelopesData,
+          preferredCurrencyData,
+          exchangeRateData,
+        ] = (await Promise.all([
           crcRes.json(),
           usdRes.json(),
           activeInconsistenciesRes.json(),
+          negativeEnvelopesRes.json(),
+          preferredCurrencyRes.json(),
+          exchangeRateRes.json(),
         ])) as [
           { currency: string; total: number },
           { currency: string; total: number },
@@ -123,32 +164,54 @@ export function DashboardContent() {
             calculatedBalance: number
             difference: number
           }>,
+          Array<{ envelopeId: number }>,
+          { userId: number; baseCurrency: CurrencyCode },
+          ExchangeRateResponse,
         ]
 
         setTotals({
           CRC: crcData.total ?? 0,
           USD: usdData.total ?? 0,
         })
+        setNegativeEnvelopeCount(negativeEnvelopesData.length)
         setActiveInconsistenciesCount(activeInconsistenciesData.length)
+        setPreferredCurrency(preferredCurrencyData.baseCurrency.toUpperCase() as CurrencyCode)
+        setExchangeRate(exchangeRateData)
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to load dashboard totals"
-        setTotalsError(message)
+        const message = error instanceof Error ? error.message : "Failed to load dashboard summary"
+        setSummaryError(message)
         setTotals({
           CRC: 0,
           USD: 0,
         })
+        setNegativeEnvelopeCount(0)
         setActiveInconsistenciesCount(0)
+        setPreferredCurrency(null)
+        setExchangeRate(null)
       } finally {
-        setTotalsLoading(false)
+        setSummaryLoading(false)
       }
     }
 
     fetchDashboardSummary()
   }, [])
 
-  const parsedExchangeRate = Number.parseFloat(exchangeRate)
+  const consolidatedCurrency = preferredCurrency ?? "CRC"
   const consolidatedTotal =
-    totals.CRC + totals.USD * (Number.isFinite(parsedExchangeRate) ? parsedExchangeRate : 0)
+    preferredCurrency === "USD"
+      ? totals.USD + (exchangeRate ? totals.CRC / exchangeRate.venta : 0)
+      : totals.CRC + (exchangeRate ? totals.USD * exchangeRate.compra : 0)
+  const exchangeRateMessage = exchangeRate
+    ? `Today's exchange rate (${exchangeRate.fecha}): buy at ${formatCurrency(exchangeRate.compra, "CRC")} and sell at ${formatCurrency(exchangeRate.venta, "CRC")} per USD.`
+    : summaryLoading
+      ? "Loading today's exchange rate..."
+      : "Today's exchange rate is unavailable."
+  const consolidatedDescription =
+    preferredCurrency === null
+      ? "Loading your preferred currency."
+      : preferredCurrency === "USD"
+        ? "Calculated using today's sell rate because your preferred currency is USD."
+        : "Calculated using today's buy rate because your preferred currency is CRC."
 
   return (
     <div className="space-y-6">
@@ -162,7 +225,7 @@ export function DashboardContent() {
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totals.CRC, "CRC")}</div>
             <p className="text-xs text-muted-foreground">
-              {totalsLoading ? "Loading total..." : "Active envelopes in CRC"}
+              {summaryLoading ? "Loading total..." : "Active envelopes in CRC"}
             </p>
           </CardContent>
         </Card>
@@ -175,7 +238,7 @@ export function DashboardContent() {
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totals.USD, "USD")}</div>
             <p className="text-xs text-muted-foreground">
-              {totalsLoading ? "Loading total..." : "Active envelopes in USD"}
+              {summaryLoading ? "Loading total..." : "Active envelopes in USD"}
             </p>
           </CardContent>
         </Card>
@@ -186,13 +249,8 @@ export function DashboardContent() {
             <TrendingDown className="h-4 w-4 text-error" />
           </CardHeader>
           <CardContent>
-            <div
-              className={cn(
-                "text-2xl font-bold",
-                summaryData.negativeEnvelopes > 0 && "text-error",
-              )}
-            >
-              {summaryData.negativeEnvelopes}
+            <div className={cn("text-2xl font-bold", negativeEnvelopeCount > 0 && "text-error")}>
+              {negativeEnvelopeCount}
             </div>
             <p className="text-xs text-muted-foreground">Requires attention</p>
           </CardContent>
@@ -217,28 +275,32 @@ export function DashboardContent() {
       {/* Net Worth Calculator */}
       <Card>
         <CardHeader>
-          <CardTitle>Net Worth (Optional Consolidated)</CardTitle>
-          <CardDescription>Enter exchange rate to view consolidated total</CardDescription>
+          <CardTitle>Net Worth (Consolidated)</CardTitle>
+          <CardDescription>
+            Using today&apos;s exchange rate and your preferred currency
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-end gap-4">
             <div className="flex-1 space-y-2">
-              <Label htmlFor="exchange-rate">USD to CRC Exchange Rate</Label>
-              <Input
-                id="exchange-rate"
-                type="number"
-                placeholder="e.g., 530"
-                value={exchangeRate}
-                onChange={(event) => setExchangeRate(event.target.value)}
-              />
+              <p className="text-sm font-medium">Today&apos;s Exchange Rate</p>
+              <p className="text-sm text-muted-foreground">{exchangeRateMessage}</p>
+              <p className="text-xs text-muted-foreground">
+                Preferred currency:{" "}
+                {preferredCurrency ?? (summaryLoading ? "Loading..." : "Unavailable")}
+              </p>
             </div>
             <div className="flex-1">
-              <p className="text-sm text-muted-foreground mb-1">Consolidated Total (CRC)</p>
-              <p className="text-3xl font-bold">{formatCurrency(consolidatedTotal, "CRC")}</p>
-              <p className="text-xs text-muted-foreground mt-1">Based on manual exchange rate</p>
+              <p className="text-sm text-muted-foreground mb-1">
+                Consolidated Total ({consolidatedCurrency})
+              </p>
+              <p className="text-3xl font-bold">
+                {formatCurrency(consolidatedTotal, consolidatedCurrency)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">{consolidatedDescription}</p>
             </div>
           </div>
-          {totalsError && <p className="mt-3 text-sm text-error">{totalsError}</p>}
+          {summaryError && <p className="mt-3 text-sm text-error">{summaryError}</p>}
         </CardContent>
       </Card>
 

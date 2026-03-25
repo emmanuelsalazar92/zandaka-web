@@ -70,6 +70,8 @@ interface ApiTransactionLine {
   envelopeId?: number
   accountName?: string
   account_name?: string
+  accountCurrency?: string | null
+  account_currency?: string | null
   categoryName?: string
   category_name?: string
 }
@@ -81,6 +83,8 @@ interface ApiTransaction {
   date: string
   description: string
   type: TransactionType
+  accountCurrency?: string | null
+  account_currency?: string | null
   created_at?: string
   createdAt?: string
   lines: ApiTransactionLine[]
@@ -175,6 +179,11 @@ export function TransactionsContent() {
         return {
           accountId,
           account: accountName,
+          accountCurrency:
+            line.accountCurrency ??
+            line.account_currency ??
+            accounts.find((account) => account.id === accountId)?.currency ??
+            "CRC",
           envelopeId,
           envelope: envelopeName,
           amount: applyTypeSign(transaction.type, line.amount),
@@ -1000,7 +1009,7 @@ export function TransactionsContent() {
                         )}
                       >
                         {line.amount > 0 ? "+" : ""}
-                        {formatCurrency(line.amount, "CRC")}
+                        {formatCurrency(line.amount, line.accountCurrency)}
                       </span>
                     </TableCell>
                   </TableRow>

@@ -1,6 +1,7 @@
 import { Analytics } from "@vercel/analytics/next"
 import { Geist, Geist_Mono } from "next/font/google"
 
+import { AppLayout } from "@/components/app-layout"
 import { Toaster } from "@/components/ui/toaster"
 
 import type { Metadata } from "next"
@@ -28,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`} suppressHydrationWarning>
-        {children}
+        <AppLayout>{children}</AppLayout>
         <Toaster />
         <Analytics />
       </body>
