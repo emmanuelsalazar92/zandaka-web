@@ -1,6 +1,7 @@
 "use client"
 
 import { AlertTriangle, TrendingDown, Wallet, AlertCircle } from "lucide-react"
+import * as React from "react"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -18,16 +19,11 @@ import {
 import { formatCurrency } from "@/lib/currency-formatter"
 import { cn } from "@/lib/utils"
 
-// Mock data for demonstration
+const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+const API_BASE_URL = `${API_ROOT}/api`
+
+// Remaining dashboard sections still use temporary mock data.
 const summaryData = {
-  crc: {
-    total: 1250000,
-    spent: 342500,
-  },
-  usd: {
-    total: 2340,
-    spent: 450,
-  },
   negativeEnvelopes: 2,
   inconsistencies: 1,
 }
@@ -82,6 +78,61 @@ const negativeEnvelopes = [
 const inconsistencies = [{ account: "Main Checking", difference: 5000, currency: "CRC" }]
 
 export function DashboardContent() {
+  const [exchangeRate, setExchangeRate] = React.useState("530")
+  const [totals, setTotals] = React.useState({
+    CRC: 0,
+    USD: 0,
+  })
+  const [totalsLoading, setTotalsLoading] = React.useState(true)
+  const [totalsError, setTotalsError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    const fetchTotals = async () => {
+      try {
+        setTotalsLoading(true)
+        setTotalsError(null)
+
+        const [crcRes, usdRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/reports/envelope-total?currency=CRC`, {
+            headers: { Accept: "application/json" },
+          }),
+          fetch(`${API_BASE_URL}/reports/envelope-total?currency=USD`, {
+            headers: { Accept: "application/json" },
+          }),
+        ])
+
+        if (!crcRes.ok || !usdRes.ok) {
+          throw new Error("Failed to load dashboard totals")
+        }
+
+        const [crcData, usdData] = (await Promise.all([crcRes.json(), usdRes.json()])) as Array<{
+          currency: string
+          total: number
+        }>
+
+        setTotals({
+          CRC: crcData.total ?? 0,
+          USD: usdData.total ?? 0,
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to load dashboard totals"
+        setTotalsError(message)
+        setTotals({
+          CRC: 0,
+          USD: 0,
+        })
+      } finally {
+        setTotalsLoading(false)
+      }
+    }
+
+    fetchTotals()
+  }, [])
+
+  const parsedExchangeRate = Number.parseFloat(exchangeRate)
+  const consolidatedTotal =
+    totals.CRC + totals.USD * (Number.isFinite(parsedExchangeRate) ? parsedExchangeRate : 0)
+
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
@@ -92,9 +143,9 @@ export function DashboardContent() {
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(summaryData.crc.total, "CRC")}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totals.CRC, "CRC")}</div>
             <p className="text-xs text-muted-foreground">
-              Spent: {formatCurrency(summaryData.crc.spent, "CRC")}
+              {totalsLoading ? "Loading total..." : "Active envelopes in CRC"}
             </p>
           </CardContent>
         </Card>
@@ -105,9 +156,9 @@ export function DashboardContent() {
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(summaryData.usd.total, "USD")}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totals.USD, "USD")}</div>
             <p className="text-xs text-muted-foreground">
-              Spent: {formatCurrency(summaryData.usd.spent, "USD")}
+              {totalsLoading ? "Loading total..." : "Active envelopes in USD"}
             </p>
           </CardContent>
         </Card>
@@ -159,16 +210,21 @@ export function DashboardContent() {
           <div className="flex items-end gap-4">
             <div className="flex-1 space-y-2">
               <Label htmlFor="exchange-rate">USD to CRC Exchange Rate</Label>
-              <Input id="exchange-rate" type="number" placeholder="e.g., 530" defaultValue="530" />
+              <Input
+                id="exchange-rate"
+                type="number"
+                placeholder="e.g., 530"
+                value={exchangeRate}
+                onChange={(event) => setExchangeRate(event.target.value)}
+              />
             </div>
             <div className="flex-1">
               <p className="text-sm text-muted-foreground mb-1">Consolidated Total (CRC)</p>
-              <p className="text-3xl font-bold">
-                {formatCurrency(summaryData.crc.total + summaryData.usd.total * 530, "CRC")}
-              </p>
+              <p className="text-3xl font-bold">{formatCurrency(consolidatedTotal, "CRC")}</p>
               <p className="text-xs text-muted-foreground mt-1">Based on manual exchange rate</p>
             </div>
           </div>
+          {totalsError && <p className="mt-3 text-sm text-error">{totalsError}</p>}
         </CardContent>
       </Card>
 
