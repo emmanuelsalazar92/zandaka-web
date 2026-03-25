@@ -25,7 +25,6 @@ const API_BASE_URL = `${API_ROOT}/api`
 // Remaining dashboard sections still use temporary mock data.
 const summaryData = {
   negativeEnvelopes: 2,
-  inconsistencies: 1,
 }
 
 const topCategories = [
@@ -83,37 +82,54 @@ export function DashboardContent() {
     CRC: 0,
     USD: 0,
   })
+  const [activeInconsistenciesCount, setActiveInconsistenciesCount] = React.useState(0)
   const [totalsLoading, setTotalsLoading] = React.useState(true)
   const [totalsError, setTotalsError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
-    const fetchTotals = async () => {
+    const fetchDashboardSummary = async () => {
       try {
         setTotalsLoading(true)
         setTotalsError(null)
 
-        const [crcRes, usdRes] = await Promise.all([
+        const [crcRes, usdRes, activeInconsistenciesRes] = await Promise.all([
           fetch(`${API_BASE_URL}/reports/envelope-total?currency=CRC`, {
             headers: { Accept: "application/json" },
           }),
           fetch(`${API_BASE_URL}/reports/envelope-total?currency=USD`, {
             headers: { Accept: "application/json" },
           }),
+          fetch(`${API_BASE_URL}/reports/active-inconsistencies`, {
+            headers: { Accept: "application/json" },
+          }),
         ])
 
-        if (!crcRes.ok || !usdRes.ok) {
+        if (!crcRes.ok || !usdRes.ok || !activeInconsistenciesRes.ok) {
           throw new Error("Failed to load dashboard totals")
         }
 
-        const [crcData, usdData] = (await Promise.all([crcRes.json(), usdRes.json()])) as Array<{
-          currency: string
-          total: number
-        }>
+        const [crcData, usdData, activeInconsistenciesData] = (await Promise.all([
+          crcRes.json(),
+          usdRes.json(),
+          activeInconsistenciesRes.json(),
+        ])) as [
+          { currency: string; total: number },
+          { currency: string; total: number },
+          Array<{
+            accountId: number
+            accountName: string
+            reconciliationDate: string
+            realBalance: number
+            calculatedBalance: number
+            difference: number
+          }>,
+        ]
 
         setTotals({
           CRC: crcData.total ?? 0,
           USD: usdData.total ?? 0,
         })
+        setActiveInconsistenciesCount(activeInconsistenciesData.length)
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to load dashboard totals"
         setTotalsError(message)
@@ -121,12 +137,13 @@ export function DashboardContent() {
           CRC: 0,
           USD: 0,
         })
+        setActiveInconsistenciesCount(0)
       } finally {
         setTotalsLoading(false)
       }
     }
 
-    fetchTotals()
+    fetchDashboardSummary()
   }, [])
 
   const parsedExchangeRate = Number.parseFloat(exchangeRate)
@@ -188,12 +205,9 @@ export function DashboardContent() {
           </CardHeader>
           <CardContent>
             <div
-              className={cn(
-                "text-2xl font-bold",
-                summaryData.inconsistencies > 0 && "text-warning",
-              )}
+              className={cn("text-2xl font-bold", activeInconsistenciesCount > 0 && "text-warning")}
             >
-              {summaryData.inconsistencies}
+              {activeInconsistenciesCount}
             </div>
             <p className="text-xs text-muted-foreground">Open reconciliation issues</p>
           </CardContent>
