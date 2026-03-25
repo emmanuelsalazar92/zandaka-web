@@ -5,6 +5,16 @@ import * as React from "react"
 
 import { EmptyState } from "@/components/empty-state"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -72,7 +82,7 @@ type ApiReconciliation = {
   closed_at?: string | null
 }
 
-type ReconciliationStatus = "BALANCED" | "DIFFERENCE"
+type ReconciliationStatus = "OPEN" | "BALANCED" | "IGNORED"
 
 interface ReconciliationHistoryItem {
   id: number
@@ -116,8 +126,10 @@ function normalizeStatus(
   status: string | null | undefined,
   difference: number,
 ): ReconciliationStatus {
+  if (status?.toUpperCase() === "IGNORED") return "IGNORED"
+  if (status?.toUpperCase() === "OPEN") return "OPEN"
   if (status?.toUpperCase() === "BALANCED") return "BALANCED"
-  return isBalanced(difference) ? "BALANCED" : "DIFFERENCE"
+  return isBalanced(difference) ? "BALANCED" : "OPEN"
 }
 
 function formatDate(date: string) {
@@ -266,19 +278,41 @@ async function createReconciliation(payload: {
   return normalizeReconciliation(data, payload.accountId)
 }
 
-function StatusIndicator({ status }: { status: ReconciliationStatus }) {
-  const isDifference = status === "DIFFERENCE"
+async function ignoreReconciliation(
+  reconciliationId: number,
+  accountId: number,
+): Promise<ReconciliationHistoryItem> {
+  const response = await fetch(`${API_BASE_URL}/reconciliations/${reconciliationId}/ignore`, {
+    method: "POST",
+    headers: { Accept: "application/json" },
+  })
 
+  if (!response.ok) {
+    let message = "Failed to ignore reconciliation"
+
+    try {
+      const payload = (await response.json()) as unknown
+      message = getApiErrorMessage(payload, message)
+    } catch {}
+
+    throw new Error(message)
+  }
+
+  const data = (await response.json()) as ApiReconciliation
+  return normalizeReconciliation(data, accountId)
+}
+
+function StatusIndicator({ status }: { status: ReconciliationStatus }) {
   return (
     <Badge
       variant="outline"
       className={cn(
-        isDifference
-          ? "border-warning/40 bg-warning/10 text-warning"
-          : "border-success/40 bg-success/10 text-success",
+        status === "OPEN" && "border-warning/40 bg-warning/10 text-warning",
+        status === "BALANCED" && "border-success/40 bg-success/10 text-success",
+        status === "IGNORED" && "border-muted bg-muted text-muted-foreground",
       )}
     >
-      {isDifference ? "Difference" : "Balanced"}
+      {status === "OPEN" ? "Open" : status === "BALANCED" ? "Balanced" : "Ignored"}
     </Badge>
   )
 }
@@ -291,10 +325,13 @@ export function ReconciliationContent() {
   const [accountsLoading, setAccountsLoading] = React.useState(true)
   const [historyLoading, setHistoryLoading] = React.useState(false)
   const [createLoading, setCreateLoading] = React.useState(false)
+  const [ignoreLoading, setIgnoreLoading] = React.useState(false)
   const [hasLoadedHistory, setHasLoadedHistory] = React.useState(false)
   const [accountsError, setAccountsError] = React.useState<string | null>(null)
   const [historyError, setHistoryError] = React.useState<string | null>(null)
   const [createError, setCreateError] = React.useState<string | null>(null)
+  const [ignoreError, setIgnoreError] = React.useState<string | null>(null)
+  const [ignoreId, setIgnoreId] = React.useState<number | null>(null)
   const [createForm, setCreateForm] = React.useState<NewReconciliationForm>({
     accountId: "",
     date: getDefaultReconciliationDate(),
@@ -462,6 +499,24 @@ export function ReconciliationContent() {
     await loadReconciliationHistory(nextSelectedAccountId || selectedAccountId)
   }
 
+  const handleIgnore = async () => {
+    if (ignoreId === null || !selectedAccount) return
+
+    try {
+      setIgnoreLoading(true)
+      setIgnoreError(null)
+
+      await ignoreReconciliation(ignoreId, selectedAccount.id)
+      setIgnoreId(null)
+      await loadReconciliationHistory(selectedAccount.id.toString())
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to ignore reconciliation"
+      setIgnoreError(message)
+    } finally {
+      setIgnoreLoading(false)
+    }
+  }
+
   const latestReconciliation = reconciliations[0] ?? null
 
   if (accountsLoading || (!hasLoadedHistory && selectableAccounts.length > 0)) {
@@ -594,17 +649,21 @@ export function ReconciliationContent() {
                   <TableHead className="text-right">Calculated Balance</TableHead>
                   <TableHead className="text-right">Difference</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {reconciliations.map((reconciliation) => {
-                  const isDifference = reconciliation.status === "DIFFERENCE"
+                  const isOpen = reconciliation.status === "OPEN"
                   const currency = selectedAccount?.currency ?? "CRC"
 
                   return (
                     <TableRow
                       key={reconciliation.id}
-                      className={cn(isDifference && "bg-warning/5")}
+                      className={cn(
+                        isOpen && "bg-warning/5",
+                        reconciliation.status === "IGNORED" && "bg-muted/40",
+                      )}
                     >
                       <TableCell>
                         <div className="space-y-1">
@@ -626,7 +685,11 @@ export function ReconciliationContent() {
                         <span
                           className={cn(
                             "font-mono font-semibold",
-                            isDifference ? "text-warning" : "text-success",
+                            isOpen
+                              ? "text-warning"
+                              : reconciliation.status === "IGNORED"
+                                ? "text-muted-foreground"
+                                : "text-success",
                           )}
                         >
                           {formatSignedCurrency(reconciliation.difference, currency)}
@@ -634,6 +697,22 @@ export function ReconciliationContent() {
                       </TableCell>
                       <TableCell>
                         <StatusIndicator status={reconciliation.status} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {reconciliation.status === "OPEN" ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setIgnoreError(null)
+                              setIgnoreId(reconciliation.id)
+                            }}
+                          >
+                            Ignore
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No actions</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   )
@@ -779,6 +858,55 @@ export function ReconciliationContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={ignoreId !== null}
+        onOpenChange={(open) => {
+          if (ignoreLoading) return
+          if (!open) {
+            setIgnoreId(null)
+            setIgnoreError(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ignore this reconciliation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the active reconciliation as ignored, close it, and let you create a
+              new reconciliation for the same account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {ignoreError && (
+            <Alert className="border-warning/50 bg-warning/5">
+              <AlertCircle className="h-4 w-4 text-warning" />
+              <AlertDescription>{ignoreError}</AlertDescription>
+            </Alert>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setIgnoreId(null)
+                setIgnoreError(null)
+              }}
+              disabled={ignoreLoading}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                void handleIgnore()
+              }}
+              disabled={ignoreLoading}
+            >
+              {ignoreLoading ? "Ignoring..." : "Ignore Reconciliation"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
