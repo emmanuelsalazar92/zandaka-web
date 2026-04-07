@@ -14,6 +14,8 @@ import {
 import Link from "next/link"
 import * as React from "react"
 
+import { EmptyState } from "@/components/empty-state"
+import { TransactionTimeline, TransactionTimelineSkeleton } from "@/components/transaction-timeline"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -38,14 +40,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { formatCurrency } from "@/lib/currency-formatter"
+  groupTransactionsForTimeline,
+  type TimelineTransaction,
+  type TransactionType,
+} from "@/lib/transaction-timeline"
 import { cn } from "@/lib/utils"
 
 function applyTypeSign(type: TransactionType, amount: number) {
@@ -59,8 +57,6 @@ interface TransactionLine {
   envelopeId: string
   amount: string
 }
-
-type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER" | "ADJUSTMENT"
 
 interface ApiTransactionLine {
   account_id?: number
@@ -102,6 +98,35 @@ interface PaginationMeta {
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
 const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
 const API_BASE_URL = `${API_ROOT}/api`
+const amountInputFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 20,
+})
+
+function sanitizeAmountInput(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return ""
+
+  const isNegative = trimmed.startsWith("-")
+  const unsigned = trimmed.replace(/[^0-9.,]/g, "")
+  const decimalSeparatorIndex = Math.max(unsigned.lastIndexOf("."), unsigned.lastIndexOf(","))
+  const hasDecimalPoint = decimalSeparatorIndex >= 0
+  const rawIntegerPart = hasDecimalPoint ? unsigned.slice(0, decimalSeparatorIndex) : unsigned
+  const rawDecimalPart = hasDecimalPoint ? unsigned.slice(decimalSeparatorIndex + 1) : ""
+  const integerDigits = rawIntegerPart.replace(/\D/g, "")
+  const decimalPart = rawDecimalPart.replace(/\D/g, "")
+  const integerPart = integerDigits.replace(/^0+(?=\d)/, "") || integerDigits || "0"
+  const formattedInteger = amountInputFormatter.format(Number.parseInt(integerPart, 10) || 0)
+
+  if (hasDecimalPoint) {
+    return `${isNegative ? "-" : ""}${formattedInteger}.${decimalPart}`
+  }
+
+  return `${isNegative ? "-" : ""}${formattedInteger}`
+}
+
+function parseAmountInput(value: string) {
+  return Number.parseFloat(value.replace(/,/g, ""))
+}
 
 export function TransactionsContent() {
   const [transactionsData, setTransactionsData] = React.useState<ApiTransaction[]>([])
@@ -119,6 +144,7 @@ export function TransactionsContent() {
   const [createLoading, setCreateLoading] = React.useState(false)
   const [createError, setCreateError] = React.useState<string | null>(null)
   const [isFiltersOpen, setIsFiltersOpen] = React.useState(false)
+  const [transactionsReloadToken, setTransactionsReloadToken] = React.useState(0)
   const [accounts, setAccounts] = React.useState<
     { id: number; name: string; currency: string; active: boolean }[]
   >([])
@@ -160,7 +186,7 @@ export function TransactionsContent() {
     [accounts],
   )
 
-  const transactions = React.useMemo(() => {
+  const transactions = React.useMemo<TimelineTransaction[]>(() => {
     return transactionsData.map((transaction) => {
       const lines = transaction.lines.map((line) => {
         const accountId = line.account_id ?? line.accountId ?? 0
@@ -199,6 +225,10 @@ export function TransactionsContent() {
       }
     })
   }, [transactionsData, accounts, envelopesByAccount])
+  const timelineGroups = React.useMemo(
+    () => groupTransactionsForTimeline(transactions),
+    [transactions],
+  )
 
   React.useEffect(() => {
     const fetchAccounts = async () => {
@@ -339,7 +369,7 @@ export function TransactionsContent() {
     }
 
     void fetchTransactions()
-  }, [filters, currentPage, itemsPerPage, userId])
+  }, [filters, currentPage, itemsPerPage, transactionsReloadToken, userId])
 
   // Pagination calculations
   const totalPages = Math.max(transactionsMeta.totalPages || 0, 1)
@@ -404,6 +434,8 @@ export function TransactionsContent() {
     const newLines = [...formData.lines]
     if (field === "accountId") {
       newLines[index] = { ...newLines[index], accountId: value, envelopeId: "" }
+    } else if (field === "amount") {
+      newLines[index] = { ...newLines[index], amount: sanitizeAmountInput(value) }
     } else {
       newLines[index] = { ...newLines[index], [field]: value }
     }
@@ -412,18 +444,18 @@ export function TransactionsContent() {
 
   const normalizeLineAmountForType = (index: number) => {
     if (formData.type !== "INCOME" && formData.type !== "EXPENSE") return
-    const amount = Number.parseFloat(formData.lines[index]?.amount ?? "")
+    const amount = parseAmountInput(formData.lines[index]?.amount ?? "")
     if (Number.isNaN(amount)) return
     const newLines = [...formData.lines]
     newLines[index] = {
       ...newLines[index],
-      amount: applyTypeSign(formData.type, amount).toString(),
+      amount: sanitizeAmountInput(applyTypeSign(formData.type, amount).toString()),
     }
     setFormData({ ...formData, lines: newLines })
   }
 
   const getTransactionLineSum = () => {
-    return formData.lines.reduce((sum, line) => sum + (Number.parseFloat(line.amount) || 0), 0)
+    return formData.lines.reduce((sum, line) => sum + (parseAmountInput(line.amount) || 0), 0)
   }
 
   const isTransferValid =
@@ -457,7 +489,7 @@ export function TransactionsContent() {
         lines: formData.lines.map((line) => ({
           accountId: Number.parseInt(line.accountId),
           envelopeId: Number.parseInt(line.envelopeId),
-          amount: applyTypeSign(formData.type, Number.parseFloat(line.amount)),
+          amount: applyTypeSign(formData.type, parseAmountInput(line.amount)),
         })),
       }
       const res = await fetch(`${API_BASE_URL}/transactions`, {
@@ -505,6 +537,10 @@ export function TransactionsContent() {
     setIsCreateOpen(false)
   }
 
+  const retryTransactions = React.useCallback(() => {
+    setTransactionsReloadToken((current) => current + 1)
+  }, [])
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -549,19 +585,19 @@ export function TransactionsContent() {
                 New Transaction
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-h-[90vh] sm:max-w-5xl xl:max-w-6xl">
               <DialogHeader>
                 <DialogTitle>Create Transaction</DialogTitle>
                 <DialogDescription>Record a new transaction with ledger lines</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4 max-h-96 overflow-y-auto">
+              <div className="max-h-[70vh] space-y-4 overflow-y-auto py-4 pr-2">
                 {createError && (
                   <Alert className="border-error/50 bg-error/5">
                     <AlertCircle className="h-4 w-4 text-error" />
                     <AlertDescription className="text-sm">{createError}</AlertDescription>
                   </Alert>
                 )}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(180px,0.9fr)_minmax(160px,0.7fr)_minmax(0,1.4fr)]">
                   <div className="space-y-2">
                     <Label htmlFor="date">Date</Label>
                     <Input
@@ -621,15 +657,18 @@ export function TransactionsContent() {
                   )}
 
                   {formData.lines.map((line, index) => (
-                    <div key={index} className="flex gap-2 items-end">
-                      <div className="flex-1 space-y-1">
+                    <div
+                      key={index}
+                      className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(220px,0.8fr)_auto] md:items-end"
+                    >
+                      <div className="min-w-0 space-y-1">
                         <Label className="text-xs">Account</Label>
                         <Select
                           value={line.accountId}
                           onValueChange={(value) => handleLineChange(index, "accountId", value)}
                           disabled={accountsLoading || activeAccounts.length === 0}
                         >
-                          <SelectTrigger className="h-9">
+                          <SelectTrigger className="h-9 w-full">
                             <SelectValue
                               placeholder={
                                 accountsLoading
@@ -652,14 +691,14 @@ export function TransactionsContent() {
                           <p className="text-xs text-error mt-1">{accountsError}</p>
                         )}
                       </div>
-                      <div className="flex-1 space-y-1">
+                      <div className="min-w-0 space-y-1">
                         <Label className="text-xs">Envelope</Label>
                         <Select
                           value={line.envelopeId}
                           onValueChange={(value) => handleLineChange(index, "envelopeId", value)}
                           disabled={!line.accountId || envelopesLoading[line.accountId]}
                         >
-                          <SelectTrigger className="h-9">
+                          <SelectTrigger className="h-9 w-full">
                             <SelectValue
                               placeholder={
                                 !line.accountId
@@ -684,15 +723,16 @@ export function TransactionsContent() {
                           </p>
                         )}
                       </div>
-                      <div className="flex-1 space-y-1">
+                      <div className="space-y-1">
                         <Label className="text-xs">Amount</Label>
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           placeholder="0.00"
                           value={line.amount}
                           onChange={(e) => handleLineChange(index, "amount", e.target.value)}
                           onBlur={() => normalizeLineAmountForType(index)}
-                          className="h-9"
+                          className="h-9 text-right font-medium tabular-nums"
                         />
                       </div>
                       <Button
@@ -700,7 +740,7 @@ export function TransactionsContent() {
                         size="sm"
                         onClick={() => handleRemoveLine(index)}
                         disabled={formData.lines.length === 1}
-                        className="h-9 w-9 p-0"
+                        className="h-9 w-9 p-0 md:self-end"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -924,7 +964,8 @@ export function TransactionsContent() {
               <CardDescription>
                 {transactionsMeta.totalItems === transactions.length
                   ? `${transactionsMeta.totalItems} transaction(s)`
-                  : `${transactions.length} of ${transactionsMeta.totalItems} transaction(s)`}
+                  : `${transactions.length} of ${transactionsMeta.totalItems} transaction(s)`}{" "}
+                grouped by posted date for faster scanning.
               </CardDescription>
             </div>
             {activeFilterCount > 0 && (
@@ -965,58 +1006,46 @@ export function TransactionsContent() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
-          {transactionsError && (
+        <CardContent className="space-y-4">
+          {transactionsError && transactionsMeta.totalItems > 0 && (
             <Alert className="mb-4 border-error/50 bg-error/5">
               <AlertCircle className="h-4 w-4 text-error" />
               <AlertDescription className="text-sm">{transactionsError}</AlertDescription>
             </Alert>
           )}
-          {transactionsLoading && (
-            <p className="text-sm text-muted-foreground mb-3">Loading transactions...</p>
+          {transactionsLoading && timelineGroups.length > 0 ? (
+            <p className="text-sm text-muted-foreground">Refreshing activity timeline...</p>
+          ) : null}
+
+          {transactionsLoading && timelineGroups.length === 0 ? (
+            <TransactionTimelineSkeleton />
+          ) : transactionsMeta.totalItems === 0 && transactionsError ? (
+            <EmptyState
+              icon={AlertCircle}
+              title="Unable to load transactions"
+              description={transactionsError}
+              actionLabel="Retry"
+              onAction={retryTransactions}
+            />
+          ) : transactionsMeta.totalItems === 0 ? (
+            <EmptyState
+              icon={Search}
+              title={
+                activeFilterCount > 0
+                  ? "No transactions match these filters"
+                  : "No transactions yet"
+              }
+              description={
+                activeFilterCount > 0
+                  ? "Try widening the date range, removing filters, or searching with a different keyword."
+                  : "Record income, expenses, or transfers to start building your financial activity timeline."
+              }
+              actionLabel={activeFilterCount > 0 ? "Clear filters" : undefined}
+              onAction={activeFilterCount > 0 ? clearFilters : undefined}
+            />
+          ) : (
+            <TransactionTimeline groups={timelineGroups} />
           )}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Account/Envelope</TableHead>
-                <TableHead>Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transactions.map((transaction) =>
-                transaction.lines.map((line, lineIndex) => (
-                  <TableRow key={`${transaction.id}-${lineIndex}`}>
-                    <TableCell className="text-sm">{transaction.date}</TableCell>
-                    <TableCell className="font-medium">
-                      {lineIndex === 0 ? transaction.description : ""}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {transaction.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {line.account} / {line.envelope}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={cn(
-                          "font-semibold",
-                          line.amount > 0 ? "text-success" : "text-error",
-                        )}
-                      >
-                        {line.amount > 0 ? "+" : ""}
-                        {formatCurrency(line.amount, line.accountCurrency)}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                )),
-              )}
-            </TableBody>
-          </Table>
 
           {/* Pagination */}
           {transactionsMeta.totalItems > 0 && (

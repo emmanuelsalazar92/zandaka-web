@@ -1,9 +1,11 @@
 "use client"
 
-import { AlertCircle, Plus, RefreshCw, Scale } from "lucide-react"
+import { AlertCircle, Eye, Plus, RefreshCw, Scale } from "lucide-react"
+import Link from "next/link"
 import * as React from "react"
 
 import { EmptyState } from "@/components/empty-state"
+import { ReconciliationDenominationTable } from "@/components/reconciliation-denomination-table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   AlertDialog,
@@ -44,92 +46,37 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  buildDenominationPayloadLines,
+  calculateDenominationCountedTotal,
+  createEmptyQuantityMap,
+  type DenominationQuantityMap,
+} from "@/lib/cash-denomination-helpers"
 import { formatCurrency, formatSignedCurrency } from "@/lib/currency-formatter"
+import {
+  createReconciliation,
+  fetchCashDenominationsForAccount,
+  fetchExpectedTotalForAccount,
+  fetchReconciliation,
+  fetchReconciliationAccounts,
+  fetchReconciliations,
+  ignoreReconciliation,
+  type AccountCashDenominations,
+  type ReconciliationAccount,
+  type ReconciliationCountMethod,
+  type ReconciliationExpectedTotal,
+  type ReconciliationRecord,
+  type ReconciliationStatus,
+} from "@/lib/reconciliation-api"
 import { cn } from "@/lib/utils"
-
-interface Account {
-  id: number
-  name: string
-  currency: string
-  active: boolean
-}
-
-type ApiAccount = {
-  id: number
-  name: string
-  currency?: string | null
-  is_active?: number | boolean
-  active?: boolean
-}
-
-type ApiReconciliation = {
-  id: number
-  accountId?: number
-  account_id?: number
-  date: string
-  realBalance?: number | null
-  real_balance?: number | null
-  calculatedBalance?: number | null
-  calculated_balance?: number | null
-  difference?: number | null
-  status?: string | null
-  isActive?: number | boolean | null
-  is_active?: number | boolean | null
-  note?: string | null
-  createdAt?: string | null
-  created_at?: string | null
-  closedAt?: string | null
-  closed_at?: string | null
-}
-
-type ReconciliationStatus = "OPEN" | "BALANCED" | "IGNORED"
-
-interface ReconciliationHistoryItem {
-  id: number
-  accountId: number
-  date: string
-  realBalance: number
-  calculatedBalance: number
-  difference: number
-  status: ReconciliationStatus
-  note: string | null
-  createdAt: string | null
-  closedAt: string | null
-}
 
 interface NewReconciliationForm {
   accountId: string
   date: string
-  realBalance: string
+  countMethod: ReconciliationCountMethod
+  manualCountedTotal: string
   note: string
-}
-
-const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
-const API_BASE_URL = `${API_ROOT}/api`
-
-function toNumber(value: unknown) {
-  const parsed = typeof value === "number" ? value : Number(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-function toBoolean(value: unknown) {
-  if (typeof value === "boolean") return value
-  if (typeof value === "number") return value === 1
-  return Boolean(value)
-}
-
-function isBalanced(difference: number) {
-  return Math.abs(difference) < 0.01
-}
-
-function normalizeStatus(
-  status: string | null | undefined,
-  difference: number,
-): ReconciliationStatus {
-  if (status?.toUpperCase() === "IGNORED") return "IGNORED"
-  if (status?.toUpperCase() === "OPEN") return "OPEN"
-  if (status?.toUpperCase() === "BALANCED") return "BALANCED"
-  return isBalanced(difference) ? "BALANCED" : "OPEN"
+  quantities: DenominationQuantityMap
 }
 
 function formatDate(date: string) {
@@ -147,7 +94,7 @@ function getDefaultReconciliationDate() {
   return new Date().toISOString().split("T")[0] ?? ""
 }
 
-function parseRealBalance(value: string) {
+function parseManualCountedTotal(value: string) {
   const normalized = value.trim().replace(/\s+/g, "").replace(/,/g, ".")
   if (!normalized) return null
 
@@ -155,151 +102,12 @@ function parseRealBalance(value: string) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-function getApiErrorMessage(payload: unknown, fallback: string) {
-  if (!payload || typeof payload !== "object") return fallback
-
-  const directMessage = (payload as { message?: unknown }).message
-  if (typeof directMessage === "string" && directMessage.trim().length > 0) {
-    return directMessage
-  }
-
-  const errorPayload = (payload as { error?: { message?: unknown; details?: unknown } }).error
-  const nestedMessage = errorPayload?.message
-  if (typeof nestedMessage === "string" && nestedMessage.trim().length > 0) {
-    return nestedMessage
-  }
-
-  const details = errorPayload?.details
-  if (Array.isArray(details) && details.length > 0) {
-    const firstDetail = details[0]
-    if (typeof firstDetail === "string" && firstDetail.trim().length > 0) {
-      return firstDetail
-    }
-
-    if (firstDetail && typeof firstDetail === "object") {
-      const detailMessage = (firstDetail as { message?: unknown }).message
-      if (typeof detailMessage === "string" && detailMessage.trim().length > 0) {
-        return detailMessage
-      }
-    }
-  }
-
-  return fallback
+function isBalanced(difference: number) {
+  return Math.abs(difference) < 0.01
 }
 
-function normalizeReconciliation(
-  item: ApiReconciliation,
-  fallbackAccountId: number,
-): ReconciliationHistoryItem {
-  const calculatedBalance = toNumber(item.calculatedBalance ?? item.calculated_balance)
-  const realBalance = toNumber(item.realBalance ?? item.real_balance)
-  const difference = toNumber(item.difference ?? realBalance - calculatedBalance)
-
-  return {
-    id: item.id,
-    accountId: toNumber(item.accountId ?? item.account_id ?? fallbackAccountId),
-    date: item.date,
-    realBalance,
-    calculatedBalance,
-    difference,
-    status: normalizeStatus(item.status, difference),
-    note: item.note ?? null,
-    createdAt: item.createdAt ?? item.created_at ?? null,
-    closedAt: item.closedAt ?? item.closed_at ?? null,
-  }
-}
-
-async function fetchAccounts(): Promise<Account[]> {
-  const response = await fetch(`${API_BASE_URL}/accounts`, {
-    headers: { Accept: "application/json" },
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to load accounts")
-  }
-
-  const data = (await response.json()) as ApiAccount[]
-  return data.map((account) => ({
-    id: account.id,
-    name: account.name,
-    currency: account.currency || "CRC",
-    active: toBoolean(account.is_active ?? account.active),
-  }))
-}
-
-async function fetchReconciliations(accountId: number): Promise<ReconciliationHistoryItem[]> {
-  const params = new URLSearchParams({
-    account_id: accountId.toString(),
-    limit: "50",
-    offset: "0",
-  })
-
-  const response = await fetch(`${API_BASE_URL}/reconciliations?${params.toString()}`, {
-    headers: { Accept: "application/json" },
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to load reconciliation history")
-  }
-
-  const data = (await response.json()) as ApiReconciliation[]
-  return data
-    .map((item) => normalizeReconciliation(item, accountId))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-}
-
-async function createReconciliation(payload: {
-  accountId: number
-  date: string
-  realBalance: number
-  note?: string
-}): Promise<ReconciliationHistoryItem> {
-  const response = await fetch(`${API_BASE_URL}/reconciliations`, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  })
-
-  if (!response.ok) {
-    let message = "Failed to create reconciliation"
-
-    try {
-      const payload = (await response.json()) as unknown
-      message = getApiErrorMessage(payload, message)
-    } catch {}
-
-    throw new Error(message)
-  }
-
-  const data = (await response.json()) as ApiReconciliation
-  return normalizeReconciliation(data, payload.accountId)
-}
-
-async function ignoreReconciliation(
-  reconciliationId: number,
-  accountId: number,
-): Promise<ReconciliationHistoryItem> {
-  const response = await fetch(`${API_BASE_URL}/reconciliations/${reconciliationId}/ignore`, {
-    method: "POST",
-    headers: { Accept: "application/json" },
-  })
-
-  if (!response.ok) {
-    let message = "Failed to ignore reconciliation"
-
-    try {
-      const payload = (await response.json()) as unknown
-      message = getApiErrorMessage(payload, message)
-    } catch {}
-
-    throw new Error(message)
-  }
-
-  const data = (await response.json()) as ApiReconciliation
-  return normalizeReconciliation(data, accountId)
+function getCountMethodLabel(countMethod: ReconciliationCountMethod) {
+  return countMethod === "DENOMINATION_COUNT" ? "Denominations" : "Manual Total"
 }
 
 function StatusIndicator({ status }: { status: ReconciliationStatus }) {
@@ -318,9 +126,9 @@ function StatusIndicator({ status }: { status: ReconciliationStatus }) {
 }
 
 export function ReconciliationContent() {
-  const [accounts, setAccounts] = React.useState<Account[]>([])
+  const [accounts, setAccounts] = React.useState<ReconciliationAccount[]>([])
   const [selectedAccountId, setSelectedAccountId] = React.useState("")
-  const [reconciliations, setReconciliations] = React.useState<ReconciliationHistoryItem[]>([])
+  const [reconciliations, setReconciliations] = React.useState<ReconciliationRecord[]>([])
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [accountsLoading, setAccountsLoading] = React.useState(true)
   const [historyLoading, setHistoryLoading] = React.useState(false)
@@ -335,9 +143,23 @@ export function ReconciliationContent() {
   const [createForm, setCreateForm] = React.useState<NewReconciliationForm>({
     accountId: "",
     date: getDefaultReconciliationDate(),
-    realBalance: "",
+    countMethod: "MANUAL_TOTAL",
+    manualCountedTotal: "",
     note: "",
+    quantities: {},
   })
+  const [cashCatalog, setCashCatalog] = React.useState<AccountCashDenominations | null>(null)
+  const [cashCatalogLoading, setCashCatalogLoading] = React.useState(false)
+  const [cashCatalogError, setCashCatalogError] = React.useState<string | null>(null)
+  const [expectedPreview, setExpectedPreview] = React.useState<ReconciliationExpectedTotal | null>(
+    null,
+  )
+  const [expectedPreviewLoading, setExpectedPreviewLoading] = React.useState(false)
+  const [expectedPreviewError, setExpectedPreviewError] = React.useState<string | null>(null)
+  const [detailId, setDetailId] = React.useState<number | null>(null)
+  const [detailRecord, setDetailRecord] = React.useState<ReconciliationRecord | null>(null)
+  const [detailLoading, setDetailLoading] = React.useState(false)
+  const [detailError, setDetailError] = React.useState<string | null>(null)
   const selectedAccountIdRef = React.useRef("")
 
   React.useEffect(() => {
@@ -347,7 +169,7 @@ export function ReconciliationContent() {
   const selectableAccounts = React.useMemo(() => {
     const preferred = accounts.filter((account) => account.active)
     const list = preferred.length > 0 ? preferred : accounts
-    return [...list].sort((a, b) => a.name.localeCompare(b.name))
+    return [...list].sort((left, right) => left.name.localeCompare(right.name))
   }, [accounts])
 
   const selectedAccount = React.useMemo(
@@ -355,40 +177,102 @@ export function ReconciliationContent() {
     [selectableAccounts, selectedAccountId],
   )
 
-  const parsedRealBalance = React.useMemo(
-    () => parseRealBalance(createForm.realBalance),
-    [createForm.realBalance],
+  const createAccount = React.useMemo(
+    () =>
+      selectableAccounts.find((account) => account.id.toString() === createForm.accountId) ?? null,
+    [createForm.accountId, selectableAccounts],
   )
 
-  const createFormErrors = React.useMemo(
-    () => ({
+  const createAccountIsCash = createAccount?.type === "CASH"
+  const manualCountedTotal = React.useMemo(
+    () => parseManualCountedTotal(createForm.manualCountedTotal),
+    [createForm.manualCountedTotal],
+  )
+
+  const denominationPayloadLines = React.useMemo(
+    () =>
+      createForm.countMethod === "DENOMINATION_COUNT" && cashCatalog
+        ? buildDenominationPayloadLines(cashCatalog.denominations, createForm.quantities)
+        : [],
+    [cashCatalog, createForm.countMethod, createForm.quantities],
+  )
+
+  const countedTotalPreview = React.useMemo(() => {
+    if (createForm.countMethod === "DENOMINATION_COUNT" && cashCatalog) {
+      return calculateDenominationCountedTotal(cashCatalog.denominations, createForm.quantities)
+    }
+    return manualCountedTotal ?? 0
+  }, [cashCatalog, createForm.countMethod, createForm.quantities, manualCountedTotal])
+
+  const differencePreview = React.useMemo(() => {
+    if (!expectedPreview) return null
+    return countedTotalPreview - expectedPreview.expectedTotal
+  }, [countedTotalPreview, expectedPreview])
+
+  const createFormErrors = React.useMemo(() => {
+    if (createForm.countMethod === "DENOMINATION_COUNT") {
+      return {
+        accountId: createForm.accountId ? "" : "Select an account.",
+        date: createForm.date ? "" : "Select a reconciliation date.",
+        countedTotal:
+          cashCatalog?.denominations.length === 0
+            ? "Configure at least one denomination for this currency."
+            : denominationPayloadLines.length === 0
+              ? "Enter at least one denomination quantity greater than zero."
+              : "",
+      }
+    }
+
+    return {
       accountId: createForm.accountId ? "" : "Select an account.",
       date: createForm.date ? "" : "Select a reconciliation date.",
-      realBalance:
-        createForm.realBalance.trim().length === 0
-          ? "Enter the real balance from the bank."
-          : parsedRealBalance === null
+      countedTotal:
+        createForm.manualCountedTotal.trim().length === 0
+          ? "Enter the counted total."
+          : manualCountedTotal === null
             ? "Enter a valid numeric amount."
             : "",
-    }),
-    [createForm.accountId, createForm.date, createForm.realBalance, parsedRealBalance],
-  )
+    }
+  }, [
+    cashCatalog?.denominations.length,
+    createForm.accountId,
+    createForm.countMethod,
+    createForm.date,
+    createForm.manualCountedTotal,
+    denominationPayloadLines.length,
+    manualCountedTotal,
+  ])
 
   const isCreateFormValid = React.useMemo(
-    () => Object.values(createFormErrors).every((value) => value.length === 0),
-    [createFormErrors],
+    () =>
+      Object.values(createFormErrors).every((value) => value.length === 0) &&
+      !cashCatalogLoading &&
+      !expectedPreviewLoading,
+    [cashCatalogLoading, createFormErrors, expectedPreviewLoading],
   )
 
   const resetCreateForm = React.useCallback(
     (accountId?: string) => {
+      const nextAccountId =
+        accountId || selectedAccountIdRef.current || selectableAccounts[0]?.id.toString() || ""
+      const account =
+        selectableAccounts.find((item) => item.id.toString() === nextAccountId) ?? null
+      const countMethod: ReconciliationCountMethod =
+        account?.type === "CASH" ? "DENOMINATION_COUNT" : "MANUAL_TOTAL"
+
       setCreateForm({
-        accountId:
-          accountId || selectedAccountIdRef.current || selectableAccounts[0]?.id.toString() || "",
+        accountId: nextAccountId,
         date: getDefaultReconciliationDate(),
-        realBalance: "",
+        countMethod,
+        manualCountedTotal: "",
         note: "",
+        quantities: {},
       })
       setCreateError(null)
+      setCashCatalog(null)
+      setCashCatalogError(null)
+      setExpectedPreview(null)
+      setExpectedPreviewError(null)
     },
     [selectableAccounts],
   )
@@ -398,7 +282,7 @@ export function ReconciliationContent() {
       setAccountsLoading(true)
       setAccountsError(null)
 
-      const accountsData = await fetchAccounts()
+      const accountsData = await fetchReconciliationAccounts()
       setAccounts(accountsData)
 
       const preferred = accountsData.filter((account) => account.active)
@@ -410,7 +294,6 @@ export function ReconciliationContent() {
           : (available[0]?.id.toString() ?? "")
 
       setSelectedAccountId(nextSelectedAccountId)
-
       return nextSelectedAccountId
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load accounts"
@@ -447,6 +330,63 @@ export function ReconciliationContent() {
     }
   }, [])
 
+  const loadCashCatalog = React.useCallback(async (accountId: string) => {
+    if (!accountId) {
+      setCashCatalog(null)
+      setCashCatalogError(null)
+      return
+    }
+
+    try {
+      setCashCatalogLoading(true)
+      setCashCatalogError(null)
+      const payload = await fetchCashDenominationsForAccount(Number(accountId))
+      setCashCatalog(payload)
+      setCreateForm((current) => {
+        const nextQuantities = {
+          ...createEmptyQuantityMap(payload.denominations),
+          ...current.quantities,
+        }
+        payload.denominations.forEach((denomination) => {
+          if (!(denomination.id in nextQuantities)) {
+            nextQuantities[denomination.id] = ""
+          }
+        })
+        return {
+          ...current,
+          quantities: nextQuantities,
+        }
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load denominations"
+      setCashCatalog(null)
+      setCashCatalogError(message)
+    } finally {
+      setCashCatalogLoading(false)
+    }
+  }, [])
+
+  const loadExpectedPreview = React.useCallback(async (accountId: string, date: string) => {
+    if (!accountId || !date) {
+      setExpectedPreview(null)
+      setExpectedPreviewError(null)
+      return
+    }
+
+    try {
+      setExpectedPreviewLoading(true)
+      setExpectedPreviewError(null)
+      const payload = await fetchExpectedTotalForAccount(Number(accountId), date)
+      setExpectedPreview(payload)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load expected total"
+      setExpectedPreview(null)
+      setExpectedPreviewError(message)
+    } finally {
+      setExpectedPreviewLoading(false)
+    }
+  }, [])
+
   React.useEffect(() => {
     void loadAccounts()
   }, [loadAccounts])
@@ -455,13 +395,28 @@ export function ReconciliationContent() {
     void loadReconciliationHistory(selectedAccountId)
   }, [loadReconciliationHistory, selectedAccountId])
 
+  React.useEffect(() => {
+    if (!isCreateOpen) return
+    if (createAccount?.type === "CASH") {
+      void loadCashCatalog(createForm.accountId)
+    } else {
+      setCashCatalog(null)
+      setCashCatalogError(null)
+    }
+  }, [createAccount?.type, createForm.accountId, isCreateOpen, loadCashCatalog])
+
+  React.useEffect(() => {
+    if (!isCreateOpen) return
+    void loadExpectedPreview(createForm.accountId, createForm.date)
+  }, [createForm.accountId, createForm.date, isCreateOpen, loadExpectedPreview])
+
   const handleOpenCreate = () => {
     resetCreateForm(selectedAccountId || selectableAccounts[0]?.id.toString())
     setIsCreateOpen(true)
   }
 
   const handleCreate = async () => {
-    if (!isCreateFormValid || parsedRealBalance === null) {
+    if (!isCreateFormValid) {
       setCreateError("Complete the required fields with valid values.")
       return
     }
@@ -474,8 +429,12 @@ export function ReconciliationContent() {
       await createReconciliation({
         accountId: Number(accountId),
         date: createForm.date,
-        realBalance: parsedRealBalance,
+        countMethod: createForm.countMethod,
+        countedTotal:
+          createForm.countMethod === "MANUAL_TOTAL" ? (manualCountedTotal ?? undefined) : undefined,
         note: createForm.note.trim() || undefined,
+        lines:
+          createForm.countMethod === "DENOMINATION_COUNT" ? denominationPayloadLines : undefined,
       })
 
       setIsCreateOpen(false)
@@ -506,7 +465,7 @@ export function ReconciliationContent() {
       setIgnoreLoading(true)
       setIgnoreError(null)
 
-      await ignoreReconciliation(ignoreId, selectedAccount.id)
+      await ignoreReconciliation(ignoreId)
       setIgnoreId(null)
       await loadReconciliationHistory(selectedAccount.id.toString())
     } catch (error) {
@@ -514,6 +473,23 @@ export function ReconciliationContent() {
       setIgnoreError(message)
     } finally {
       setIgnoreLoading(false)
+    }
+  }
+
+  const handleViewDetail = async (reconciliationId: number) => {
+    try {
+      setDetailId(reconciliationId)
+      setDetailLoading(true)
+      setDetailError(null)
+      const detail = await fetchReconciliation(reconciliationId)
+      setDetailRecord(detail)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load reconciliation detail"
+      setDetailRecord(null)
+      setDetailError(message)
+    } finally {
+      setDetailLoading(false)
     }
   }
 
@@ -557,7 +533,7 @@ export function ReconciliationContent() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Reconciliation History</h2>
           <p className="text-muted-foreground">
-            Review the latest reconciliation results for each account.
+            Reconcile manually or, for CASH accounts, count by denominations with persisted detail.
           </p>
         </div>
 
@@ -600,9 +576,9 @@ export function ReconciliationContent() {
           <div>
             <CardTitle>{selectedAccount?.name ?? "Selected account"}</CardTitle>
             <CardDescription>
-              {reconciliations.length > 0
-                ? `${reconciliations.length} reconciliation record${reconciliations.length === 1 ? "" : "s"} found`
-                : "No reconciliation records yet"}
+              {selectedAccount?.type === "CASH"
+                ? "This CASH account can be reconciled using denomination counts or a manual total."
+                : "Use the existing manual total flow for this account."}
             </CardDescription>
           </div>
 
@@ -645,8 +621,9 @@ export function ReconciliationContent() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Real Balance</TableHead>
-                  <TableHead className="text-right">Calculated Balance</TableHead>
+                  <TableHead>Method</TableHead>
+                  <TableHead className="text-right">Counted Total</TableHead>
+                  <TableHead className="text-right">Expected Total</TableHead>
                   <TableHead className="text-right">Difference</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -654,8 +631,8 @@ export function ReconciliationContent() {
               </TableHeader>
               <TableBody>
                 {reconciliations.map((reconciliation) => {
+                  const currency = reconciliation.currency || selectedAccount?.currency || "CRC"
                   const isOpen = reconciliation.status === "OPEN"
-                  const currency = selectedAccount?.currency ?? "CRC"
 
                   return (
                     <TableRow
@@ -675,21 +652,26 @@ export function ReconciliationContent() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(reconciliation.realBalance, currency)}
+                      <TableCell>
+                        <Badge variant="outline">
+                          {getCountMethodLabel(reconciliation.countMethod)}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {formatCurrency(reconciliation.calculatedBalance, currency)}
+                        {formatCurrency(reconciliation.countedTotal, currency)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatCurrency(reconciliation.expectedTotal, currency)}
                       </TableCell>
                       <TableCell className="text-right">
                         <span
                           className={cn(
                             "font-mono font-semibold",
-                            isOpen
-                              ? "text-warning"
+                            isBalanced(reconciliation.difference)
+                              ? "text-success"
                               : reconciliation.status === "IGNORED"
                                 ? "text-muted-foreground"
-                                : "text-success",
+                                : "text-warning",
                           )}
                         >
                           {formatSignedCurrency(reconciliation.difference, currency)}
@@ -699,20 +681,28 @@ export function ReconciliationContent() {
                         <StatusIndicator status={reconciliation.status} />
                       </TableCell>
                       <TableCell className="text-right">
-                        {reconciliation.status === "OPEN" ? (
+                        <div className="flex justify-end gap-2">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              setIgnoreError(null)
-                              setIgnoreId(reconciliation.id)
-                            }}
+                            onClick={() => void handleViewDetail(reconciliation.id)}
                           >
-                            Ignore
+                            <Eye className="mr-2 h-4 w-4" />
+                            View
                           </Button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No actions</span>
-                        )}
+                          {reconciliation.status === "OPEN" ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setIgnoreError(null)
+                                setIgnoreId(reconciliation.id)
+                              }}
+                            >
+                              Ignore
+                            </Button>
+                          ) : null}
+                        </div>
                       </TableCell>
                     </TableRow>
                   )
@@ -733,11 +723,13 @@ export function ReconciliationContent() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>New Reconciliation</DialogTitle>
             <DialogDescription>
-              Start a new reconciliation by selecting an account, date, and real bank balance.
+              {createAccountIsCash
+                ? "Choose a count method. Denomination counts are recalculated and persisted line by line."
+                : "Record the counted total for the selected account and date."}
             </DialogDescription>
           </DialogHeader>
 
@@ -749,83 +741,165 @@ export function ReconciliationContent() {
               </Alert>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="reconciliation-account">Account</Label>
-              <Select
-                value={createForm.accountId}
-                onValueChange={(value) =>
-                  setCreateForm((current) => ({
-                    ...current,
-                    accountId: value,
-                  }))
-                }
-              >
-                <SelectTrigger
-                  id="reconciliation-account"
-                  aria-invalid={Boolean(createFormErrors.accountId)}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="reconciliation-account">Account</Label>
+                <Select
+                  value={createForm.accountId}
+                  onValueChange={(value) => {
+                    const account =
+                      selectableAccounts.find((item) => item.id.toString() === value) ?? null
+                    setCreateForm((current) => ({
+                      ...current,
+                      accountId: value,
+                      countMethod: account?.type === "CASH" ? "DENOMINATION_COUNT" : "MANUAL_TOTAL",
+                      manualCountedTotal: "",
+                      quantities: {},
+                    }))
+                    setCashCatalog(null)
+                    setCashCatalogError(null)
+                    setCreateError(null)
+                  }}
                 >
-                  <SelectValue placeholder="Select account" />
-                </SelectTrigger>
-                <SelectContent>
-                  {selectableAccounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id.toString()}>
-                      {account.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {createFormErrors.accountId && (
-                <p className="text-xs text-destructive">{createFormErrors.accountId}</p>
-              )}
+                  <SelectTrigger
+                    id="reconciliation-account"
+                    aria-invalid={Boolean(createFormErrors.accountId)}
+                  >
+                    <SelectValue placeholder="Select account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectableAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id.toString()}>
+                        {account.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {createFormErrors.accountId && (
+                  <p className="text-xs text-destructive">{createFormErrors.accountId}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="reconciliation-date">Reconciliation Date</Label>
+                <Input
+                  id="reconciliation-date"
+                  type="date"
+                  value={createForm.date}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      date: event.target.value,
+                    }))
+                  }
+                  aria-invalid={Boolean(createFormErrors.date)}
+                />
+                {createFormErrors.date && (
+                  <p className="text-xs text-destructive">{createFormErrors.date}</p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="reconciliation-date">Reconciliation Date</Label>
-              <Input
-                id="reconciliation-date"
-                type="date"
-                value={createForm.date}
-                onChange={(event) =>
-                  setCreateForm((current) => ({
-                    ...current,
-                    date: event.target.value,
-                  }))
-                }
-                aria-invalid={Boolean(createFormErrors.date)}
-              />
-              {createFormErrors.date && (
-                <p className="text-xs text-destructive">{createFormErrors.date}</p>
-              )}
-            </div>
+            {createAccountIsCash && (
+              <div className="space-y-2">
+                <Label htmlFor="reconciliation-count-method">Count Method</Label>
+                <Select
+                  value={createForm.countMethod}
+                  onValueChange={(value) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      countMethod: value as ReconciliationCountMethod,
+                    }))
+                  }
+                >
+                  <SelectTrigger id="reconciliation-count-method" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DENOMINATION_COUNT">Count by denominations</SelectItem>
+                    <SelectItem value="MANUAL_TOTAL">Enter total manually</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {createForm.countMethod === "MANUAL_TOTAL" ? (
+              <div className="space-y-2">
+                <Label htmlFor="reconciliation-counted-total">Counted Total</Label>
+                <Input
+                  id="reconciliation-counted-total"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="e.g. 123456.78"
+                  value={createForm.manualCountedTotal}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      manualCountedTotal: event.target.value,
+                    }))
+                  }
+                  className="font-mono"
+                  aria-invalid={Boolean(createFormErrors.countedTotal)}
+                />
+                {createFormErrors.countedTotal ? (
+                  <p className="text-xs text-destructive">{createFormErrors.countedTotal}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Use digits with an optional decimal separator.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {cashCatalogError && (
+                  <Alert className="border-warning/50 bg-warning/5">
+                    <AlertCircle className="h-4 w-4 text-warning" />
+                    <AlertDescription>{cashCatalogError}</AlertDescription>
+                  </Alert>
+                )}
+
+                {cashCatalogLoading ? (
+                  <div className="flex h-32 items-center justify-center rounded-lg border">
+                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : cashCatalog?.denominations.length ? (
+                  <ReconciliationDenominationTable
+                    currency={cashCatalog.currency}
+                    denominations={cashCatalog.denominations}
+                    quantities={createForm.quantities}
+                    onQuantityChange={(denominationId, nextValue) =>
+                      setCreateForm((current) => ({
+                        ...current,
+                        quantities: {
+                          ...current.quantities,
+                          [denominationId]: nextValue,
+                        },
+                      }))
+                    }
+                  />
+                ) : (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <span>
+                        There are no denominations configured for{" "}
+                        {createAccount?.currency ?? "this currency"}.
+                      </span>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/settings">Open Settings</Link>
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {createFormErrors.countedTotal && !cashCatalogLoading && (
+                  <p className="text-xs text-destructive">{createFormErrors.countedTotal}</p>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
-              <Label htmlFor="reconciliation-real-balance">Real Balance</Label>
-              <Input
-                id="reconciliation-real-balance"
-                type="text"
-                inputMode="decimal"
-                placeholder="e.g. 123456.78"
-                value={createForm.realBalance}
-                onChange={(event) =>
-                  setCreateForm((current) => ({
-                    ...current,
-                    realBalance: event.target.value,
-                  }))
-                }
-                className="font-mono"
-                aria-invalid={Boolean(createFormErrors.realBalance)}
-              />
-              {createFormErrors.realBalance ? (
-                <p className="text-xs text-destructive">{createFormErrors.realBalance}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Use digits with an optional decimal separator.
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="reconciliation-note">Note</Label>
+              <Label htmlFor="reconciliation-note">Notes</Label>
               <Textarea
                 id="reconciliation-note"
                 placeholder="Optional note for this reconciliation"
@@ -838,6 +912,55 @@ export function ReconciliationContent() {
                 }
                 rows={3}
               />
+            </div>
+
+            <div className="grid gap-4 rounded-lg border p-4 md:grid-cols-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Counted Total
+                </p>
+                <p className="font-mono text-lg font-semibold">
+                  {formatCurrency(countedTotalPreview, createAccount?.currency ?? "CRC")}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Expected Total
+                </p>
+                <p className="font-mono text-lg font-semibold">
+                  {expectedPreviewLoading
+                    ? "Loading..."
+                    : expectedPreview
+                      ? formatCurrency(
+                          expectedPreview.expectedTotal,
+                          expectedPreview.currency || createAccount?.currency || "CRC",
+                        )
+                      : "Unavailable"}
+                </p>
+                {expectedPreviewError && (
+                  <p className="text-xs text-destructive">{expectedPreviewError}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Difference</p>
+                <p
+                  className={cn(
+                    "font-mono text-lg font-semibold",
+                    differencePreview === null
+                      ? "text-muted-foreground"
+                      : isBalanced(differencePreview)
+                        ? "text-success"
+                        : "text-warning",
+                  )}
+                >
+                  {differencePreview === null
+                    ? "Unavailable"
+                    : formatSignedCurrency(
+                        differencePreview,
+                        expectedPreview?.currency || createAccount?.currency || "CRC",
+                      )}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -856,6 +979,116 @@ export function ReconciliationContent() {
               {createLoading ? "Creating..." : "Create Reconciliation"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={detailId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailId(null)
+            setDetailRecord(null)
+            setDetailError(null)
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Reconciliation Detail</DialogTitle>
+            <DialogDescription>
+              Review the persisted snapshot, including denomination lines when applicable.
+            </DialogDescription>
+          </DialogHeader>
+
+          {detailLoading ? (
+            <div className="flex h-40 items-center justify-center">
+              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : detailError ? (
+            <Alert className="border-warning/50 bg-warning/5">
+              <AlertCircle className="h-4 w-4 text-warning" />
+              <AlertDescription>{detailError}</AlertDescription>
+            </Alert>
+          ) : detailRecord ? (
+            <div className="space-y-4">
+              <div className="grid gap-4 rounded-lg border p-4 md:grid-cols-2 xl:grid-cols-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Date</p>
+                  <p className="font-medium">{formatDate(detailRecord.date)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Method</p>
+                  <p className="font-medium">{getCountMethodLabel(detailRecord.countMethod)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Counted</p>
+                  <p className="font-mono">
+                    {formatCurrency(detailRecord.countedTotal, detailRecord.currency)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Expected</p>
+                  <p className="font-mono">
+                    {formatCurrency(detailRecord.expectedTotal, detailRecord.currency)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 rounded-lg border p-4 md:grid-cols-2 xl:grid-cols-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Difference
+                  </p>
+                  <p className="font-mono font-semibold">
+                    {formatSignedCurrency(detailRecord.difference, detailRecord.currency)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Status</p>
+                  <div className="pt-1">
+                    <StatusIndicator status={detailRecord.status} />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Notes</p>
+                  <p className="text-sm text-muted-foreground">{detailRecord.note || "No notes"}</p>
+                </div>
+              </div>
+
+              {detailRecord.countMethod === "DENOMINATION_COUNT" &&
+                detailRecord.lines.length > 0 && (
+                  <div className="overflow-x-auto rounded-lg border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Denomination</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead className="text-right">Line Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {detailRecord.lines.map((line) => (
+                          <TableRow key={line.id}>
+                            <TableCell className="font-medium">
+                              {line.denominationLabel ||
+                                formatCurrency(line.denominationValue, detailRecord.currency)}
+                            </TableCell>
+                            <TableCell>
+                              {line.denominationType === "BILL" ? "Bill" : "Coin"}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">{line.quantity}</TableCell>
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(line.lineTotal, detailRecord.currency)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
 

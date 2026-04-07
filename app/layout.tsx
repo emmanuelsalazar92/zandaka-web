@@ -1,5 +1,5 @@
 import { Analytics } from "@vercel/analytics/next"
-import { Geist, Geist_Mono } from "next/font/google"
+import { cookies } from "next/headers"
 
 import { AppLayout } from "@/components/app-layout"
 import { Toaster } from "@/components/ui/toaster"
@@ -8,9 +8,6 @@ import type { Metadata } from "next"
 import type React from "react"
 
 import "./globals.css"
-
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Zandaka - Personal Finance Manager",
@@ -21,15 +18,19 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const cookieStore = await cookies()
+  const sidebarState = cookieStore.get("sidebar_state")?.value
+  const defaultSidebarOpen = sidebarState === undefined ? true : sidebarState === "true"
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`} suppressHydrationWarning>
-        <AppLayout>{children}</AppLayout>
+        <AppLayout defaultSidebarOpen={defaultSidebarOpen}>{children}</AppLayout>
         <Toaster />
         <Analytics />
       </body>
