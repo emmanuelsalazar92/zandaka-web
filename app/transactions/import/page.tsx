@@ -27,13 +27,16 @@ import {
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
+import { formatCurrency } from "@/lib/currency-formatter"
 import { formatIsoDateOnly } from "@/lib/date-only"
+import { fetchAutoAssignmentRules, type AutoAssignmentRule } from "@/lib/settings-api"
 import {
   buildTransactionImportPayload,
   getImportRowValidationError,
 } from "@/lib/transaction-import-helpers"
 
 type BankFormat = "grupo-mutual" | "bac-credomatic"
+type CurrencyCode = "CRC" | "USD"
 type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER" | "ADJUSTMENT"
 type ValidationStatus = "valid" | "warning" | "error"
 
@@ -42,9 +45,11 @@ interface ParsedTransaction {
   date: string
   description: string
   amount: number
+  currency: string
   type: TransactionType
   accountId: string
   envelopeId: string
+  appliedRuleName?: string
   status: ValidationStatus
   statusMessage?: string
 }
@@ -52,6 +57,131 @@ interface ParsedTransaction {
 const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
 const API_BASE_URL = `${API_ROOT}/api`
 const CURRENT_USER_ID = 1
+
+function createRowId() {
+  if (
+    typeof globalThis.crypto !== "undefined" &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
+    return globalThis.crypto.randomUUID()
+  }
+
+  return `import-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+function parseBankAmount(rawAmount: string) {
+  const normalized = rawAmount
+    .replace(/[^\d,.\-+\s]/g, "")
+    .replace(/\s/g, "")
+    .replace(/,/g, "")
+    .replace(/\+/g, "")
+  const isNegative = normalized.includes("-")
+  const numericValue = Number.parseFloat(normalized.replace(/-/g, ""))
+
+  if (!Number.isFinite(numericValue)) return Number.NaN
+
+  return isNegative ? -numericValue : numericValue
+}
+
+function detectCurrencyFromAmountLine(rawAmount: string) {
+  if (rawAmount.includes("$")) return "USD"
+  if (/[₡¢]|â‚¡/.test(rawAmount)) return "CRC"
+  return "CRC"
+}
+
+function parseBacLine(line: string) {
+  const tabParts = line
+    .split("\t")
+    .map((part) => part.trim())
+    .filter(Boolean)
+  if (tabParts.length === 6) {
+    return {
+      datePart: tabParts[0],
+      refCode: tabParts[1],
+      desc: tabParts[2],
+      debitStr: tabParts[3],
+      creditStr: tabParts[4],
+      balanceStr: tabParts[5],
+    }
+  }
+
+  const match = line.match(
+    /^(\d{2}\/\d{2}\/\d{4})\s+(\S+)\s+(.+?)\s+([+-]?\s*\d[\d,]*\.\d{2})\s+([+-]?\s*\d[\d,]*\.\d{2})\s+([+-]?\s*\d[\d,]*\.\d{2})$/,
+  )
+
+  if (!match) return null
+
+  return {
+    datePart: match[1],
+    refCode: match[2],
+    desc: match[3].trim(),
+    debitStr: match[4].trim(),
+    creditStr: match[5].trim(),
+    balanceStr: match[6].trim(),
+  }
+}
+
+function matchesAutoAssignmentRule(description: string, rule: AutoAssignmentRule) {
+  const candidate = description.trim().toUpperCase()
+  const pattern = rule.pattern.trim().toUpperCase()
+
+  if (!candidate || !pattern) return false
+
+  switch (rule.matchType) {
+    case "CONTAINS":
+      return candidate.includes(pattern)
+    case "STARTS_WITH":
+      return candidate.startsWith(pattern)
+    case "ENDS_WITH":
+      return candidate.endsWith(pattern)
+    case "EXACT":
+      return candidate === pattern
+    case "REGEX":
+      try {
+        return new RegExp(rule.pattern, "i").test(description)
+      } catch {
+        return false
+      }
+    default:
+      return false
+  }
+}
+
+function applyAutoAssignmentRules(transactions: ParsedTransaction[], rules: AutoAssignmentRule[]) {
+  const orderedRules = rules
+    .filter((rule) => rule.isActive)
+    .slice()
+    .sort((a, b) => a.priority - b.priority || a.id - b.id)
+
+  return transactions.map((transaction) => {
+    const matchedRule = orderedRules.find((rule) =>
+      matchesAutoAssignmentRule(transaction.description, rule),
+    )
+
+    if (!matchedRule) return transaction
+
+    const matchedAccountId = matchedRule.accountId ?? matchedRule.accountEnvelopeAccountId
+
+    return {
+      ...transaction,
+      accountId: matchedAccountId ? String(matchedAccountId) : transaction.accountId,
+      envelopeId: matchedRule.accountEnvelopeId
+        ? String(matchedRule.accountEnvelopeId)
+        : transaction.envelopeId,
+      appliedRuleName: matchedRule.pattern,
+    }
+  })
+}
+
+function getAccountsForTransaction(
+  transaction: ParsedTransaction,
+  accounts: { id: number; name: string; currency: string; active: boolean }[],
+) {
+  return accounts.filter(
+    (account) =>
+      account.active && account.currency.toUpperCase() === transaction.currency.toUpperCase(),
+  )
+}
 
 function parseGrupoMutual(raw: string): ParsedTransaction[] {
   const lines = raw
@@ -79,19 +209,21 @@ function parseGrupoMutual(raw: string): ParsedTransaction[] {
     let amountStr = amountLine.replace(/₡/g, "").replace(/\s/g, "").replace(/,/g, "")
 
     // Handle negative format (₡- 432,500.00)
-    const isNegative = amountStr.includes("-")
     amountStr = amountStr.replace(/-/g, "")
-    const amount = parseFloat(amountStr) * (isNegative ? -1 : 1)
+    const amount = parseBankAmount(amountLine)
+    const currency = detectCurrencyFromAmountLine(amountLine)
+    void amountStr
 
-    if (isNaN(amount)) continue
+    if (Number.isNaN(amount)) continue
 
     const type: TransactionType = amount < 0 ? "EXPENSE" : "INCOME"
 
     transactions.push({
-      id: crypto.randomUUID(),
+      id: createRowId(),
       date,
       description: descLine,
       amount,
+      currency,
       type,
       accountId: "",
       envelopeId: "",
@@ -103,7 +235,7 @@ function parseGrupoMutual(raw: string): ParsedTransaction[] {
   return transactions
 }
 
-function parseBacCredomatic(raw: string): ParsedTransaction[] {
+function parseBacCredomatic(raw: string, defaultCurrency: CurrencyCode): ParsedTransaction[] {
   const lines = raw
     .split("\n")
     .map((l) => l.trim())
@@ -111,35 +243,35 @@ function parseBacCredomatic(raw: string): ParsedTransaction[] {
   const transactions: ParsedTransaction[] = []
 
   for (const line of lines) {
-    const parts = line.split("\t")
+    const parsedLine = parseBacLine(line)
 
-    // Validate column count - must be exactly 6 columns
-    if (parts.length !== 6) {
+    if (!parsedLine) {
       transactions.push({
-        id: crypto.randomUUID(),
+        id: createRowId(),
         date: "",
         description: line.substring(0, 50) + (line.length > 50 ? "..." : ""),
         amount: 0,
+        currency: defaultCurrency,
         type: "EXPENSE",
         accountId: "",
         envelopeId: "",
         status: "error",
-        statusMessage: `Invalid format: expected 6 columns, got ${parts.length}`,
+        statusMessage: "Invalid format: expected BAC transaction columns",
       })
       continue
     }
 
-    const [datePart, refCode, desc, debitStr, creditStr] = parts
-    // parts[5] is balance - ignored
+    const { datePart, refCode, desc, debitStr, creditStr } = parsedLine
 
     // Parse date (DD/MM/YYYY)
     const dateMatch = datePart.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
     if (!dateMatch) {
       transactions.push({
-        id: crypto.randomUUID(),
+        id: createRowId(),
         date: "",
         description: `${refCode} ${desc}`.trim(),
         amount: 0,
+        currency: defaultCurrency,
         type: "EXPENSE",
         accountId: "",
         envelopeId: "",
@@ -155,17 +287,18 @@ function parseBacCredomatic(raw: string): ParsedTransaction[] {
     // Combine reference code and description
     const description = `${refCode} ${desc}`.trim()
 
-    // Parse amounts - remove thousand separators
-    const debit = parseFloat(debitStr.replace(/,/g, "")) || 0
-    const credit = parseFloat(creditStr.replace(/,/g, "")) || 0
+    const debit = parseBankAmount(debitStr)
+    const credit = parseBankAmount(creditStr)
+    const currency = defaultCurrency
 
     // Validation: both debit and credit have values
-    if (debit > 0 && credit > 0) {
+    if (Number.isFinite(debit) && Number.isFinite(credit) && debit > 0 && credit > 0) {
       transactions.push({
-        id: crypto.randomUUID(),
+        id: createRowId(),
         date,
         description,
         amount: 0,
+        currency,
         type: "EXPENSE",
         accountId: "",
         envelopeId: "",
@@ -176,12 +309,13 @@ function parseBacCredomatic(raw: string): ParsedTransaction[] {
     }
 
     // Validation: both debit and credit are zero
-    if (debit === 0 && credit === 0) {
+    if ((!Number.isFinite(debit) || debit === 0) && (!Number.isFinite(credit) || credit === 0)) {
       transactions.push({
-        id: crypto.randomUUID(),
+        id: createRowId(),
         date,
         description,
         amount: 0,
+        currency,
         type: "EXPENSE",
         accountId: "",
         envelopeId: "",
@@ -194,19 +328,20 @@ function parseBacCredomatic(raw: string): ParsedTransaction[] {
     // Calculate amount: debit is negative (expense), credit is positive (income)
     let amount = 0
     let type: TransactionType = "EXPENSE"
-    if (debit > 0 && credit === 0) {
+    if (Number.isFinite(debit) && debit > 0 && (!Number.isFinite(credit) || credit === 0)) {
       amount = -debit
       type = "EXPENSE"
-    } else if (credit > 0 && debit === 0) {
+    } else if (Number.isFinite(credit) && credit > 0 && (!Number.isFinite(debit) || debit === 0)) {
       amount = credit
       type = "INCOME"
     }
 
     transactions.push({
-      id: crypto.randomUUID(),
+      id: createRowId(),
       date,
       description,
       amount,
+      currency,
       type,
       accountId: "",
       envelopeId: "",
@@ -218,22 +353,16 @@ function parseBacCredomatic(raw: string): ParsedTransaction[] {
   return transactions
 }
 
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "CRC",
-    minimumFractionDigits: 2,
-  }).format(amount)
-}
-
 export default function ImportTransactionsPage() {
   const router = useRouter()
   const [bankFormat, setBankFormat] = React.useState<BankFormat>("grupo-mutual")
+  const [bacCurrency, setBacCurrency] = React.useState<CurrencyCode>("CRC")
   const [rawData, setRawData] = React.useState("")
   const [transactions, setTransactions] = React.useState<ParsedTransaction[]>([])
   const [isProcessed, setIsProcessed] = React.useState(false)
   const [isImporting, setIsImporting] = React.useState(false)
   const [importError, setImportError] = React.useState<string | null>(null)
+  const [autoAssignmentRules, setAutoAssignmentRules] = React.useState<AutoAssignmentRule[]>([])
 
   // Accounts and envelopes state
   const [accounts, setAccounts] = React.useState<
@@ -296,6 +425,19 @@ export default function ImportTransactionsPage() {
     fetchAccounts()
   }, [])
 
+  React.useEffect(() => {
+    const loadRules = async () => {
+      try {
+        const rules = await fetchAutoAssignmentRules()
+        setAutoAssignmentRules(rules.filter((rule) => rule.isActive))
+      } catch {
+        // Rules are assistive only; importing should still work if they cannot be loaded.
+      }
+    }
+
+    void loadRules()
+  }, [])
+
   const fetchEnvelopes = React.useCallback(
     async (accountId: string) => {
       if (!accountId || envelopesByAccount[accountId] || envelopesLoading[accountId]) return
@@ -330,6 +472,26 @@ export default function ImportTransactionsPage() {
     [envelopesByAccount, envelopesLoading],
   )
 
+  const syncTransactionStatuses = React.useCallback(
+    (rows: ParsedTransaction[]): ParsedTransaction[] =>
+      rows.map((row) => {
+        if (row.status === "error") return row
+
+        const validationError = getImportRowValidationError(row, activeAccounts, envelopesByAccount)
+
+        return {
+          ...row,
+          status: validationError ? ("warning" as const) : ("valid" as const),
+          statusMessage: validationError ?? undefined,
+        }
+      }),
+    [activeAccounts, envelopesByAccount],
+  )
+
+  React.useEffect(() => {
+    setTransactions((prev) => syncTransactionStatuses(prev))
+  }, [syncTransactionStatuses])
+
   const handleProcess = () => {
     if (!rawData.trim()) return
 
@@ -337,10 +499,18 @@ export default function ImportTransactionsPage() {
     if (bankFormat === "grupo-mutual") {
       parsed = parseGrupoMutual(rawData)
     } else {
-      parsed = parseBacCredomatic(rawData)
+      parsed = parseBacCredomatic(rawData, bacCurrency)
     }
 
-    setTransactions(parsed)
+    const withRules = applyAutoAssignmentRules(parsed, autoAssignmentRules)
+    const matchedAccountIds = Array.from(
+      new Set(withRules.map((transaction) => transaction.accountId).filter(Boolean)),
+    )
+    matchedAccountIds.forEach((accountId) => {
+      void fetchEnvelopes(accountId)
+    })
+
+    setTransactions(syncTransactionStatuses(withRules))
     setIsProcessed(true)
     setImportError(null)
   }
@@ -367,17 +537,13 @@ export default function ImportTransactionsPage() {
           }
         }
 
-        // Recalculate validation status
-        if (updated.accountId && updated.envelopeId) {
-          updated.status = "valid"
-          updated.statusMessage = undefined
-        } else if (updated.accountId || updated.envelopeId) {
-          updated.status = "warning"
-          updated.statusMessage = updated.accountId ? "Select envelope" : "Select account"
-        } else {
-          updated.status = "warning"
-          updated.statusMessage = "Select account and envelope"
-        }
+        const validationError = getImportRowValidationError(
+          updated,
+          activeAccounts,
+          envelopesByAccount,
+        )
+        updated.status = validationError ? "warning" : "valid"
+        updated.statusMessage = validationError ?? undefined
 
         return updated
       }),
@@ -512,6 +678,23 @@ export default function ImportTransactionsPage() {
                 </SelectContent>
               </Select>
             </div>
+            {bankFormat === "bac-credomatic" && (
+              <div className="w-52 space-y-2">
+                <label className="text-sm font-medium">BAC Currency</label>
+                <Select
+                  value={bacCurrency}
+                  onValueChange={(v) => setBacCurrency(v as CurrencyCode)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CRC">CRC</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="flex gap-2">
               <Button onClick={handleProcess} disabled={!rawData.trim()}>
                 <FileUp className="mr-2 h-4 w-4" />
@@ -529,7 +712,7 @@ export default function ImportTransactionsPage() {
               placeholder={
                 bankFormat === "grupo-mutual"
                   ? "Paste transactions from Grupo Mutual...\n\nExample:\n15/03/2026\n11:22:40 PM\nPAGO INTERESES\n₡7,379.25\n₡25,307,671.77"
-                  : "Paste transactions from BAC Credomatic...\n\nExample:\n02/03/2026\t30100000\tCOMERCIAL LA GUARIA\t2,300.00\t0.00\t114,501.92"
+                  : "Paste transactions from BAC Credomatic...\nChoose the BAC currency above first.\n\nExample:\n02/03/2026\t30100000\tCOMERCIAL LA GUARIA\t2,300.00\t0.00\t114,501.92"
               }
               value={rawData}
               onChange={(e) => setRawData(e.target.value)}
@@ -599,14 +782,21 @@ export default function ImportTransactionsPage() {
                           className="max-w-[300px] truncate"
                           title={transaction.description}
                         >
-                          {transaction.description}
+                          <div className="space-y-1">
+                            <div>{transaction.description}</div>
+                            {transaction.appliedRuleName && (
+                              <div className="text-xs text-muted-foreground">
+                                Auto rule: {transaction.appliedRuleName}
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell
                           className={`text-right font-mono ${
                             transaction.amount < 0 ? "text-red-600" : "text-emerald-600"
                           }`}
                         >
-                          {formatCurrency(transaction.amount)}
+                          {formatCurrency(transaction.amount, transaction.currency)}
                         </TableCell>
                         <TableCell>
                           <Select
@@ -618,11 +808,13 @@ export default function ImportTransactionsPage() {
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {activeAccounts.map((account) => (
-                                <SelectItem key={account.id} value={account.id.toString()}>
-                                  {account.name}
-                                </SelectItem>
-                              ))}
+                              {getAccountsForTransaction(transaction, activeAccounts).map(
+                                (account) => (
+                                  <SelectItem key={account.id} value={account.id.toString()}>
+                                    {account.name} ({account.currency})
+                                  </SelectItem>
+                                ),
+                              )}
                             </SelectContent>
                           </Select>
                         </TableCell>

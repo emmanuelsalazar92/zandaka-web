@@ -6,7 +6,7 @@ import {
 } from "@/lib/transaction-import-helpers"
 
 describe("transaction import helpers", () => {
-  const accounts = [{ id: 10 }]
+  const accounts = [{ id: 10, currency: "CRC" }]
   const envelopesByAccount = {
     "10": [{ id: 20 }],
   }
@@ -19,6 +19,7 @@ describe("transaction import helpers", () => {
           date: "2026-03-02",
           description: "BAC test",
           amount: -2300,
+          currency: "CRC",
           type: "EXPENSE",
           accountId: "10",
           envelopeId: "20",
@@ -37,6 +38,7 @@ describe("transaction import helpers", () => {
           date: "",
           description: "BAC test",
           amount: 0,
+          currency: "CRC",
           type: "EXPENSE",
           accountId: "",
           envelopeId: "",
@@ -55,6 +57,7 @@ describe("transaction import helpers", () => {
           date: "2026-03-02",
           description: "BAC test",
           amount: 2300,
+          currency: "CRC",
           type: "INCOME",
           accountId: "10",
           envelopeId: "20",
@@ -74,5 +77,24 @@ describe("transaction import helpers", () => {
         },
       ],
     })
+  })
+
+  it("rejects rows when transaction currency does not match the selected account", () => {
+    expect(
+      getImportRowValidationError(
+        {
+          id: "row-4",
+          date: "2026-03-02",
+          description: "USD test",
+          amount: 1.25,
+          currency: "USD",
+          type: "INCOME",
+          accountId: "10",
+          envelopeId: "20",
+        },
+        accounts,
+        envelopesByAccount,
+      ),
+    ).toBe("Transaction currency USD does not match account currency CRC")
   })
 })

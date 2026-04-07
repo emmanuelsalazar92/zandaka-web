@@ -5,6 +5,7 @@ export interface ImportTransactionRow {
   date: string
   description: string
   amount: number
+  currency: string
   type: ImportTransactionType
   accountId: string
   envelopeId: string
@@ -12,6 +13,7 @@ export interface ImportTransactionRow {
 
 export interface ImportAccountOption {
   id: number
+  currency: string
 }
 
 export interface ImportEnvelopeOption {
@@ -49,6 +51,11 @@ export function getImportRowValidationError(
 
   const accountExists = accounts.some((account) => account.id === accountId)
   if (!accountExists) return "Selected account no longer exists"
+
+  const selectedAccount = accounts.find((account) => account.id === accountId)
+  if (selectedAccount && selectedAccount.currency.toUpperCase() !== row.currency.toUpperCase()) {
+    return `Transaction currency ${row.currency} does not match account currency ${selectedAccount.currency}`
+  }
 
   const envelopeId = parsePositiveInteger(row.envelopeId)
   if (envelopeId === null) return "Envelope is required"

@@ -11,7 +11,8 @@ import {
   BarChart3,
   Moon,
   Sun,
-  CalendarRange,
+  PiggyBank,
+  Settings2,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -41,17 +42,14 @@ const NAV_ITEMS = [
   { icon: CreditCard, label: "Accounts", href: "/accounts" },
   { icon: FolderTree, label: "Categories", href: "/categories" },
   { icon: Mail, label: "Envelopes", href: "/envelopes" },
-  { icon: CalendarRange, label: "Planner", href: "/planner" },
+  { icon: PiggyBank, label: "Budgets", href: "/budgets" },
   { icon: ArrowLeftRight, label: "Transactions", href: "/transactions" },
   { icon: CheckSquare, label: "Reconciliation", href: "/reconciliation" },
   { icon: BarChart3, label: "Reports", href: "/reports" },
+  { icon: Settings2, label: "Settings", href: "/settings" },
 ]
 
 function AppSidebar() {
-  const isPlannerEnabled = process.env.NEXT_PUBLIC_FEATURE_PLANNER === "true"
-  const navItems = isPlannerEnabled
-    ? NAV_ITEMS
-    : NAV_ITEMS.filter((item) => item.href !== "/planner")
   const pathname = usePathname()
 
   return (
@@ -78,9 +76,12 @@ function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => {
+              {NAV_ITEMS.map((item) => {
                 const Icon = item.icon
-                const isActive = pathname === item.href
+                const isActive =
+                  item.href === "/"
+                    ? pathname === item.href
+                    : pathname === item.href || pathname.startsWith(`${item.href}/`)
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
@@ -107,10 +108,6 @@ function AppSidebar() {
 
 function AppHeader() {
   const pathname = usePathname()
-  const isPlannerEnabled = process.env.NEXT_PUBLIC_FEATURE_PLANNER === "true"
-  const navItems = isPlannerEnabled
-    ? NAV_ITEMS
-    : NAV_ITEMS.filter((item) => item.href !== "/planner")
   const [theme, setTheme] = React.useState<"light" | "dark">("light")
   const { state } = useSidebar()
 
@@ -130,27 +127,43 @@ function AppHeader() {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-4 md:px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-primary/80 bg-primary px-4 text-primary-foreground md:px-6">
       <div className="flex items-center gap-4">
         <SidebarTrigger
-          className="-ml-1"
+          className="-ml-1 text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
           aria-expanded={state === "expanded"}
           aria-label="Toggle sidebar"
         />
         <h1 className="text-lg font-semibold md:text-xl">
-          {navItems.find((item) => item.href === pathname)?.label || "Dashboard"}
+          {NAV_ITEMS.slice()
+            .sort((left, right) => right.href.length - left.href.length)
+            .find((item) =>
+              item.href === "/" ? pathname === item.href : pathname.startsWith(item.href),
+            )?.label || "Dashboard"}
         </h1>
       </div>
-      <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
+        onClick={toggleTheme}
+        aria-label="Toggle theme"
+      >
         {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
       </Button>
     </header>
   )
 }
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+export function AppLayout({
+  children,
+  defaultSidebarOpen,
+}: {
+  children: React.ReactNode
+  defaultSidebarOpen: boolean
+}) {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={defaultSidebarOpen}>
       <AppSidebar />
       <SidebarInset className="flex flex-col">
         <AppHeader />
