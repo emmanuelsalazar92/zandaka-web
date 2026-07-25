@@ -1,7 +1,6 @@
 import { SETTINGS_USER_ID } from "@/lib/settings-api"
 
-const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
-const API_BASE_URL = `${API_ROOT}/api`
+const API_BASE_URL = "/api"
 
 type RequestOptions = {
   method?: string
@@ -45,6 +44,7 @@ export type GenerateReportSnapshotInput = {
   userId?: number
   reportMonth: string
   baseCurrency?: string
+  rateMode?: "auto" | "stored" | "manual"
   exchangeRateId?: number | null
   usdToCrcRate?: number | null
   notes?: string | null
@@ -199,6 +199,7 @@ export async function generateReportSnapshot(input: GenerateReportSnapshotInput)
       user_id: input.userId ?? SETTINGS_USER_ID,
       report_month: input.reportMonth,
       ...(input.baseCurrency ? { base_currency: input.baseCurrency.toUpperCase() } : {}),
+      ...(input.rateMode ? { rate_mode: input.rateMode } : {}),
       ...(input.exchangeRateId ? { exchange_rate_id: input.exchangeRateId } : {}),
       ...(input.usdToCrcRate ? { usd_to_crc_rate: input.usdToCrcRate } : {}),
       ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),

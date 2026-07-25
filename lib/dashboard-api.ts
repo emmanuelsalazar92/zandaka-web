@@ -1,7 +1,6 @@
 import { SETTINGS_USER_ID, fetchUserSettings } from "@/lib/settings-api"
 
-const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
-const API_BASE_URL = `${API_ROOT}/api`
+const API_BASE_URL = "/api"
 
 type RequestOptions = {
   query?: Record<string, string | number | undefined | null>

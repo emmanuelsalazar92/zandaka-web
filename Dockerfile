@@ -1,5 +1,9 @@
 FROM node:20-bookworm-slim
 
+ARG API_INTERNAL_URL=http://backend:3000
+
+ENV API_INTERNAL_URL=${API_INTERNAL_URL}
+
 WORKDIR /app
 
 COPY package*.json ./
@@ -7,8 +11,6 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
-
-COPY .env .env
 
 RUN npm run build
 

@@ -33,6 +33,7 @@ type GenerateReportDialogProps = {
   onSubmit: (input: {
     reportMonth: string
     baseCurrency: string
+    rateMode: "auto" | "stored" | "manual"
     exchangeRateId: number | null
     usdToCrcRate: number | null
     notes: string | null
@@ -140,6 +141,7 @@ export function GenerateReportDialog({
     await onSubmit({
       reportMonth,
       baseCurrency,
+      rateMode,
       exchangeRateId:
         rateMode === "stored" && selectedRateId ? Number.parseInt(selectedRateId, 10) : null,
       usdToCrcRate:

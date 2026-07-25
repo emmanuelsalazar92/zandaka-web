@@ -54,8 +54,7 @@ interface ParsedTransaction {
   statusMessage?: string
 }
 
-const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
-const API_BASE_URL = `${API_ROOT}/api`
+const API_BASE_URL = "/api"
 const CURRENT_USER_ID = 1
 
 function createRowId() {

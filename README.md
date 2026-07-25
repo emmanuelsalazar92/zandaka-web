@@ -16,7 +16,7 @@ pnpm dev
 bun dev
 ```
 
-Open the URL configured in `NEXT_PUBLIC_API_URL` with your browser to see the result.
+Open `http://localhost:3001` with your browser to see the result. API requests should use relative `/api/...` paths; `next.config.ts` proxies them to `API_INTERNAL_URL` or `http://localhost:3000` by default.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

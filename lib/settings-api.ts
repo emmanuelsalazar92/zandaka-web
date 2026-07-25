@@ -1,7 +1,6 @@
 import { DEFAULT_USER_ID } from "@/lib/budgets-api"
 
-const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
-const API_BASE_URL = `${API_ROOT}/api`
+const API_BASE_URL = "/api"
 
 export const SETTINGS_USER_ID = DEFAULT_USER_ID
 
@@ -38,6 +37,12 @@ export type ExchangeRate = {
   effectiveDate: string
   createdAt: string
   updatedAt: string
+}
+
+export type ExchangeRateLookup = {
+  compra: number
+  venta: number
+  fecha: string
 }
 
 export type AutoAssignmentMatchType = "CONTAINS" | "STARTS_WITH" | "ENDS_WITH" | "EXACT" | "REGEX"
@@ -292,6 +297,15 @@ const mapExchangeRate = (raw: unknown): ExchangeRate => {
   }
 }
 
+const mapExchangeRateLookup = (raw: unknown): ExchangeRateLookup => {
+  const item = raw as Record<string, unknown>
+  return {
+    compra: toNumber(item.compra),
+    venta: toNumber(item.venta),
+    fecha: toStringValue(item.fecha),
+  }
+}
+
 const mapAutoAssignmentRule = (raw: unknown): AutoAssignmentRule => {
   const item = raw as Record<string, unknown>
   return {
@@ -459,6 +473,26 @@ export async function fetchExchangeRates(userId = SETTINGS_USER_ID) {
   })
 
   return Array.isArray(data) ? data.map(mapExchangeRate) : []
+}
+
+export async function fetchExchangeRateByDate(date: string) {
+  const [year, month, day] = date.split("-")
+  const normalizedYear = Number.parseInt(year ?? "", 10)
+  const normalizedMonth = Number.parseInt(month ?? "", 10)
+  const normalizedDay = Number.parseInt(day ?? "", 10)
+
+  if (
+    !Number.isInteger(normalizedYear) ||
+    !Number.isInteger(normalizedMonth) ||
+    !Number.isInteger(normalizedDay)
+  ) {
+    throw new Error("Invalid exchange rate date.")
+  }
+
+  const data = await request<unknown>(
+    `/exchange-rate/${normalizedDay}/${normalizedMonth}/${normalizedYear}`,
+  )
+  return mapExchangeRateLookup(data)
 }
 
 export async function createExchangeRate(

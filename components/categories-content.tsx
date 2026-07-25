@@ -129,13 +129,10 @@ export function CategoriesContent() {
       setLoadError(null)
 
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/categories?activeOnly=true`,
-          {
-            headers: { accept: "application/json" },
-            signal,
-          },
-        )
+        const response = await fetch("/api/categories?activeOnly=true", {
+          headers: { accept: "application/json" },
+          signal,
+        })
 
         if (!response.ok) {
           const contentType = response.headers.get("content-type") || ""
@@ -188,7 +185,7 @@ export function CategoriesContent() {
     setCreateError(null)
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories`, {
+      const response = await fetch("/api/categories", {
         method: "POST",
         headers: {
           accept: "application/json",
@@ -250,20 +247,17 @@ export function CategoriesContent() {
     setEditError(null)
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/categories/${editCategory.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: formData.name,
-            parentId: formData.parent,
-          }),
+      const response = await fetch(`/api/categories/${editCategory.id}`, {
+        method: "PATCH",
+        headers: {
+          accept: "application/json",
+          "Content-Type": "application/json",
         },
-      )
+        body: JSON.stringify({
+          name: formData.name,
+          parentId: formData.parent,
+        }),
+      })
 
       if (!response.ok) {
         const message = await response.text()
@@ -288,13 +282,10 @@ export function CategoriesContent() {
     setDeactivateError(null)
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/categories/${deactivateId}/deactivate`,
-        {
-          method: "POST",
-          headers: { accept: "application/json" },
-        },
-      )
+      const response = await fetch(`/api/categories/${deactivateId}/deactivate`, {
+        method: "POST",
+        headers: { accept: "application/json" },
+      })
 
       if (!response.ok) {
         let message = "Failed to deactivate category."

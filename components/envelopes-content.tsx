@@ -72,8 +72,7 @@ type CategoryOption = {
   parentId: number | null
 }
 
-const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
-const API_BASE_URL = `${API_ROOT}/api`
+const API_BASE_URL = "/api"
 
 const percentFormatter = new Intl.NumberFormat("en-US", {
   style: "percent",

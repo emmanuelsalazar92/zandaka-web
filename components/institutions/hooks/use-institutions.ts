@@ -6,9 +6,8 @@ import type {
   InstitutionUi,
 } from "@/components/institutions/types/institutions.types"
 
-const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
-const API_BASE_URL = `${API_ROOT}/api/institutions`
-const ACCOUNT_BALANCES_URL = `${API_ROOT}/api/reports/account-balances?isActive=true`
+const API_BASE_URL = "/api/institutions"
+const ACCOUNT_BALANCES_URL = "/api/reports/account-balances?isActive=true"
 const DEFAULT_FORM_DATA: InstitutionFormData = { name: "", type: "BANK" }
 
 type ApiInstitution = {

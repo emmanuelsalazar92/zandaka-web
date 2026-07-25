@@ -39,10 +39,52 @@ import {
   generateReportSnapshot,
   type ReportSnapshot,
 } from "@/lib/reports-api"
-import { fetchExchangeRates, fetchUserSettings } from "@/lib/settings-api"
+import {
+  createExchangeRate,
+  fetchExchangeRateByDate,
+  fetchExchangeRates,
+  fetchUserSettings,
+  type ExchangeRate,
+} from "@/lib/settings-api"
 
 const messageOf = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
+
+const resolveMonthEndDate = (reportMonth: string) => {
+  const [year, month] = reportMonth.split("-").map((value) => Number.parseInt(value, 10))
+  if (!Number.isInteger(year) || !Number.isInteger(month)) {
+    throw new Error("Invalid report month.")
+  }
+
+  const monthEnd = new Date(Date.UTC(year, month, 0))
+  const today = new Date()
+  const todayUtc = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()))
+  const resolvedDate = monthEnd.getTime() > todayUtc.getTime() ? todayUtc : monthEnd
+  const resolvedYear = resolvedDate.getUTCFullYear()
+  const resolvedMonth = String(resolvedDate.getUTCMonth() + 1).padStart(2, "0")
+  const resolvedDay = String(resolvedDate.getUTCDate()).padStart(2, "0")
+  return `${resolvedYear}-${resolvedMonth}-${resolvedDay}`
+}
+
+const findStoredMonthEndRate = (
+  rates: ExchangeRate[],
+  baseCurrency: string,
+  effectiveDate: string,
+) => {
+  const targetPair =
+    baseCurrency === "CRC"
+      ? { fromCurrency: "USD", toCurrency: "CRC" }
+      : { fromCurrency: "CRC", toCurrency: "USD" }
+
+  return (
+    rates.find(
+      (rate) =>
+        rate.effectiveDate === effectiveDate &&
+        rate.fromCurrency === targetPair.fromCurrency &&
+        rate.toCurrency === targetPair.toCurrency,
+    ) ?? null
+  )
+}
 
 export function ReportsContent() {
   const [loading, setLoading] = React.useState(true)
@@ -104,13 +146,46 @@ export function ReportsContent() {
   const handleGenerate = async (input: {
     reportMonth: string
     baseCurrency: string
+    rateMode: "auto" | "stored" | "manual"
     exchangeRateId: number | null
     usdToCrcRate: number | null
     notes: string | null
   }) => {
     try {
       setGenerating(true)
-      const created = await generateReportSnapshot(input)
+      let payload = { ...input }
+
+      if (input.rateMode === "auto") {
+        const effectiveDate = resolveMonthEndDate(input.reportMonth)
+        let storedRate = findStoredMonthEndRate(exchangeRates, input.baseCurrency, effectiveDate)
+
+        if (!storedRate) {
+          const resolvedRate = await fetchExchangeRateByDate(effectiveDate)
+          const rateValue =
+            input.baseCurrency === "CRC" ? resolvedRate.compra : 1 / resolvedRate.venta
+
+          storedRate = await createExchangeRate({
+            fromCurrency: input.baseCurrency === "CRC" ? "USD" : "CRC",
+            toCurrency: input.baseCurrency === "CRC" ? "CRC" : "USD",
+            rate: rateValue,
+            effectiveDate,
+          })
+
+          setExchangeRates((current) => {
+            const duplicate = findStoredMonthEndRate(current, input.baseCurrency, effectiveDate)
+            return duplicate ? current : [storedRate as ExchangeRate, ...current]
+          })
+        }
+
+        payload = {
+          ...payload,
+          rateMode: "stored",
+          exchangeRateId: storedRate.id,
+          usdToCrcRate: input.baseCurrency === "CRC" ? null : input.usdToCrcRate,
+        }
+      }
+
+      const created = await generateReportSnapshot(payload)
       const refreshed = await fetchReportSnapshots()
       setReports(refreshed)
       setSelectedReportId(created.id)
