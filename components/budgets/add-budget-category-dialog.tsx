@@ -22,11 +22,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  currencyStep,
+  amountFromPercentage,
+  percentageFromAmount,
+  tryDecimalInput,
+  assertMoney,
+} from "@/lib/money"
 
 type AddBudgetCategoryDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   categories: BudgetCategoryOption[]
+  currency: string
   totalIncome: number
   existingCategoryIds: number[]
   onConfirm: (payload: {
@@ -42,6 +50,7 @@ export function AddBudgetCategoryDialog({
   onOpenChange,
   categories,
   totalIncome,
+  currency,
   existingCategoryIds,
   onConfirm,
 }: AddBudgetCategoryDialogProps) {
@@ -57,7 +66,7 @@ export function AddBudgetCategoryDialog({
   const childCategories = categories.filter(
     (category) => category.parentId !== null && category.parentId.toString() === parentCategoryId,
   )
-  const parsedAmount = Number.parseFloat(amount || "0")
+  const parsedAmount = tryDecimalInput(amount || "0")
   const canSubmit =
     parentCategoryId !== "" &&
     childCategoryId !== "" &&
@@ -91,10 +100,10 @@ export function AddBudgetCategoryDialog({
 
     if (!isAmountInputMode) return
 
-    const parsedAmount = Number.parseFloat(value || "0")
+    const parsedAmount = tryDecimalInput(value || "0")
     const nextAmount = Number.isFinite(parsedAmount) ? parsedAmount : 0
-    const nextPercentage = totalIncome > 0 ? (nextAmount / totalIncome) * 100 : 0
-    setPercentage(value === "" ? "" : nextPercentage.toFixed(2))
+    const nextPercentage = totalIncome > 0 ? percentageFromAmount(nextAmount, totalIncome) : 0
+    setPercentage(value === "" ? "" : String(nextPercentage))
   }
 
   const handlePercentageChange = (value: string) => {
@@ -102,10 +111,11 @@ export function AddBudgetCategoryDialog({
 
     if (isAmountInputMode) return
 
-    const parsedPercentage = Number.parseFloat(value || "0")
+    const parsedPercentage = tryDecimalInput(value || "0")
     const nextPercentage = Number.isFinite(parsedPercentage) ? parsedPercentage : 0
-    const nextAmount = totalIncome > 0 ? (nextPercentage / 100) * totalIncome : 0
-    setAmount(value === "" ? "" : nextAmount.toFixed(2))
+    const nextAmount =
+      totalIncome > 0 ? amountFromPercentage(totalIncome, nextPercentage, currency) : 0
+    setAmount(value === "" ? "" : String(nextAmount))
   }
 
   const handleInputModeChange = (checked: boolean) => {
@@ -115,10 +125,10 @@ export function AddBudgetCategoryDialog({
       const currentAmount = amount
       setAmount(currentAmount)
       if (currentAmount !== "") {
-        const parsedAmount = Number.parseFloat(currentAmount || "0")
+        const parsedAmount = tryDecimalInput(currentAmount || "0")
         const nextAmount = Number.isFinite(parsedAmount) ? parsedAmount : 0
-        const nextPercentage = totalIncome > 0 ? (nextAmount / totalIncome) * 100 : 0
-        setPercentage(nextPercentage.toFixed(2))
+        const nextPercentage = totalIncome > 0 ? percentageFromAmount(nextAmount, totalIncome) : 0
+        setPercentage(String(nextPercentage))
       }
       return
     }
@@ -126,17 +136,18 @@ export function AddBudgetCategoryDialog({
     const currentPercentage = percentage
     setPercentage(currentPercentage)
     if (currentPercentage !== "") {
-      const parsedPercentage = Number.parseFloat(currentPercentage || "0")
+      const parsedPercentage = tryDecimalInput(currentPercentage || "0")
       const nextPercentage = Number.isFinite(parsedPercentage) ? parsedPercentage : 0
-      const nextAmount = totalIncome > 0 ? (nextPercentage / 100) * totalIncome : 0
-      setAmount(nextAmount.toFixed(2))
+      const nextAmount =
+        totalIncome > 0 ? amountFromPercentage(totalIncome, nextPercentage, currency) : 0
+      setAmount(String(nextAmount))
     }
   }
 
   const handleConfirm = () => {
     const parsedCategoryId = Number.parseInt(childCategoryId, 10)
-    const parsedAmount = Number.parseFloat(amount || "0")
-    const parsedPercentage = Number.parseFloat(percentage || "0")
+    const parsedAmount = tryDecimalInput(amount || "0")
+    const parsedPercentage = tryDecimalInput(percentage || "0")
 
     if (!parentCategoryId || !childCategoryId || Number.isNaN(parsedCategoryId)) {
       setError("Choose a parent category and a child category.")
@@ -148,6 +159,12 @@ export function AddBudgetCategoryDialog({
       return
     }
 
+    try {
+      assertMoney(parsedAmount, currency)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Invalid amount")
+      return
+    }
     onConfirm({
       categoryId: parsedCategoryId,
       amount: Number.isFinite(parsedAmount) ? parsedAmount : 0,
@@ -209,7 +226,7 @@ export function AddBudgetCategoryDialog({
                 id="budget-category-amount"
                 type="number"
                 min="0"
-                step="0.01"
+                step={currencyStep(currency)}
                 value={amount}
                 onChange={(event) => handleAmountChange(event.target.value)}
                 disabled={!isAmountInputMode}

@@ -1,3 +1,4 @@
+import { sumMoney, subtractMoney, decimal } from "@/lib/money"
 export type EnvelopeVisualStatus = "healthy" | "low" | "empty" | "critical"
 
 export type EnvelopeInsightInput = {
@@ -26,8 +27,8 @@ const toSafeNumber = (value: unknown) =>
 export function calculateEnvelopePercentage(balance: number, totalAccountBalance: number) {
   const safeBalance = toSafeNumber(balance)
   const safeTotal = toSafeNumber(totalAccountBalance)
-  if (Math.abs(safeTotal) < 0.000001) return 0
-  return safeBalance / safeTotal
+  if (safeTotal === 0) return 0
+  return decimal(safeBalance).div(safeTotal).toNumber()
 }
 
 export function getEnvelopeBarPercentage(percentageOfAccount: number) {
@@ -41,7 +42,7 @@ export function getEnvelopeVisualStatus(
   const safeBalance = toSafeNumber(balance)
 
   if (safeBalance < 0) return "critical"
-  if (Math.abs(safeBalance) < 0.000001) return "empty"
+  if (safeBalance === 0) return "empty"
 
   const share = Math.abs(calculateEnvelopePercentage(safeBalance, totalAccountBalance))
   if (share > 0 && share < LOW_BALANCE_SHARE_THRESHOLD) return "low"
@@ -70,10 +71,7 @@ export function summarizeEnvelopeInsights(
   totalAccountBalance: number,
 ) {
   const insights = buildEnvelopeInsights(envelopes, totalAccountBalance)
-  const totalEnvelopeBalance = insights.reduce(
-    (sum, envelope) => sum + toSafeNumber(envelope.balance),
-    0,
-  )
+  const totalEnvelopeBalance = sumMoney(insights.map((envelope) => toSafeNumber(envelope.balance)))
   const activeEnvelopes = insights.filter((envelope) => envelope.active)
   const positiveEnvelopes = activeEnvelopes.filter((envelope) => envelope.balance > 0)
   const negativeEnvelopes = activeEnvelopes.filter((envelope) => envelope.balance < 0)
@@ -83,14 +81,14 @@ export function summarizeEnvelopeInsights(
     [...positiveEnvelopes].sort((left, right) => left.balance - right.balance)[0] ?? null
 
   const assignedPercentage =
-    Math.abs(totalAccountBalance) < 0.000001
+    totalAccountBalance === 0
       ? 0
-      : clamp((totalEnvelopeBalance / totalAccountBalance) * 100, -999, 999)
+      : clamp(decimal(totalEnvelopeBalance).div(totalAccountBalance).mul(100).toNumber(), -999, 999)
 
   return {
     insights,
     totalEnvelopeBalance,
-    availableDelta: totalAccountBalance - totalEnvelopeBalance,
+    availableDelta: subtractMoney(totalAccountBalance, totalEnvelopeBalance),
     assignedPercentage,
     activeEnvelopesCount: activeEnvelopes.length,
     negativeEnvelopesCount: negativeEnvelopes.length,

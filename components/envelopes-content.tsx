@@ -749,7 +749,7 @@ export function EnvelopesContent() {
             value={formatSignedCurrency(summary.availableDelta, selectedAccountCurrency)}
             description="Difference between account balance and summed envelopes."
             icon={MinusCircle}
-            tone={Math.abs(summary.availableDelta) < 0.01 ? "success" : "warning"}
+            tone={summary.availableDelta === 0 ? "success" : "warning"}
           />
           <MetricCard
             title="Largest Envelope"

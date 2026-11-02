@@ -1,6 +1,8 @@
+import { assertMoney } from "@/lib/money"
 export type ImportTransactionType = "INCOME" | "EXPENSE" | "TRANSFER" | "ADJUSTMENT"
 
 export interface ImportTransactionRow {
+  sourceAmountText?: string
   id: string
   date: string
   description: string
@@ -29,6 +31,7 @@ export interface TransactionImportPayload {
     {
       accountId: number
       envelopeId: number
+      sourceAmountText?: string
       amount: number
     },
   ]
@@ -69,6 +72,12 @@ export function getImportRowValidationError(
     return "Date is required"
   }
 
+  try {
+    assertMoney(row.amount, row.currency)
+  } catch {
+    return "Invalid amount precision or range"
+  }
+
   if (row.amount === 0) return "Amount must not be 0"
 
   return null
@@ -94,7 +103,8 @@ export function buildTransactionImportPayload(
       {
         accountId,
         envelopeId,
-        amount: row.amount,
+        amount: assertMoney(row.amount, row.currency),
+        ...(row.sourceAmountText ? { sourceAmountText: row.sourceAmountText } : {}),
       },
     ],
   }

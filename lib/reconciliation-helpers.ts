@@ -1,3 +1,4 @@
+import { subtractMoney } from "@/lib/money"
 export interface ReconciliationRecord {
   id: number
   accountId: number
@@ -14,14 +15,14 @@ export function calculateReconciliationDifference(
   calculatedBalance: number,
   realBalance: number,
 ): number {
-  return realBalance - calculatedBalance
+  return subtractMoney(realBalance, calculatedBalance)
 }
 
 /**
  * Check if account is reconciled (difference is zero)
  */
 export function isAccountReconciled(record: ReconciliationRecord): boolean {
-  return Math.abs(record.difference) < 0.01
+  return record.difference === 0
 }
 
 /**

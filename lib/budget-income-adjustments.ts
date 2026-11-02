@@ -1,4 +1,6 @@
+import { assertMoney, subtractMoney } from "@/lib/money"
 export type BudgetIncomeAdjustmentsInput = {
+  currency?: string
   originalIncome: number
   applyCcss: boolean
   ccssAmount: number
@@ -15,33 +17,35 @@ export type BudgetIncomeAdjustmentsResult = {
   finalIncome: number
 }
 
-const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
-
 export function calculateBudgetIncomeAdjustments(
   input: BudgetIncomeAdjustmentsInput,
 ): BudgetIncomeAdjustmentsResult {
   const originalIncome = Number.isFinite(input.originalIncome)
-    ? Math.max(input.originalIncome, 0)
+    ? Math.max(assertMoney(input.originalIncome, input.currency ?? "CRC"), 0)
     : 0
   const ccssDeduction =
     input.applyCcss && Number.isFinite(input.ccssAmount)
-      ? Math.max(roundMoney(input.ccssAmount), 0)
+      ? Math.max(assertMoney(input.ccssAmount, input.currency ?? "CRC"), 0)
       : 0
   const incomeTaxDeduction =
     input.applyIncomeTax && Number.isFinite(input.incomeTaxAmount)
-      ? Math.max(roundMoney(input.incomeTaxAmount), 0)
+      ? Math.max(assertMoney(input.incomeTaxAmount, input.currency ?? "CRC"), 0)
       : 0
   const exchangeLossDeduction =
     input.applyExchangeLoss && Number.isFinite(input.exchangeLossAmount)
-      ? Math.max(roundMoney(input.exchangeLossAmount), 0)
+      ? Math.max(assertMoney(input.exchangeLossAmount, input.currency ?? "CRC"), 0)
       : 0
 
   return {
     ccssDeduction,
     incomeTaxDeduction,
     exchangeLossDeduction,
-    finalIncome: roundMoney(
-      Math.max(originalIncome - ccssDeduction - incomeTaxDeduction - exchangeLossDeduction, 0),
+    finalIncome: assertMoney(
+      Math.max(
+        subtractMoney(originalIncome, ccssDeduction, incomeTaxDeduction, exchangeLossDeduction),
+        0,
+      ),
+      input.currency ?? "CRC",
     ),
   }
 }

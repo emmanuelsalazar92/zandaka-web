@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { currencyStep } from "@/lib/money"
 
 type BudgetIncomeFormProps = {
   month: string
@@ -91,7 +92,7 @@ export function BudgetIncomeForm({
               id="budget-income"
               type="number"
               min="0"
-              step="0.01"
+              step={currencyStep(currency)}
               inputMode="decimal"
               placeholder="0.00"
               value={grossSalaryInput}

@@ -1,3 +1,4 @@
+import { sumMoney } from "@/lib/money"
 export interface TransactionLine {
   accountId: number
   envelopeId: number
@@ -31,8 +32,8 @@ export function validateTransaction(transaction: Partial<Transaction>): {
     if (!transaction.lines || transaction.lines.length !== 2) {
       errors.push("Transfers must have exactly 2 lines")
     }
-    const sum = (transaction.lines || []).reduce((acc, line) => acc + line.amount, 0)
-    if (Math.abs(sum) > 0.01) {
+    const sum = sumMoney((transaction.lines || []).map((line) => line.amount))
+    if (sum !== 0) {
       errors.push("Transfer lines must sum to 0")
     }
   }
@@ -47,7 +48,7 @@ export function validateTransaction(transaction: Partial<Transaction>): {
  * Calculate the sum of all transaction lines
  */
 export function calculateTransactionSum(lines: TransactionLine[]): number {
-  return lines.reduce((acc, line) => acc + line.amount, 0)
+  return sumMoney(lines.map((line) => line.amount))
 }
 
 /**

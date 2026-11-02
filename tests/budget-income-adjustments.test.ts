@@ -58,6 +58,26 @@ describe("budget income adjustments", () => {
     ).toBe(0)
   })
 
+  it("rejects fractional minor units in original income and manual reserves", () => {
+    const input = {
+      originalIncome: 1,
+      applyCcss: false,
+      ccssAmount: 0,
+      applyIncomeTax: false,
+      incomeTaxAmount: 0,
+      applyExchangeLoss: false,
+      exchangeLossAmount: 0,
+    }
+    expect(() => calculateBudgetIncomeAdjustments({ ...input, originalIncome: 1.001 })).toThrow()
+    expect(() =>
+      calculateBudgetIncomeAdjustments({
+        ...input,
+        applyExchangeLoss: true,
+        exchangeLossAmount: 0.001,
+      }),
+    ).toThrow()
+  })
+
   it("keeps payroll references only for the deductions that actually use them", () => {
     expect(
       buildBudgetPayrollReferenceIds({

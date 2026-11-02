@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
+import { tryDecimalInput } from "@/lib/money"
 import { type ExchangeRate } from "@/lib/settings-api"
 
 type GenerateReportDialogProps = {
@@ -145,7 +146,7 @@ export function GenerateReportDialog({
       exchangeRateId:
         rateMode === "stored" && selectedRateId ? Number.parseInt(selectedRateId, 10) : null,
       usdToCrcRate:
-        rateMode === "manual" && manualRate.trim() ? Number.parseFloat(manualRate.trim()) : null,
+        rateMode === "manual" && manualRate.trim() ? tryDecimalInput(manualRate.trim()) : null,
       notes: notes.trim() || null,
     })
   }
