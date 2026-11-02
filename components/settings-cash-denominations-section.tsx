@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
 import { formatCurrency } from "@/lib/currency-formatter"
+import { tryDecimalInput, assertMoney } from "@/lib/money"
 import {
   type AccountOption,
   type CashDenomination,
@@ -147,7 +148,7 @@ export function SettingsCashDenominationsSection({
   }
 
   const saveDenomination = async () => {
-    const value = Number(form.value)
+    const value = tryDecimalInput(form.value)
     const sortOrder = Number(form.sortOrder)
     const currency = form.currency.trim().toUpperCase()
 
@@ -159,6 +160,13 @@ export function SettingsCashDenominationsSection({
       setFormError("Value must be greater than zero.")
       return
     }
+    try {
+      assertMoney(value, currency)
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Invalid amount")
+      return
+    }
+
     if (!Number.isInteger(sortOrder) || sortOrder < 0) {
       setFormError("Sort order must be a non-negative integer.")
       return
@@ -430,7 +438,7 @@ export function SettingsCashDenominationsSection({
                     id="cash-denomination-value"
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="any"
                     value={form.value}
                     onChange={(event) =>
                       setForm((current) => ({

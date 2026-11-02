@@ -53,6 +53,7 @@ import {
   type DenominationQuantityMap,
 } from "@/lib/cash-denomination-helpers"
 import { formatCurrency, formatSignedCurrency } from "@/lib/currency-formatter"
+import { subtractMoney, tryDecimalInput } from "@/lib/money"
 import {
   createReconciliation,
   fetchCashDenominationsForAccount,
@@ -98,12 +99,12 @@ function parseManualCountedTotal(value: string) {
   const normalized = value.trim().replace(/\s+/g, "").replace(/,/g, ".")
   if (!normalized) return null
 
-  const parsed = Number(normalized)
+  const parsed = tryDecimalInput(normalized)
   return Number.isFinite(parsed) ? parsed : null
 }
 
 function isBalanced(difference: number) {
-  return Math.abs(difference) < 0.01
+  return difference === 0
 }
 
 function getCountMethodLabel(countMethod: ReconciliationCountMethod) {
@@ -206,7 +207,7 @@ export function ReconciliationContent() {
 
   const differencePreview = React.useMemo(() => {
     if (!expectedPreview) return null
-    return countedTotalPreview - expectedPreview.expectedTotal
+    return subtractMoney(countedTotalPreview, expectedPreview.expectedTotal)
   }, [countedTotalPreview, expectedPreview])
 
   const createFormErrors = React.useMemo(() => {

@@ -68,6 +68,16 @@ import {
   saveBudgetLines,
 } from "@/lib/budgets-api"
 import { formatCurrency } from "@/lib/currency-formatter"
+import {
+  sumMoney,
+  subtractMoney,
+  currencyStep,
+  amountFromPercentage,
+  percentageFromAmount,
+  assertMoney,
+  roundDecimal,
+  tryDecimalInput,
+} from "@/lib/money"
 import { cn } from "@/lib/utils"
 
 type BudgetDetailContentProps = {
@@ -123,8 +133,8 @@ const serializeDraftLines = (lines: BudgetPlanningLineDraft[]) =>
       .sort((left, right) => left.sortOrder - right.sortOrder)
       .map((line) => ({
         categoryId: line.categoryId,
-        amount: Number(line.amount.toFixed(2)),
-        percentage: Number(line.percentage.toFixed(2)),
+        amount: line.amount,
+        percentage: roundDecimal(line.percentage, 2),
         notes: line.notes.trim(),
         sortOrder: line.sortOrder,
       })),
@@ -234,10 +244,10 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
   const isEditable = budget?.status === "draft"
   const hasUnsavedChanges = serializeDraftLines(serverLines) !== serializeDraftLines(draftLines)
   const totalIncome = budget?.totalIncome ?? 0
-  const distributedAmount = draftLines.reduce((sum, line) => sum + line.amount, 0)
-  const distributedPercentage = draftLines.reduce((sum, line) => sum + line.percentage, 0)
-  const remainingAmount = totalIncome - distributedAmount
-  const remainingPercentage = 100 - distributedPercentage
+  const distributedAmount = sumMoney(draftLines.map((line) => line.amount))
+  const distributedPercentage = sumMoney(draftLines.map((line) => line.percentage))
+  const remainingAmount = subtractMoney(totalIncome, distributedAmount)
+  const remainingPercentage = subtractMoney(100, distributedPercentage)
 
   const groupedLines = draftLines.reduce<Record<string, BudgetPlanningLineDraft[]>>(
     (groups, line) => {
@@ -255,7 +265,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
   )
 
   const handleLineAmountChange = (clientId: string, value: string) => {
-    const parsedAmount = Number.parseFloat(value || "0")
+    const parsedAmount = tryDecimalInput(value || "0")
     const amount = Number.isFinite(parsedAmount) ? parsedAmount : 0
 
     setDraftLines((currentLines) =>
@@ -264,7 +274,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
           ? {
               ...line,
               amount,
-              percentage: totalIncome > 0 ? (amount / totalIncome) * 100 : 0,
+              percentage: totalIncome > 0 ? percentageFromAmount(amount, totalIncome) : 0,
             }
           : line,
       ),
@@ -272,7 +282,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
   }
 
   const handleLinePercentageChange = (clientId: string, value: string) => {
-    const parsedPercentage = Number.parseFloat(value || "0")
+    const parsedPercentage = tryDecimalInput(value || "0")
     const percentage = Number.isFinite(parsedPercentage) ? parsedPercentage : 0
 
     setDraftLines((currentLines) =>
@@ -281,7 +291,10 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
           ? {
               ...line,
               percentage,
-              amount: totalIncome > 0 ? (percentage / 100) * totalIncome : 0,
+              amount:
+                totalIncome > 0
+                  ? amountFromPercentage(totalIncome, percentage, budget?.currency ?? "CRC")
+                  : 0,
             }
           : line,
       ),
@@ -330,7 +343,11 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
         parentCategoryName: selectedCategory.parentName ?? "Uncategorized",
         amount,
         percentage:
-          percentage > 0 ? percentage : totalIncome > 0 ? (amount / totalIncome) * 100 : 0,
+          percentage > 0
+            ? percentage
+            : totalIncome > 0
+              ? percentageFromAmount(amount, totalIncome)
+              : 0,
         notes,
         sortOrder: currentLines.length + 1,
       },
@@ -346,8 +363,8 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
         budget.id,
         draftLines.map((line, index) => ({
           categoryId: line.categoryId,
-          amount: Number(line.amount.toFixed(2)),
-          percentage: Number(line.percentage.toFixed(2)),
+          amount: assertMoney(line.amount, budget.currency),
+          percentage: roundDecimal(line.percentage, 2),
           notes: line.notes.trim(),
           sortOrder: index + 1,
         })),
@@ -698,8 +715,8 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
             </Card>
           ) : (
             groupEntries.map(([groupName, lines]) => {
-              const groupAmount = lines.reduce((sum, line) => sum + line.amount, 0)
-              const groupPercentage = lines.reduce((sum, line) => sum + line.percentage, 0)
+              const groupAmount = sumMoney(lines.map((line) => line.amount))
+              const groupPercentage = sumMoney(lines.map((line) => line.percentage))
 
               return (
                 <Card key={groupName}>
@@ -746,8 +763,8 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                                 <Input
                                   type="number"
                                   min="0"
-                                  step="0.01"
-                                  value={Number(line.amount.toFixed(2))}
+                                  step={currencyStep(budget?.currency ?? "CRC")}
+                                  value={line.amount}
                                   onChange={(event) =>
                                     handleLineAmountChange(line.clientId, event.target.value)
                                   }
@@ -760,7 +777,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                                   type="number"
                                   min="0"
                                   step="0.01"
-                                  value={Number(line.percentage.toFixed(2))}
+                                  value={roundDecimal(line.percentage, 2)}
                                   onChange={(event) =>
                                     handleLinePercentageChange(line.clientId, event.target.value)
                                   }
@@ -837,8 +854,8 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                               <Input
                                 type="number"
                                 min="0"
-                                step="0.01"
-                                value={Number(line.amount.toFixed(2))}
+                                step={currencyStep(budget?.currency ?? "CRC")}
+                                value={line.amount}
                                 onChange={(event) =>
                                   handleLineAmountChange(line.clientId, event.target.value)
                                 }
@@ -853,7 +870,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                value={Number(line.percentage.toFixed(2))}
+                                value={roundDecimal(line.percentage, 2)}
                                 onChange={(event) =>
                                   handleLinePercentageChange(line.clientId, event.target.value)
                                 }
@@ -902,6 +919,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
       </Tabs>
 
       <AddBudgetCategoryDialog
+        currency={budget?.currency ?? "CRC"}
         open={isAddCategoryOpen}
         onOpenChange={setIsAddCategoryOpen}
         categories={categories}

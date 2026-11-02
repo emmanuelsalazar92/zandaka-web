@@ -1,8 +1,10 @@
+import { currencyDigits } from "@/lib/money"
 export function formatCurrency(amount: number, currency: string): string {
   return new Intl.NumberFormat(currency === "CRC" ? "es-CR" : "en-US", {
     style: "currency",
     currency: currency,
-    minimumFractionDigits: 2,
+    minimumFractionDigits: currencyDigits(currency),
+    maximumFractionDigits: currencyDigits(currency),
   }).format(amount)
 }
 
@@ -11,7 +13,7 @@ export function formatCurrency(amount: number, currency: string): string {
  */
 export function formatSignedCurrency(amount: number, currency: string): string {
   const formatted = formatCurrency(Math.abs(amount), currency)
-  if (Math.abs(amount) < 0.01) return formatted
+  if (amount === 0) return formatted
   return amount > 0 ? `+${formatted}` : `-${formatted}`
 }
 

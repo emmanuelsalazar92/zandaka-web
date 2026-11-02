@@ -1,3 +1,4 @@
+import { sumMoney, multiplyMoney } from "@/lib/money"
 type DenominationLike = {
   id: number
   value: number
@@ -6,28 +7,28 @@ type DenominationLike = {
 
 export type DenominationQuantityMap = Record<number, string>
 
-const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
-
 export function calculateDenominationLineTotal(value: number, quantity: number) {
-  return roundMoney(value * Math.max(0, quantity))
+  return multiplyMoney(value, Math.max(0, quantity))
 }
 
 export function calculateDenominationCountedTotal(
   denominations: DenominationLike[],
   quantities: DenominationQuantityMap,
 ) {
-  return roundMoney(
-    denominations.reduce((sum, denomination) => {
-      const quantity = parseQuantity(quantities[denomination.id] ?? "")
-      return sum + calculateDenominationLineTotal(denomination.value, quantity)
-    }, 0),
+  return sumMoney(
+    denominations.map((denomination) =>
+      calculateDenominationLineTotal(
+        denomination.value,
+        parseQuantity(quantities[denomination.id] ?? ""),
+      ),
+    ),
   )
 }
 
 export function parseQuantity(value: string) {
   if (!value.trim()) return 0
   const parsed = Number.parseInt(value, 10)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 0
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0
 }
 
 export function sanitizeQuantityInput(value: string) {

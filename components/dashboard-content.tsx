@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table"
 import { formatCurrency } from "@/lib/currency-formatter"
 import { fetchDashboardSummary, type DashboardSummary } from "@/lib/dashboard-api"
+import { sumMoney, convertMoney } from "@/lib/money"
 import { cn } from "@/lib/utils"
 
 type CurrencyCode = "CRC" | "USD"
@@ -103,8 +104,14 @@ export function DashboardContent() {
   const consolidatedCurrency = preferredCurrency as CurrencyCode
   const consolidatedTotal =
     consolidatedCurrency === "USD"
-      ? totals.USD + (exchangeRate ? totals.CRC / exchangeRate.venta : 0)
-      : totals.CRC + (exchangeRate ? totals.USD * exchangeRate.compra : 0)
+      ? sumMoney([
+          totals.USD,
+          exchangeRate ? convertMoney(totals.CRC, exchangeRate.venta, "USD", true) : 0,
+        ])
+      : sumMoney([
+          totals.CRC,
+          exchangeRate ? convertMoney(totals.USD, exchangeRate.compra, "CRC") : 0,
+        ])
 
   const topSpendingCategories = monthlyExpenses
     .slice()

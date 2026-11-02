@@ -161,8 +161,7 @@ export function ReportsContent() {
 
         if (!storedRate) {
           const resolvedRate = await fetchExchangeRateByDate(effectiveDate)
-          const rateValue =
-            input.baseCurrency === "CRC" ? resolvedRate.compra : 1 / resolvedRate.venta
+          const rateValue = input.baseCurrency === "CRC" ? resolvedRate.compra : resolvedRate.venta
 
           storedRate = await createExchangeRate({
             fromCurrency: input.baseCurrency === "CRC" ? "USD" : "CRC",

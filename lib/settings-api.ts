@@ -1,4 +1,5 @@
 import { DEFAULT_USER_ID } from "@/lib/budgets-api"
+import { decimalNumber } from "@/lib/money"
 
 const API_BASE_URL = "/api"
 
@@ -188,10 +189,9 @@ export class SettingsApiError extends Error {
 }
 
 const toNumber = (value: unknown, fallback = 0) => {
-  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "number" && Number.isFinite(value)) return decimalNumber(value)
   if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number.parseFloat(value)
-    return Number.isFinite(parsed) ? parsed : fallback
+    return decimalNumber(value.trim())
   }
   return fallback
 }

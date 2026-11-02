@@ -1,3 +1,4 @@
+import { sumMoney } from "@/lib/money"
 export interface Envelope {
   id: number
   accountId: number
@@ -10,7 +11,7 @@ export interface Envelope {
  * Calculate total balance across envelopes
  */
 export function calculateEnvelopesTotalBalance(envelopes: Envelope[]): number {
-  return envelopes.reduce((sum, envelope) => sum + envelope.balance, 0)
+  return sumMoney(envelopes.map((envelope) => envelope.balance))
 }
 
 /**

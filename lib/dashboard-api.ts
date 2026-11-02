@@ -1,3 +1,4 @@
+import { decimalNumber } from "@/lib/money"
 import { SETTINGS_USER_ID, fetchUserSettings } from "@/lib/settings-api"
 
 const API_BASE_URL = "/api"
@@ -110,10 +111,9 @@ export class DashboardApiError extends Error {
 type SettledResult<T> = { status: "fulfilled"; value: T } | { status: "rejected"; reason: unknown }
 
 const toNumber = (value: unknown, fallback = 0) => {
-  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "number" && Number.isFinite(value)) return decimalNumber(value)
   if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number.parseFloat(value)
-    return Number.isFinite(parsed) ? parsed : fallback
+    return decimalNumber(value.trim())
   }
   return fallback
 }

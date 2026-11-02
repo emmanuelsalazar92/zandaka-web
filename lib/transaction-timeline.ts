@@ -1,3 +1,4 @@
+import { sumMoney } from "@/lib/money"
 export type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER" | "ADJUSTMENT"
 
 export type TimelineTransactionLine = {
@@ -112,7 +113,7 @@ export function getTransactionTypeMeta(type: TransactionType | string): Transact
 }
 
 export function getTransactionNetAmount(transaction: TimelineTransaction) {
-  return transaction.lines.reduce((sum, line) => sum + toSafeNumber(line.amount), 0)
+  return sumMoney(transaction.lines.map((line) => toSafeNumber(line.amount)))
 }
 
 export function getTransactionDisplayAmount(transaction: TimelineTransaction) {

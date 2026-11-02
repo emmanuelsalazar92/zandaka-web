@@ -39,18 +39,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { sumMoney } from "@/lib/money"
+import {
+  applyTypeSign,
+  normalizeAmountInput,
+  sanitizeAmountInput,
+  transactionAmount,
+} from "@/lib/transaction-amount"
 import {
   groupTransactionsForTimeline,
   type TimelineTransaction,
   type TransactionType,
 } from "@/lib/transaction-timeline"
 import { cn } from "@/lib/utils"
-
-function applyTypeSign(type: TransactionType, amount: number) {
-  if (type === "EXPENSE") return -Math.abs(amount)
-  if (type === "INCOME") return Math.abs(amount)
-  return amount
-}
 
 interface TransactionLine {
   accountId: string
@@ -97,36 +98,6 @@ interface PaginationMeta {
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
 const API_BASE_URL = "/api"
-const amountInputFormatter = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 20,
-})
-
-function sanitizeAmountInput(value: string) {
-  const trimmed = value.trim()
-  if (!trimmed) return ""
-
-  const isNegative = trimmed.startsWith("-")
-  const unsigned = trimmed.replace(/[^0-9.,]/g, "")
-  const decimalSeparatorIndex = Math.max(unsigned.lastIndexOf("."), unsigned.lastIndexOf(","))
-  const hasDecimalPoint = decimalSeparatorIndex >= 0
-  const rawIntegerPart = hasDecimalPoint ? unsigned.slice(0, decimalSeparatorIndex) : unsigned
-  const rawDecimalPart = hasDecimalPoint ? unsigned.slice(decimalSeparatorIndex + 1) : ""
-  const integerDigits = rawIntegerPart.replace(/\D/g, "")
-  const decimalPart = rawDecimalPart.replace(/\D/g, "")
-  const integerPart = integerDigits.replace(/^0+(?=\d)/, "") || integerDigits || "0"
-  const formattedInteger = amountInputFormatter.format(Number.parseInt(integerPart, 10) || 0)
-
-  if (hasDecimalPoint) {
-    return `${isNegative ? "-" : ""}${formattedInteger}.${decimalPart}`
-  }
-
-  return `${isNegative ? "-" : ""}${formattedInteger}`
-}
-
-function parseAmountInput(value: string) {
-  return Number.parseFloat(value.replace(/,/g, ""))
-}
-
 export function TransactionsContent() {
   const [transactionsData, setTransactionsData] = React.useState<ApiTransaction[]>([])
   const [transactionsLoading, setTransactionsLoading] = React.useState(false)
@@ -442,27 +413,49 @@ export function TransactionsContent() {
   }
 
   const normalizeLineAmountForType = (index: number) => {
-    if (formData.type !== "INCOME" && formData.type !== "EXPENSE") return
-    const amount = parseAmountInput(formData.lines[index]?.amount ?? "")
-    if (Number.isNaN(amount)) return
     const newLines = [...formData.lines]
     newLines[index] = {
       ...newLines[index],
-      amount: sanitizeAmountInput(applyTypeSign(formData.type, amount).toString()),
+      amount: normalizeAmountInput(newLines[index].amount, formData.type),
     }
     setFormData({ ...formData, lines: newLines })
   }
 
+  const lineCurrency = (line: TransactionLine) =>
+    accounts.find((account) => account.id === Number(line.accountId))?.currency ?? "CRC"
+
+  const lineErrors = formData.lines.map((line) => {
+    if (!line.amount.trim()) return null
+    try {
+      transactionAmount(line.amount, formData.type, lineCurrency(line))
+      return null
+    } catch {
+      return "Enter a valid non-zero amount using a decimal point and the currency's minor units."
+    }
+  })
+
   const getTransactionLineSum = () => {
-    return formData.lines.reduce((sum, line) => sum + (parseAmountInput(line.amount) || 0), 0)
+    try {
+      return sumMoney(
+        formData.lines.map((line) =>
+          transactionAmount(line.amount, formData.type, lineCurrency(line)),
+        ),
+      )
+    } catch {
+      return Number.NaN
+    }
   }
 
+  const linesValid = formData.lines.every(
+    (line, index) => line.accountId && line.envelopeId && line.amount.trim() && !lineErrors[index],
+  )
   const isTransferValid =
-    formData.type === "TRANSFER" && formData.lines.length === 2 && getTransactionLineSum() === 0
-  const isOtherValid =
-    formData.type !== "TRANSFER" &&
-    formData.lines.length >= 1 &&
-    formData.lines.every((l) => l.accountId && l.envelopeId && l.amount)
+    formData.type === "TRANSFER" &&
+    linesValid &&
+    formData.lines.length === 2 &&
+    new Set(formData.lines.map(lineCurrency)).size === 1 &&
+    getTransactionLineSum() === 0
+  const isOtherValid = formData.type !== "TRANSFER" && formData.lines.length >= 1 && linesValid
   const isFormValid = (isTransferValid || isOtherValid) && formData.description && formData.date
 
   const resetCreateForm = React.useCallback(() => {
@@ -488,7 +481,7 @@ export function TransactionsContent() {
         lines: formData.lines.map((line) => ({
           accountId: Number.parseInt(line.accountId),
           envelopeId: Number.parseInt(line.envelopeId),
-          amount: applyTypeSign(formData.type, parseAmountInput(line.amount)),
+          amount: transactionAmount(line.amount, formData.type, lineCurrency(line)),
         })),
       }
       const res = await fetch(`${API_BASE_URL}/transactions`, {
@@ -614,7 +607,7 @@ export function TransactionsContent() {
                         setFormData({ ...formData, type: value as TransactionType })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="type">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -667,7 +660,7 @@ export function TransactionsContent() {
                           onValueChange={(value) => handleLineChange(index, "accountId", value)}
                           disabled={accountsLoading || activeAccounts.length === 0}
                         >
-                          <SelectTrigger className="h-9 w-full">
+                          <SelectTrigger className="h-9 w-full" aria-label={`Account ${index + 1}`}>
                             <SelectValue
                               placeholder={
                                 accountsLoading
@@ -697,7 +690,10 @@ export function TransactionsContent() {
                           onValueChange={(value) => handleLineChange(index, "envelopeId", value)}
                           disabled={!line.accountId || envelopesLoading[line.accountId]}
                         >
-                          <SelectTrigger className="h-9 w-full">
+                          <SelectTrigger
+                            className="h-9 w-full"
+                            aria-label={`Envelope ${index + 1}`}
+                          >
                             <SelectValue
                               placeholder={
                                 !line.accountId
@@ -723,16 +719,31 @@ export function TransactionsContent() {
                         )}
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Amount</Label>
+                        <Label className="text-xs" htmlFor={`transaction-amount-${index}`}>
+                          Amount
+                        </Label>
                         <Input
+                          id={`transaction-amount-${index}`}
                           type="text"
                           inputMode="decimal"
                           placeholder="0.00"
                           value={line.amount}
                           onChange={(e) => handleLineChange(index, "amount", e.target.value)}
                           onBlur={() => normalizeLineAmountForType(index)}
+                          aria-invalid={Boolean(lineErrors[index])}
+                          aria-describedby={
+                            lineErrors[index] ? `transaction-amount-error-${index}` : undefined
+                          }
                           className="h-9 text-right font-medium tabular-nums"
                         />
+                        {lineErrors[index] && (
+                          <p
+                            id={`transaction-amount-error-${index}`}
+                            className="text-xs text-error"
+                          >
+                            {lineErrors[index]}
+                          </p>
+                        )}
                       </div>
                       <Button
                         variant="ghost"
@@ -754,7 +765,9 @@ export function TransactionsContent() {
                           getTransactionLineSum() === 0 ? "text-success" : "text-error",
                         )}
                       >
-                        {getTransactionLineSum().toFixed(2)}
+                        {Number.isFinite(getTransactionLineSum())
+                          ? getTransactionLineSum().toFixed(2)
+                          : "—"}
                       </span>
                     </div>
                   )}

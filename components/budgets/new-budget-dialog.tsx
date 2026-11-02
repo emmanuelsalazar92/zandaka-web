@@ -34,6 +34,7 @@ import {
   calculateBudgetIncomeAdjustments,
 } from "@/lib/budget-income-adjustments"
 import { BudgetApiError, copyBudgetFromPrevious, createBudget } from "@/lib/budgets-api"
+import { tryDecimalInput } from "@/lib/money"
 import { calculateNetSalary } from "@/lib/settings-api"
 
 type NewBudgetDialogProps = {
@@ -87,9 +88,9 @@ export function NewBudgetDialog({ open, onOpenChange }: NewBudgetDialogProps) {
     setState((current) => ({ ...current, ...patch }))
   }, [])
 
-  const grossSalary = Number.parseFloat(state.grossSalaryInput)
+  const grossSalary = tryDecimalInput(state.grossSalaryInput, state.currency)
   const isGrossSalaryValid = Number.isFinite(grossSalary) && grossSalary > 0
-  const fxAmount = Number.parseFloat(state.fxAmountInput)
+  const fxAmount = tryDecimalInput(state.fxAmountInput, state.currency)
   const isFxAmountValid =
     !state.fxEnabled || (Number.isFinite(fxAmount) && !Number.isNaN(fxAmount) && fxAmount >= 0)
   const periodDate = state.month ? `${state.month}-01` : ""
@@ -97,10 +98,11 @@ export function NewBudgetDialog({ open, onOpenChange }: NewBudgetDialogProps) {
   const payrollRulesLabel = payrollAvailable && state.month ? `CR ${state.month.slice(0, 4)}` : null
   const automaticDeductionsSelected = state.ccssEnabled || state.taxEnabled
   const adjustedIncome = calculateBudgetIncomeAdjustments({
+    currency: state.currency,
     originalIncome: isGrossSalaryValid ? grossSalary : 0,
-    applyCcss: state.ccssEnabled,
+    applyCcss: payrollAvailable && state.ccssEnabled,
     ccssAmount: payrollPreview?.ccssWorkerAmount ?? 0,
-    applyIncomeTax: state.taxEnabled,
+    applyIncomeTax: payrollAvailable && state.taxEnabled,
     incomeTaxAmount: payrollPreview?.incomeTaxAmount ?? 0,
     applyExchangeLoss: state.fxEnabled,
     exchangeLossAmount: state.fxEnabled && isFxAmountValid ? fxAmount : 0,

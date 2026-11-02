@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
 import { formatCurrency } from "@/lib/currency-formatter"
+import { tryDecimalInput } from "@/lib/money"
 import {
   createIncomeTaxBracketDraft,
   formatIncomeTaxBracketRange,
@@ -89,7 +90,7 @@ const createDraftKey = () => `${Date.now()}-${Math.random().toString(36).slice(2
 
 const toNumberOrNull = (value: string) => {
   if (!value.trim()) return null
-  const parsed = Number(value)
+  const parsed = tryDecimalInput(value)
   return Number.isFinite(parsed) ? parsed : null
 }
 
@@ -292,7 +293,7 @@ export function SettingsPayrollRulesSection() {
   }
 
   const handleSaveCcssRule = async () => {
-    const employeeRate = Number(ccssForm.employeeRate)
+    const employeeRate = tryDecimalInput(ccssForm.employeeRate)
     const employerRate = toNumberOrNull(ccssForm.employerRate)
 
     if (!ccssForm.name.trim()) {
@@ -380,9 +381,9 @@ export function SettingsPayrollRulesSection() {
     const parsedBrackets = []
 
     for (const [index, bracket] of incomeTaxForm.brackets.entries()) {
-      const amountFrom = Number(bracket.amountFrom)
+      const amountFrom = tryDecimalInput(bracket.amountFrom)
       const amountTo = toNumberOrNull(bracket.amountTo)
-      const taxRate = Number(bracket.taxRate)
+      const taxRate = tryDecimalInput(bracket.taxRate)
 
       if (!Number.isFinite(amountFrom) || amountFrom < 0) {
         setEditorError(`Bracket ${index + 1} requires a valid amount from.`)
@@ -481,7 +482,7 @@ export function SettingsPayrollRulesSection() {
   }
 
   const handleSimulate = async () => {
-    const grossSalary = Number(simulatorForm.grossSalary)
+    const grossSalary = tryDecimalInput(simulatorForm.grossSalary)
 
     if (!Number.isFinite(grossSalary) || grossSalary <= 0) {
       setSimulationError("Gross salary must be greater than zero.")
