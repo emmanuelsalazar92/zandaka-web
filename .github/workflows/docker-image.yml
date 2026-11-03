@@ -1,13 +1,7 @@
 name: Docker image
 
 on:
-  pull_request:
-  push:
-    branches:
-      - main
-    tags:
-      - "v*.*.*"
-  workflow_dispatch:
+  workflow_call:
 
 env:
   REGISTRY: ghcr.io
@@ -59,7 +53,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=sha,prefix=sha-
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and publish image
         uses: docker/build-push-action@v7

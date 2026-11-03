@@ -1,4 +1,5 @@
 import { Plus } from "lucide-react"
+import Link from "next/link"
 
 import { AccountFormDialog } from "@/components/accounts/components/account-form-dialog"
 import type { AccountFormData, InstitutionUi } from "@/components/accounts/types/accounts.types"
@@ -28,10 +29,16 @@ export function AccountsHeader({
   error,
 }: AccountsHeaderProps) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Accounts</h2>
-        <p className="text-muted-foreground">Manage your accounts across institutions</p>
+        <h2 className="text-3xl font-semibold tracking-tight">Cuentas</h2>
+        <p className="mt-1 text-muted-foreground">Dónde está tu dinero y en qué moneda.</p>
+        <Link
+          href="/institutions"
+          className="mt-2 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Gestionar instituciones
+        </Link>
       </div>
       <AccountFormDialog
         open={isCreateOpen}

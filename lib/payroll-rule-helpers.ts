@@ -1,13 +1,8 @@
-import { formatIsoDateOnly } from "@/lib/date-only"
+import { formatIsoDateOnly, getAccountingDate } from "@/lib/date-only"
 import type { PayrollIncomeTaxBracket, PayrollRuleSet } from "@/lib/settings-api"
 
 export function getCostaRicaTodayDateValue(now = new Date()) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Costa_Rica",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(now)
+  return getAccountingDate(now)
 }
 
 export function formatPayrollRate(rate: number) {

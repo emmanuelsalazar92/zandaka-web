@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatCurrency } from "@/lib/currency-formatter"
-import { getReportPdfUrl, type ReportSnapshot } from "@/lib/reports-api"
+import { getReportHtmlUrl, getReportPdfUrl, type ReportSnapshot } from "@/lib/reports-api"
 
 import { formatReportMonth, formatSnapshotTimestamp } from "./report-helpers"
 
@@ -35,17 +35,16 @@ export function ReportPreviewPanel({
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             <FileSearch className="h-5 w-5 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-semibold">Select a report</h3>
+          <h3 className="text-lg font-semibold">Elige un reporte</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Choose a historical snapshot from the left panel to preview the exact PDF stored for
-            that version.
+            Consulta una versión histórica y descarga su PDF cuando lo necesites.
           </p>
         </div>
       </section>
     )
   }
 
-  const previewUrl = `${getReportPdfUrl(report.id, "inline")}&t=${encodeURIComponent(
+  const previewUrl = `${getReportHtmlUrl(report.id)}?t=${encodeURIComponent(
     report.updatedAt || report.generatedAt || String(report.id),
   )}`
   const downloadUrl = getReportPdfUrl(report.id, "attachment")
@@ -58,16 +57,16 @@ export function ReportPreviewPanel({
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-lg font-semibold">{formatReportMonth(report.reportMonth)}</h3>
               <Badge variant="outline">v{report.version}</Badge>
-              {report.isLatest ? <Badge variant="secondary">Latest</Badge> : null}
+              {report.isLatest ? <Badge variant="secondary">Más reciente</Badge> : null}
             </div>
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-              <span>Generated {formatSnapshotTimestamp(report.generatedAt)}</span>
+              <span>Capturado {formatSnapshotTimestamp(report.generatedAt)}</span>
               <span>Base {report.baseCurrency}</span>
               <span>
-                Consolidated{" "}
+                Consolidado{" "}
                 {report.consolidatedAmount !== null
                   ? formatCurrency(report.consolidatedAmount, report.baseCurrency)
-                  : "N/A"}
+                  : "No disponible"}
               </span>
             </div>
           </div>
@@ -81,12 +80,17 @@ export function ReportPreviewPanel({
               disabled={archiveBusy}
             >
               <Archive className="h-4 w-4" />
-              Archive
+              Archivar
             </Button>
             <Button type="button" asChild className="shrink-0">
               <a href={downloadUrl}>
                 <Download className="h-4 w-4" />
-                Download PDF
+                Descargar PDF
+              </a>
+            </Button>
+            <Button type="button" asChild variant="outline" className="shrink-0">
+              <a href={getReportHtmlUrl(report.id)} target="_blank" rel="noopener noreferrer">
+                Abrir informe
               </a>
             </Button>
           </div>
@@ -102,7 +106,8 @@ export function ReportPreviewPanel({
 
         <iframe
           key={previewUrl}
-          title={`Report preview ${report.id}`}
+          title={`Reporte histórico, versión ${report.version}`}
+          sandbox=""
           src={previewUrl}
           className="h-[calc(100vh-17rem)] min-h-[40rem] w-full border-0"
           onLoad={() => setPreviewLoading(false)}

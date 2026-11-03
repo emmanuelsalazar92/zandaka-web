@@ -1,328 +1,358 @@
 "use client"
 
-import { AlertCircle, AlertTriangle, TrendingDown, Wallet } from "lucide-react"
+import { AlertCircle, ArrowDownLeft, ArrowRight, ArrowUpRight, Plus, Upload } from "lucide-react"
+import Link from "next/link"
 import * as React from "react"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
+import { formatCurrency, formatSignedCurrency } from "@/lib/currency-formatter"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { formatCurrency } from "@/lib/currency-formatter"
-import { fetchDashboardSummary, type DashboardSummary } from "@/lib/dashboard-api"
-import { sumMoney, convertMoney } from "@/lib/money"
+  fetchDashboardMonthlyExpenses,
+  fetchDashboardSummary,
+  type DashboardMonthlyExpense,
+  type DashboardSummary,
+} from "@/lib/dashboard-api"
+import { consolidatedDashboardBalance } from "@/lib/dashboard-summary"
+import { formatIsoDateOnly, getAccountingDate } from "@/lib/date-only"
 import { cn } from "@/lib/utils"
 
-type CurrencyCode = "CRC" | "USD"
+function SpendingByMonth({
+  dashboard,
+  loading,
+}: {
+  dashboard: DashboardSummary | null
+  loading: boolean
+}) {
+  const [currentMonth] = React.useState(() => getAccountingDate().slice(0, 7))
+  const [month, setMonth] = React.useState(currentMonth)
+  const [expenses, setExpenses] = React.useState<DashboardMonthlyExpense[]>([])
+  const [pending, setPending] = React.useState(false)
+  const [error, setError] = React.useState(false)
 
-const messageOf = (error: unknown, fallback: string) =>
-  error instanceof Error && error.message ? error.message : fallback
+  React.useEffect(() => {
+    if (month === currentMonth) return
+    let active = true
+    void fetchDashboardMonthlyExpenses(month)
+      .then((values) => {
+        if (active) setExpenses(values)
+      })
+      .catch(() => {
+        if (active) setError(true)
+      })
+      .finally(() => {
+        if (active) setPending(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [month, currentMonth])
 
-const formatTransactionDate = (value: string) => {
-  if (!value) return "Unavailable"
-  const parsed = new Date(`${value}T12:00:00`)
-  if (Number.isNaN(parsed.getTime())) return value
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(parsed)
-}
+  const values = (month === currentMonth ? (dashboard?.monthlyExpenses ?? []) : expenses)
+    .slice()
+    .sort((left, right) => Math.abs(right.total) - Math.abs(left.total))
+    .slice(0, 5)
 
-const resolveTransactionCurrency = (
-  transaction: DashboardSummary["recentTransactions"][number],
-) => {
-  if (transaction.accountCurrency) return transaction.accountCurrency
-  const uniqueCurrencies = Array.from(
-    new Set(transaction.lines.map((line) => line.accountCurrency).filter(Boolean)),
-  )
-  return uniqueCurrencies.length === 1 ? uniqueCurrencies[0] : null
-}
-
-function DashboardCardsSkeleton() {
   return (
-    <>
-      {Array.from({ length: 4 }).map((_, index) => (
-        <Card key={index}>
-          <CardHeader className="pb-2">
-            <Skeleton className="h-4 w-24" />
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Skeleton className="h-8 w-32" />
-            <Skeleton className="h-3 w-28" />
-          </CardContent>
-        </Card>
-      ))}
-    </>
+    <Card className="min-w-0 shadow-none">
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <CardTitle>En qué se fue tu dinero</CardTitle>
+          <div className="space-y-1">
+            <Label htmlFor="dashboard-month" className="text-xs text-muted-foreground">
+              Mes de los gastos
+            </Label>
+            <Input
+              id="dashboard-month"
+              type="month"
+              value={month}
+              className="w-auto"
+              onChange={(event) => {
+                if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(event.target.value)) return
+                setPending(event.target.value !== currentMonth)
+                setError(false)
+                setExpenses([])
+                setMonth(event.target.value)
+              }}
+            />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent aria-live="polite" aria-busy={pending || loading}>
+        {loading || pending ? (
+          <Skeleton className="h-40 w-full" />
+        ) : error || (month === currentMonth && !dashboard?.monthlyExpensesAvailable) ? (
+          <p role="alert" className="text-sm text-error">
+            No pudimos cargar este período. Elige otro mes para volver a consultar.
+          </p>
+        ) : values.length === 0 ? (
+          <div className="space-y-3 py-6">
+            <p className="font-medium">Este mes empieza con una página en blanco.</p>
+            <p className="text-sm text-muted-foreground">
+              Elige otro período o incorpora tus movimientos.
+            </p>
+            <Button asChild variant="outline">
+              <Link href="/transactions/import">
+                <Upload />
+                Importar movimientos
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {values.map((category) => (
+              <div
+                key={category.categoryId + "-" + category.currency}
+                className="flex items-center justify-between gap-4 py-4 first:pt-0"
+              >
+                <span className="min-w-0 break-words text-sm">{category.categoryName}</span>
+                <span className="shrink-0 text-right text-sm font-semibold tabular-nums">
+                  {formatCurrency(Math.abs(category.total), category.currency)}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    {category.currency}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
 export function DashboardContent() {
   const [dashboard, setDashboard] = React.useState<DashboardSummary | null>(null)
   const [loading, setLoading] = React.useState(true)
+  const [refresh, setRefresh] = React.useState(0)
 
   React.useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        setLoading(true)
-        setDashboard(await fetchDashboardSummary())
-      } catch (cause) {
-        setDashboard({
-          totals: { CRC: 0, USD: 0 },
-          preferredCurrency: "CRC",
-          exchangeRate: null,
-          monthlyExpenses: [],
-          recentTransactions: [],
-          negativeEnvelopes: [],
-          inconsistencies: [],
-          warnings: [messageOf(cause, "Failed to load dashboard summary.")],
-        })
-      } finally {
-        setLoading(false)
-      }
+    let active = true
+    void fetchDashboardSummary()
+      .then((summary) => {
+        if (active) setDashboard(summary)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
     }
+  }, [refresh])
 
-    void loadDashboard()
-  }, [])
-
-  const totals = dashboard?.totals ?? { CRC: 0, USD: 0 }
-  const negativeEnvelopes = dashboard?.negativeEnvelopes ?? []
+  const consolidated = dashboard ? consolidatedDashboardBalance(dashboard) : null
+  const currency = dashboard?.preferredCurrency ?? "CRC"
+  const negatives = dashboard?.negativeEnvelopes ?? []
   const inconsistencies = dashboard?.inconsistencies ?? []
-  const monthlyExpenses = dashboard?.monthlyExpenses ?? []
-  const recentTransactions = dashboard?.recentTransactions ?? []
-  const preferredCurrency = dashboard?.preferredCurrency ?? "CRC"
-  const exchangeRate = dashboard?.exchangeRate ?? null
-  const warnings = dashboard?.warnings ?? []
-
-  const consolidatedCurrency = preferredCurrency as CurrencyCode
-  const consolidatedTotal =
-    consolidatedCurrency === "USD"
-      ? sumMoney([
-          totals.USD,
-          exchangeRate ? convertMoney(totals.CRC, exchangeRate.venta, "USD", true) : 0,
-        ])
-      : sumMoney([
-          totals.CRC,
-          exchangeRate ? convertMoney(totals.USD, exchangeRate.compra, "CRC") : 0,
-        ])
-
-  const topSpendingCategories = monthlyExpenses
-    .slice()
-    .sort((left, right) => Math.abs(right.total) - Math.abs(left.total))
-    .slice(0, 5)
+  const rate = dashboard?.exchangeRate
+  const recent = dashboard?.recentTransactions ?? []
+  const refreshSummary = () => {
+    setLoading(true)
+    setRefresh((value) => value + 1)
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {loading ? (
-          <DashboardCardsSkeleton />
-        ) : (
-          <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total (CRC)</CardTitle>
-                <Wallet className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(totals.CRC, "CRC")}</div>
-                <p className="text-xs text-muted-foreground">Active envelopes in CRC</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total (USD)</CardTitle>
-                <Wallet className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(totals.USD, "USD")}</div>
-                <p className="text-xs text-muted-foreground">Active envelopes in USD</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Negative Envelopes</CardTitle>
-                <TrendingDown className="h-4 w-4 text-error" />
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={cn("text-2xl font-bold", negativeEnvelopes.length > 0 && "text-error")}
-                >
-                  {negativeEnvelopes.length}
-                </div>
-                <p className="text-xs text-muted-foreground">Requires attention</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Inconsistencies</CardTitle>
-                <AlertCircle className="h-4 w-4 text-warning" />
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={cn("text-2xl font-bold", inconsistencies.length > 0 && "text-warning")}
-                >
-                  {inconsistencies.length}
-                </div>
-                <p className="text-xs text-muted-foreground">Open reconciliation issues</p>
-              </CardContent>
-            </Card>
-          </>
-        )}
+    <div className="space-y-7">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+            Tu panorama financiero
+          </p>
+          <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+            Todo en perspectiva.
+          </h2>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href="/transactions/import">
+              <Upload />
+              Importar
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/transactions?new=1">
+              <Plus />
+              Nuevo movimiento
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Net Worth (Consolidated)</CardTitle>
-          <CardDescription>
-            Using today&apos;s exchange rate and your preferred currency
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-            <div className="flex-1 space-y-2">
-              <p className="text-sm font-medium">Today&apos;s Exchange Rate</p>
-              <p className="text-sm text-muted-foreground">
-                {exchangeRate
-                  ? `Today's exchange rate (${exchangeRate.fecha}): buy at ${formatCurrency(exchangeRate.compra, "CRC")} and sell at ${formatCurrency(exchangeRate.venta, "CRC")} per USD.`
-                  : loading
-                    ? "Loading today's exchange rate..."
-                    : "Today's exchange rate is unavailable."}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Preferred currency: {preferredCurrency}
-              </p>
-            </div>
-            <div className="flex-1">
-              <p className="mb-1 text-sm text-muted-foreground">
-                Consolidated Total ({consolidatedCurrency})
-              </p>
-              <p className="text-3xl font-bold">
-                {formatCurrency(consolidatedTotal, consolidatedCurrency)}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {consolidatedCurrency === "USD"
-                  ? "Calculated using today's sell rate because your preferred currency is USD."
-                  : "Calculated using today's buy rate because your preferred currency is CRC."}
-              </p>
-            </div>
-          </div>
-          {warnings.length > 0 ? (
-            <div className="mt-3 space-y-1">
-              {warnings.map((warning, index) => (
-                <p key={`${warning}-${index}`} className="text-sm text-warning">
-                  {warning}
-                </p>
-              ))}
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Spending Categories This Month</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <section
+        className="atlantic-hero p-6 md:p-9"
+        aria-label="Saldo consolidado"
+        aria-busy={loading}
+      >
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <p className="hero-caption text-sm">Saldo consolidado · {currency}</p>
             {loading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <Skeleton key={index} className="h-12 w-full" />
-                ))}
-              </div>
-            ) : topSpendingCategories.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No spending categories yet this month.
-              </p>
+              <Skeleton className="my-5 h-14 w-64 max-w-full bg-white/20" />
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {topSpendingCategories.map((category) => (
-                    <TableRow key={`${category.categoryId}-${category.currency}`}>
-                      <TableCell className="font-medium">{category.categoryName}</TableCell>
-                      <TableCell className="text-right">
-                        <span className="text-error">
-                          {formatCurrency(Math.abs(category.total), category.currency)}
-                        </span>
-                        <Badge variant="outline" className="ml-2">
-                          {category.currency}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <p className="hero-amount mt-3">
+                {consolidated === null ? "Por confirmar" : formatCurrency(consolidated, currency)}
+              </p>
             )}
-          </CardContent>
-        </Card>
+            <p className="hero-caption mt-3 max-w-lg text-sm leading-relaxed">
+              Saldos de los sobres activos.{" "}
+              {consolidated === null && !loading
+                ? "Falta información para mostrar un total completo."
+                : "Tus monedas, reunidas en una sola vista."}
+            </p>
+          </div>
+          <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:gap-8">
+            {(["CRC", "USD"] as const).map((code) => (
+              <div key={code}>
+                <dt className="hero-caption text-xs">Saldo original · {code}</dt>
+                <dd className="mt-1 text-xl font-medium tabular-nums">
+                  {loading
+                    ? "—"
+                    : dashboard?.balancesAvailable
+                      ? formatCurrency(dashboard.totals[code], code)
+                      : "No disponible"}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <div className="hero-caption mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-white/20 pt-4 text-xs">
+          <p>
+            {rate
+              ? "Última cotización disponible: " +
+                rate.fecha +
+                ". Compra " +
+                formatCurrency(rate.compra, "CRC") +
+                " · venta " +
+                formatCurrency(rate.venta, "CRC") +
+                " por 1 USD."
+              : "Cotización no disponible."}
+          </p>
+          {rate ? <p>Conversión con tasa de {currency === "CRC" ? "compra" : "venta"}.</p> : null}
+        </div>
+      </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Transactions</CardTitle>
+      {dashboard && dashboard.warnings.length > 0 ? (
+        <Alert>
+          <AlertCircle />
+          <AlertTitle>La información está incompleta</AlertTitle>
+          <AlertDescription>
+            <p>
+              Algunas fuentes no respondieron. Los datos faltantes no representan un saldo cero.
+            </p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={refreshSummary}>
+              Volver a consultar
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/envelopes"
+          className={cn(
+            "flex items-center justify-between gap-4 rounded-2xl border bg-card p-5 transition-colors hover:border-primary/40",
+            negatives.length > 0 && "border-error/30",
+          )}
+        >
+          <div>
+            <p className="text-sm font-medium">Sobres por revisar</p>
+            <p className="mt-1 text-xs text-muted-foreground">Saldos por debajo de cero</p>
+          </div>
+          <span
+            className={cn(
+              "text-2xl font-semibold tabular-nums",
+              negatives.length > 0 && "text-error",
+            )}
+          >
+            {loading || !dashboard?.negativeEnvelopesAvailable ? "—" : negatives.length}
+          </span>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+        <Link
+          href="/reconciliation"
+          className={cn(
+            "flex items-center justify-between gap-4 rounded-2xl border bg-card p-5 transition-colors hover:border-primary/40",
+            inconsistencies.length > 0 && "border-warning/30",
+          )}
+        >
+          <div>
+            <p className="text-sm font-medium">Conciliaciones pendientes</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Diferencias abiertas en tus cuentas
+            </p>
+          </div>
+          <span
+            className={cn(
+              "text-2xl font-semibold tabular-nums",
+              inconsistencies.length > 0 && "text-warning",
+            )}
+          >
+            {loading || !dashboard?.inconsistenciesAvailable ? "—" : inconsistencies.length}
+          </span>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+      </div>
+
+      <div className="grid items-start gap-5 lg:grid-cols-2">
+        <SpendingByMonth dashboard={dashboard} loading={loading} />
+        <Card className="min-w-0 shadow-none">
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <CardTitle>Últimos movimientos</CardTitle>
+            <Link href="/transactions" className="text-sm font-medium text-primary">
+              Ver todos
+            </Link>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <Skeleton key={index} className="h-12 w-full" />
-                ))}
-              </div>
-            ) : recentTransactions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No recent transactions available.</p>
+              <Skeleton className="h-40 w-full" />
+            ) : recent.length === 0 ? (
+              <p className="py-6 text-sm text-muted-foreground">
+                Tus próximos movimientos aparecerán aquí.
+              </p>
             ) : (
-              <div className="space-y-3">
-                {recentTransactions.map((transaction) => {
-                  const currency = resolveTransactionCurrency(transaction)
+              <div className="divide-y">
+                {recent.map((transaction) => {
+                  const accountCurrency = transaction.accountCurrency
+                  const positive = transaction.amount > 0
                   return (
-                    <div
+                    <Link
                       key={transaction.id}
-                      className="flex items-center justify-between gap-4 text-sm"
+                      href="/transactions"
+                      className="flex flex-wrap items-center gap-3 py-4 first:pt-0"
                     >
+                      <span
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                        aria-hidden="true"
+                      >
+                        {positive ? (
+                          <ArrowDownLeft className="size-4" />
+                        ) : (
+                          <ArrowUpRight className="size-4" />
+                        )}
+                      </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{transaction.description}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatTransactionDate(transaction.date)}
-                          {transaction.accountName ? ` • ${transaction.accountName}` : ""}
+                        <p className="truncate text-sm font-medium">
+                          {transaction.description || "Movimiento sin descripción"}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {formatIsoDateOnly(transaction.date)}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p
-                          className={cn(
-                            "font-semibold",
-                            transaction.amount > 0 ? "text-success" : "text-error",
-                          )}
-                        >
-                          {currency
-                            ? `${transaction.amount > 0 ? "+" : "-"}${formatCurrency(
-                                Math.abs(transaction.amount),
-                                currency,
-                              )}`
-                            : transaction.amount.toLocaleString("en-US", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                        </p>
-                        <Badge variant="outline" className="text-xs">
-                          {currency ?? "Mixed"}
-                        </Badge>
-                      </div>
-                    </div>
+                      <p
+                        className={cn(
+                          "text-sm font-semibold tabular-nums",
+                          transaction.amount < 0 && "text-error",
+                        )}
+                      >
+                        {accountCurrency
+                          ? formatSignedCurrency(transaction.amount, accountCurrency)
+                          : "Varias monedas"}
+                      </p>
+                    </Link>
                   )
                 })}
               </div>
@@ -330,45 +360,6 @@ export function DashboardContent() {
           </CardContent>
         </Card>
       </div>
-
-      {negativeEnvelopes.length > 0 ? (
-        <Alert className="border-error/50 bg-error/5">
-          <AlertTriangle className="h-4 w-4 text-error" />
-          <AlertTitle className="text-error">Negative Envelopes</AlertTitle>
-          <AlertDescription>
-            <div className="mt-2 space-y-1">
-              {negativeEnvelopes.map((envelope) => (
-                <div key={envelope.envelopeId} className="text-sm">
-                  <span className="font-medium">{envelope.accountName}</span> /{" "}
-                  {envelope.categoryName}:{" "}
-                  <span className="font-semibold text-error">
-                    {formatCurrency(envelope.balance, envelope.currency)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {inconsistencies.length > 0 ? (
-        <Alert className="border-warning/50 bg-warning/5">
-          <AlertCircle className="h-4 w-4 text-warning" />
-          <AlertTitle className="text-warning">Inconsistencies</AlertTitle>
-          <AlertDescription>
-            <div className="mt-2 space-y-1">
-              {inconsistencies.map((item) => (
-                <div key={`${item.accountId}-${item.reconciliationDate}`} className="text-sm">
-                  <span className="font-medium">{item.accountName}</span>: Difference of{" "}
-                  <span className="font-semibold text-warning">
-                    {formatCurrency(item.difference, item.currency)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </AlertDescription>
-        </Alert>
-      ) : null}
     </div>
   )
 }

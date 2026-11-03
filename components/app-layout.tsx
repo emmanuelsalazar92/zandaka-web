@@ -17,12 +17,14 @@ import {
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useTheme } from "next-themes"
 import * as React from "react"
 
 import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -37,20 +39,27 @@ import {
 } from "@/components/ui/sidebar"
 
 const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/" },
-  { icon: Building2, label: "Institutions", href: "/institutions" },
-  { icon: CreditCard, label: "Accounts", href: "/accounts" },
-  { icon: FolderTree, label: "Categories", href: "/categories" },
-  { icon: Mail, label: "Envelopes", href: "/envelopes" },
-  { icon: PiggyBank, label: "Budgets", href: "/budgets" },
-  { icon: ArrowLeftRight, label: "Transactions", href: "/transactions" },
-  { icon: CheckSquare, label: "Reconciliation", href: "/reconciliation" },
-  { icon: BarChart3, label: "Reports", href: "/reports" },
-  { icon: Settings2, label: "Settings", href: "/settings" },
+  { icon: LayoutDashboard, label: "Resumen", href: "/" },
+  { icon: ArrowLeftRight, label: "Movimientos", href: "/transactions" },
+  { icon: CreditCard, label: "Cuentas", href: "/accounts" },
+  { icon: Mail, label: "Sobres", href: "/envelopes" },
+  { icon: CheckSquare, label: "Conciliación", href: "/reconciliation" },
+  { icon: PiggyBank, label: "Presupuestos", href: "/budgets" },
+  { icon: BarChart3, label: "Reportes", href: "/reports" },
+]
+
+const SETTINGS_ROUTES = ["/settings", "/institutions", "/categories"]
+const CATALOG_ITEMS = [
+  { icon: Building2, label: "Instituciones", href: "/institutions" },
+  { icon: FolderTree, label: "Categorías", href: "/categories" },
 ]
 
 function AppSidebar() {
   const pathname = usePathname()
+  const { isMobile, setOpenMobile } = useSidebar()
+  const closeMobile = () => {
+    if (isMobile) setOpenMobile(false)
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -65,11 +74,10 @@ function AppSidebar() {
               className="h-8 w-8 object-contain"
             />
           </div>
-          <span
-            className={`font-semibold text-lg text-sidebar-foreground transition-opacity duration-200 group-data-[collapsible=icon]:hidden`}
-          >
-            Zandaka
-          </span>
+          <div className="group-data-[collapsible=icon]:hidden">
+            <span className="text-xl font-semibold tracking-tight text-foreground">Zandaka</span>
+            <p className="text-xs text-muted-foreground">Tu dinero, con claridad.</p>
+          </div>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -84,11 +92,18 @@ function AppSidebar() {
                     : pathname === item.href || pathname.startsWith(`${item.href}/`)
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.label}
+                      className="h-11 rounded-xl px-3"
+                    >
                       <Link
                         href={item.href}
                         data-testid={`nav-${item.href.replace("/", "") || "dashboard"}`}
                         aria-label={item.label}
+                        aria-current={isActive ? "page" : undefined}
+                        onNavigate={closeMobile}
                       >
                         <Icon className="h-5 w-5" />
                         <span>{item.label}</span>
@@ -101,6 +116,30 @@ function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border p-3">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              tooltip="Ajustes"
+              isActive={SETTINGS_ROUTES.some((route) => pathname.startsWith(route))}
+              className="h-11 rounded-xl px-3"
+            >
+              <Link
+                href="/settings"
+                onNavigate={closeMobile}
+                aria-label="Ajustes"
+                aria-current={
+                  SETTINGS_ROUTES.some((route) => pathname.startsWith(route)) ? "page" : undefined
+                }
+              >
+                <Settings2 className="h-5 w-5" />
+                <span>Ajustes</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )
@@ -108,48 +147,46 @@ function AppSidebar() {
 
 function AppHeader() {
   const pathname = usePathname()
-  const [theme, setTheme] = React.useState<"light" | "dark">("light")
-  const { state } = useSidebar()
+  const { resolvedTheme, setTheme } = useTheme()
+  const { state, isMobile, openMobile } = useSidebar()
+  const previousPath = React.useRef(pathname)
 
   React.useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-      document.documentElement.classList.toggle("dark", savedTheme === "dark")
+    if (previousPath.current !== pathname) {
+      document.getElementById("main-content")?.focus({ preventScroll: true })
+      previousPath.current = pathname
     }
-  }, [])
+  }, [pathname])
 
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light"
-    setTheme(newTheme)
-    localStorage.setItem("theme", newTheme)
-    document.documentElement.classList.toggle("dark", newTheme === "dark")
+    setTheme(resolvedTheme === "dark" ? "light" : "dark")
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-primary/80 bg-primary px-4 text-primary-foreground md:px-6">
+    <header className="flex h-18 shrink-0 items-center justify-between border-b border-border/70 bg-card px-4 md:px-7">
       <div className="flex items-center gap-4">
         <SidebarTrigger
-          className="-ml-1 text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
-          aria-expanded={state === "expanded"}
-          aria-label="Toggle sidebar"
+          className="-ml-1 size-11 text-muted-foreground"
+          aria-expanded={isMobile ? openMobile : state === "expanded"}
+          aria-label={isMobile && openMobile ? "Cerrar navegación" : "Abrir navegación"}
         />
-        <h1 className="text-lg font-semibold md:text-xl">
-          {NAV_ITEMS.slice()
+        <h1 className="text-sm font-medium text-muted-foreground">
+          {[...NAV_ITEMS, ...CATALOG_ITEMS, { label: "Ajustes", href: "/settings" }]
             .sort((left, right) => right.href.length - left.href.length)
             .find((item) =>
               item.href === "/" ? pathname === item.href : pathname.startsWith(item.href),
-            )?.label || "Dashboard"}
+            )?.label || "Resumen"}
         </h1>
       </div>
       <Button
         variant="ghost"
         size="icon"
-        className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
+        className="size-11 text-muted-foreground"
         onClick={toggleTheme}
-        aria-label="Toggle theme"
+        aria-label="Cambiar apariencia"
       >
-        {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+        <Sun className="hidden h-5 w-5 dark:block" aria-hidden="true" />
+        <Moon className="h-5 w-5 dark:hidden" aria-hidden="true" />
       </Button>
     </header>
   )
@@ -164,10 +201,18 @@ export function AppLayout({
 }) {
   return (
     <SidebarProvider defaultOpen={defaultSidebarOpen}>
+      <a
+        href="#main-content"
+        className="sr-only z-50 rounded-lg bg-card p-3 text-foreground focus:not-sr-only focus:absolute focus:left-4 focus:top-4"
+      >
+        Saltar al contenido
+      </a>
       <AppSidebar />
       <SidebarInset className="flex flex-col">
         <AppHeader />
-        <div className="flex-1 overflow-auto p-4 md:p-6">{children}</div>
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 p-4 outline-none md:p-7">
+          <div className="mx-auto w-full max-w-7xl">{children}</div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   )

@@ -1,5 +1,9 @@
 # Zandaka
 
+## Atlántico y staging
+
+La dirección visual elegida es Atlántico. Consultar [fundamentos de experiencia](docs/atlantico.md) y [rama staging y entregas por bloques](docs/staging.md). Web y API se publican como imágenes independientes en GitHub Container Registry; testing se actualiza por bloques de tickets.
+
 Zandaka is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

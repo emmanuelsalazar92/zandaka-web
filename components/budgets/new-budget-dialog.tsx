@@ -34,6 +34,7 @@ import {
   calculateBudgetIncomeAdjustments,
 } from "@/lib/budget-income-adjustments"
 import { BudgetApiError, copyBudgetFromPrevious, createBudget } from "@/lib/budgets-api"
+import { getAccountingDate } from "@/lib/date-only"
 import { tryDecimalInput } from "@/lib/money"
 import { calculateNetSalary } from "@/lib/settings-api"
 
@@ -56,9 +57,7 @@ type BudgetCreationState = {
 const CURRENCIES = ["CRC", "USD"]
 
 const getCurrentMonthValue = () => {
-  const date = new Date()
-  const month = `${date.getMonth() + 1}`.padStart(2, "0")
-  return `${date.getFullYear()}-${month}`
+  return getAccountingDate().slice(0, 7)
 }
 
 const createDefaultState = (): BudgetCreationState => ({

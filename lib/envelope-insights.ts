@@ -1,5 +1,5 @@
 import { sumMoney, subtractMoney, decimal } from "@/lib/money"
-export type EnvelopeVisualStatus = "healthy" | "low" | "empty" | "critical"
+export type EnvelopeVisualStatus = "positive" | "empty" | "critical"
 
 export type EnvelopeInsightInput = {
   id: number
@@ -16,8 +16,6 @@ export type EnvelopeInsight = EnvelopeInsightInput & {
   barPercentage: number
   statusVisual: EnvelopeVisualStatus
 }
-
-const LOW_BALANCE_SHARE_THRESHOLD = 0.05
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
@@ -37,17 +35,15 @@ export function getEnvelopeBarPercentage(percentageOfAccount: number) {
 
 export function getEnvelopeVisualStatus(
   balance: number,
-  totalAccountBalance: number,
+  _totalAccountBalance: number,
 ): EnvelopeVisualStatus {
   const safeBalance = toSafeNumber(balance)
 
   if (safeBalance < 0) return "critical"
   if (safeBalance === 0) return "empty"
 
-  const share = Math.abs(calculateEnvelopePercentage(safeBalance, totalAccountBalance))
-  if (share > 0 && share < LOW_BALANCE_SHARE_THRESHOLD) return "low"
-
-  return "healthy"
+  // Participation measures distribution, not whether an obligation or savings goal is funded.
+  return "positive"
 }
 
 export function buildEnvelopeInsights(

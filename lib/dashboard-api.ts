@@ -1,3 +1,4 @@
+import { getAccountingDate } from "@/lib/date-only"
 import { decimalNumber } from "@/lib/money"
 import { SETTINGS_USER_ID, fetchUserSettings } from "@/lib/settings-api"
 
@@ -61,6 +62,10 @@ export type DashboardExchangeRate = {
 }
 
 export type DashboardSummary = {
+  balancesAvailable: boolean
+  negativeEnvelopesAvailable: boolean
+  inconsistenciesAvailable: boolean
+  monthlyExpensesAvailable: boolean
   totals: {
     CRC: number
     USD: number
@@ -75,6 +80,10 @@ export type DashboardSummary = {
 }
 
 const EMPTY_DASHBOARD_SUMMARY: DashboardSummary = {
+  balancesAvailable: false,
+  negativeEnvelopesAvailable: false,
+  inconsistenciesAvailable: false,
+  monthlyExpensesAvailable: false,
   totals: {
     CRC: 0,
     USD: 0,
@@ -235,10 +244,7 @@ const mapRecentTransaction = (raw: unknown): DashboardRecentTransaction => {
 
 export async function fetchDashboardSummary(userId = SETTINGS_USER_ID): Promise<DashboardSummary> {
   try {
-    const today = new Date()
-    const day = today.getDate()
-    const month = today.getMonth() + 1
-    const year = today.getFullYear()
+    const [year, month, day] = getAccountingDate().split("-").map(Number)
     const monthKey = `${year}-${String(month).padStart(2, "0")}`
 
     const [
@@ -301,6 +307,11 @@ export async function fetchDashboardSummary(userId = SETTINGS_USER_ID): Promise<
       })
 
     return {
+      balancesAvailable:
+        crcEnvelopeTotal.status === "fulfilled" && usdEnvelopeTotal.status === "fulfilled",
+      negativeEnvelopesAvailable: negativeEnvelopes.status === "fulfilled",
+      inconsistenciesAvailable: inconsistencies.status === "fulfilled",
+      monthlyExpensesAvailable: monthlyExpenses.status === "fulfilled",
       totals: {
         CRC: crcEnvelopeTotal.status === "fulfilled" ? toNumber(crcEnvelopeTotal.value.total) : 0,
         USD: usdEnvelopeTotal.status === "fulfilled" ? toNumber(usdEnvelopeTotal.value.total) : 0,
@@ -336,4 +347,12 @@ export async function fetchDashboardSummary(userId = SETTINGS_USER_ID): Promise<
       ],
     }
   }
+}
+
+export async function fetchDashboardMonthlyExpenses(
+  month: string,
+): Promise<DashboardMonthlyExpense[]> {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("Elige un mes válido.")
+  const values = await request<unknown[]>("/reports/monthly-expenses", { query: { month } })
+  return Array.isArray(values) ? values.map(mapMonthlyExpense) : []
 }

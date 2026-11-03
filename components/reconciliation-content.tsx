@@ -53,6 +53,7 @@ import {
   type DenominationQuantityMap,
 } from "@/lib/cash-denomination-helpers"
 import { formatCurrency, formatSignedCurrency } from "@/lib/currency-formatter"
+import { formatIsoDateOnly, getAccountingDate } from "@/lib/date-only"
 import { subtractMoney, tryDecimalInput } from "@/lib/money"
 import {
   createReconciliation,
@@ -81,6 +82,7 @@ interface NewReconciliationForm {
 }
 
 function formatDate(date: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return formatIsoDateOnly(date)
   const parsed = new Date(date)
   if (Number.isNaN(parsed.getTime())) return date
 
@@ -92,7 +94,7 @@ function formatDate(date: string) {
 }
 
 function getDefaultReconciliationDate() {
-  return new Date().toISOString().split("T")[0] ?? ""
+  return getAccountingDate()
 }
 
 function parseManualCountedTotal(value: string) {

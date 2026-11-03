@@ -6,7 +6,7 @@ export type ReportHistoryGroup = {
   items: ReportSnapshot[]
 }
 
-const REPORTS_LOCALE = "en-US"
+const REPORTS_LOCALE = "es-CR"
 
 const sqliteUtcToDate = (value: string) => {
   if (!value) return null
@@ -34,6 +34,7 @@ export const formatSnapshotTimestamp = (value: string) => {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "America/Costa_Rica",
   }).format(parsed)
 }
 

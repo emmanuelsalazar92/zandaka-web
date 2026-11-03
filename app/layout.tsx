@@ -2,6 +2,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { cookies } from "next/headers"
 
 import { AppLayout } from "@/components/app-layout"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 
 import type { Metadata } from "next"
@@ -10,9 +11,8 @@ import type React from "react"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Zandaka - Personal Finance Manager",
-  description: "Track your spending with envelope budgeting",
-  generator: "v0.app",
+  title: "Zandaka — Tu dinero, con claridad",
+  description: "Organiza tus cuentas, sobres y movimientos con claridad.",
   icons: {
     icon: "/favicon.ico",
   },
@@ -28,10 +28,12 @@ export default async function RootLayout({
   const defaultSidebarOpen = sidebarState === undefined ? true : sidebarState === "true"
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es-CR" suppressHydrationWarning>
       <body className={`font-sans antialiased`} suppressHydrationWarning>
-        <AppLayout defaultSidebarOpen={defaultSidebarOpen}>{children}</AppLayout>
-        <Toaster />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <AppLayout defaultSidebarOpen={defaultSidebarOpen}>{children}</AppLayout>
+          <Toaster />
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

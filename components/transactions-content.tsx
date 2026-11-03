@@ -39,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { getAccountingDate } from "@/lib/date-only"
 import { sumMoney } from "@/lib/money"
 import {
   applyTypeSign,
@@ -126,7 +127,7 @@ export function TransactionsContent() {
   const [envelopesLoading, setEnvelopesLoading] = React.useState<Record<string, boolean>>({})
   const [envelopesError, setEnvelopesError] = React.useState<Record<string, string | null>>({})
   const [formData, setFormData] = React.useState({
-    date: new Date().toISOString().split("T")[0],
+    date: getAccountingDate(),
     type: "EXPENSE" as TransactionType,
     description: "",
     lines: [{ accountId: "", envelopeId: "", amount: "" }] as TransactionLine[],
@@ -223,6 +224,10 @@ export function TransactionsContent() {
             active: account.is_active === 1,
           })),
         )
+        // A direct action from Resumen opens the composer only after its account context is ready.
+        if (new URLSearchParams(window.location.search).get("new") === "1") {
+          setIsCreateOpen(true)
+        }
       } catch (e) {
         const message = e instanceof Error ? e.message : "Failed to load accounts"
         setAccountsError(message)
@@ -460,7 +465,7 @@ export function TransactionsContent() {
 
   const resetCreateForm = React.useCallback(() => {
     setFormData({
-      date: new Date().toISOString().split("T")[0],
+      date: getAccountingDate(),
       type: "EXPENSE",
       description: "",
       lines: [{ accountId: "", envelopeId: "", amount: "" }],
@@ -535,19 +540,21 @@ export function TransactionsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Transactions</h2>
-          <p className="text-muted-foreground">Record income, expenses, and transfers</p>
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-3xl font-semibold tracking-tight">Movimientos</h2>
+          <p className="mt-1 text-muted-foreground">
+            Cada ingreso, gasto y traslado, en un solo lugar.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={() => setIsFiltersOpen(!isFiltersOpen)}
             className="relative"
           >
             <Filter className="mr-2 h-4 w-4" />
-            Filters
+            Filtros
             {activeFilterCount > 0 && (
               <Badge className="ml-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center">
                 {activeFilterCount}
@@ -557,7 +564,7 @@ export function TransactionsContent() {
           <Button variant="outline" asChild>
             <Link href="/transactions/import">
               <Upload className="mr-2 h-4 w-4" />
-              Import
+              Importar
             </Link>
           </Button>
           <Dialog
@@ -574,7 +581,7 @@ export function TransactionsContent() {
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                New Transaction
+                Nuevo movimiento
               </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] sm:max-w-5xl xl:max-w-6xl">
@@ -720,7 +727,10 @@ export function TransactionsContent() {
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs" htmlFor={`transaction-amount-${index}`}>
-                          Amount
+                          Importe (
+                          {accounts.find((account) => account.id.toString() === line.accountId)
+                            ?.currency ?? "elige una cuenta"}
+                          )
                         </Label>
                         <Input
                           id={`transaction-amount-${index}`}
@@ -749,6 +759,7 @@ export function TransactionsContent() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRemoveLine(index)}
+                        aria-label={`Quitar línea ${index + 1}`}
                         disabled={formData.lines.length === 1}
                         className="h-9 w-9 p-0 md:self-end"
                       >
@@ -805,30 +816,39 @@ export function TransactionsContent() {
               {/* Row 1: Date Range and Keyword */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Date From</Label>
+                  <Label htmlFor="filter-date-from" className="text-xs text-muted-foreground">
+                    Desde
+                  </Label>
                   <Input
                     type="date"
                     value={draftFilters.dateFrom}
+                    id="filter-date-from"
                     onChange={(e) => setDraftFilters({ ...draftFilters, dateFrom: e.target.value })}
                     className="h-9"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Date To</Label>
+                  <Label htmlFor="filter-date-to" className="text-xs text-muted-foreground">
+                    Hasta
+                  </Label>
                   <Input
                     type="date"
                     value={draftFilters.dateTo}
+                    id="filter-date-to"
                     onChange={(e) => setDraftFilters({ ...draftFilters, dateTo: e.target.value })}
                     className="h-9"
                   />
                 </div>
                 <div className="space-y-1.5 md:col-span-2">
-                  <Label className="text-xs text-muted-foreground">Keyword (description)</Label>
+                  <Label htmlFor="filter-keyword" className="text-xs text-muted-foreground">
+                    Descripción
+                  </Label>
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search by description..."
                       value={draftFilters.keyword}
+                      id="filter-keyword"
                       onChange={(e) =>
                         setDraftFilters({ ...draftFilters, keyword: e.target.value })
                       }
@@ -841,12 +861,14 @@ export function TransactionsContent() {
               {/* Row 2: Type, Account, Envelope */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Type</Label>
+                  <Label htmlFor="filter-type" className="text-xs text-muted-foreground">
+                    Tipo
+                  </Label>
                   <Select
                     value={draftFilters.type}
                     onValueChange={(value) => setDraftFilters({ ...draftFilters, type: value })}
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger id="filter-type" aria-label="Tipo" className="h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -859,7 +881,9 @@ export function TransactionsContent() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Account</Label>
+                  <Label htmlFor="filter-account" className="text-xs text-muted-foreground">
+                    Cuenta
+                  </Label>
                   <Select
                     value={draftFilters.accountId}
                     onValueChange={(value) =>
@@ -867,7 +891,7 @@ export function TransactionsContent() {
                     }
                     disabled={accountsLoading || activeAccounts.length === 0}
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger id="filter-account" aria-label="Cuenta" className="h-9">
                       <SelectValue
                         placeholder={
                           accountsLoading
@@ -890,7 +914,9 @@ export function TransactionsContent() {
                   {accountsError && <p className="text-xs text-error mt-1">{accountsError}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Envelope</Label>
+                  <Label htmlFor="filter-envelope" className="text-xs text-muted-foreground">
+                    Sobre
+                  </Label>
                   <Select
                     value={draftFilters.envelopeId}
                     onValueChange={(value) =>
@@ -902,7 +928,7 @@ export function TransactionsContent() {
                       envelopesLoading[draftFilters.accountId]
                     }
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger id="filter-envelope" aria-label="Sobre" className="h-9">
                       <SelectValue
                         placeholder={
                           draftFilters.accountId === "ALL" || draftFilters.accountId === ""
@@ -933,11 +959,14 @@ export function TransactionsContent() {
               {/* Row 3: Amount Range */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Amount Min</Label>
+                  <Label htmlFor="filter-amount-min" className="text-xs text-muted-foreground">
+                    Importe mínimo
+                  </Label>
                   <Input
                     type="number"
                     placeholder="0"
                     value={draftFilters.amountMin}
+                    id="filter-amount-min"
                     onChange={(e) =>
                       setDraftFilters({ ...draftFilters, amountMin: e.target.value })
                     }
@@ -945,11 +974,14 @@ export function TransactionsContent() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Amount Max</Label>
+                  <Label htmlFor="filter-amount-max" className="text-xs text-muted-foreground">
+                    Importe máximo
+                  </Label>
                   <Input
                     type="number"
                     placeholder="999999"
                     value={draftFilters.amountMax}
+                    id="filter-amount-max"
                     onChange={(e) =>
                       setDraftFilters({ ...draftFilters, amountMax: e.target.value })
                     }
@@ -1061,14 +1093,14 @@ export function TransactionsContent() {
 
           {/* Pagination */}
           {transactionsMeta.totalItems > 0 && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+            <div className="mt-4 flex flex-col gap-4 border-t pt-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>Show</span>
                 <Select
                   value={itemsPerPage.toString()}
                   onValueChange={(value) => setItemsPerPage(Number.parseInt(value))}
                 >
-                  <SelectTrigger className="h-8 w-[70px]">
+                  <SelectTrigger aria-label="Movimientos por página" className="h-8 w-[70px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1082,7 +1114,7 @@ export function TransactionsContent() {
                 <span>per page</span>
               </div>
 
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="text-muted-foreground">
                   {startIndex}-{endIndex} of {transactionsMeta.totalItems}
                 </span>
@@ -1091,6 +1123,7 @@ export function TransactionsContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => setCurrentPage(1)}
+                    aria-label="Primera página"
                     disabled={currentPage === 1}
                     className="h-8 w-8 p-0"
                   >
@@ -1101,6 +1134,7 @@ export function TransactionsContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    aria-label="Página anterior"
                     disabled={currentPage === 1}
                     className="h-8 w-8 p-0"
                   >
@@ -1113,6 +1147,7 @@ export function TransactionsContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    aria-label="Página siguiente"
                     disabled={currentPage === totalPages}
                     className="h-8 w-8 p-0"
                   >
@@ -1122,6 +1157,7 @@ export function TransactionsContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => setCurrentPage(totalPages)}
+                    aria-label="Última página"
                     disabled={currentPage === totalPages}
                     className="h-8 w-8 p-0"
                   >

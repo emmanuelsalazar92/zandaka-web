@@ -85,22 +85,19 @@ function formatShare(share: number) {
 }
 
 function statusBadgeClassName(status: EnvelopeVisualStatus) {
-  if (status === "healthy") return "border-success/35 bg-success/10 text-success"
-  if (status === "low") return "border-warning/35 bg-warning/10 text-warning"
+  if (status === "positive") return "border-primary/20 bg-primary/5 text-primary"
   if (status === "critical") return "border-error/35 bg-error/10 text-error"
   return "border-muted bg-muted/50 text-muted-foreground"
 }
 
 function statusLabel(status: EnvelopeVisualStatus) {
-  if (status === "healthy") return "Healthy"
-  if (status === "low") return "Low"
-  if (status === "critical") return "Critical"
-  return "Empty"
+  if (status === "positive") return "Saldo positivo"
+  if (status === "critical") return "Saldo negativo"
+  return "Sin saldo"
 }
 
 function barClassName(status: EnvelopeVisualStatus) {
-  if (status === "healthy") return "bg-success/80"
-  if (status === "low") return "bg-warning/80"
+  if (status === "positive") return "bg-primary/80"
   if (status === "critical") return "bg-error/80"
   return "bg-muted-foreground/35"
 }
@@ -178,7 +175,7 @@ function EnvelopeDistributionRow({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>{formatShare(envelope.percentageOfAccount)} of account</span>
+              <span>{formatShare(envelope.percentageOfAccount)} del saldo de la cuenta</span>
               <span>{formatCurrency(envelope.balance, accountCurrency)}</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-muted/60">
@@ -198,8 +195,6 @@ function EnvelopeDistributionRow({
             <p
               className={cn(
                 "font-mono text-lg font-semibold",
-                envelope.balance > 0 && envelope.statusVisual === "healthy" && "text-success",
-                envelope.statusVisual === "low" && "text-warning",
                 envelope.statusVisual === "critical" && "text-error",
                 envelope.statusVisual === "empty" && "text-muted-foreground",
               )}
@@ -208,12 +203,10 @@ function EnvelopeDistributionRow({
             </p>
             <p className="text-xs text-muted-foreground">
               {envelope.statusVisual === "critical"
-                ? "Needs funding attention"
-                : envelope.statusVisual === "low"
-                  ? "Low relative share"
-                  : envelope.statusVisual === "empty"
-                    ? "No funds assigned"
-                    : "Healthy envelope"}
+                ? "Revisa los movimientos de este sobre"
+                : envelope.statusVisual === "empty"
+                  ? "Sin fondos asignados"
+                  : "Participación del saldo; no representa una meta"}
             </p>
           </div>
 
@@ -227,6 +220,7 @@ function EnvelopeDistributionRow({
             disabled={isDeactivateDisabled}
             className={cn("shrink-0", isDeactivateDisabled && "opacity-50")}
             title={deactivateTitle}
+            aria-label={`Desactivar sobre ${envelope.category}`}
           >
             <XCircle className="h-4 w-4" />
           </Button>

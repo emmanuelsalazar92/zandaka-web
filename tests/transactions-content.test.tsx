@@ -110,7 +110,7 @@ function posts() {
 async function open(type = "INCOME") {
   render(<TransactionsContent />)
   await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/accounts", expect.anything()))
-  fireEvent.click(screen.getByRole("button", { name: "New Transaction" }))
+  fireEvent.click(screen.getByRole("button", { name: "Nuevo movimiento" }))
   const dialog = screen.getByRole("dialog")
   fireEvent.change(within(dialog).getByLabelText("Type"), { target: { value: type } })
   fireEvent.change(within(dialog).getByLabelText("Description"), {
@@ -130,7 +130,7 @@ async function open(type = "INCOME") {
 describe("transaction form regression", () => {
   it.each(["1000", "10000"])("submits %s unchanged after typing and blur", async (text) => {
     const dialog = await open()
-    const input = within(dialog).getByLabelText("Amount")
+    const input = within(dialog).getByLabelText(/^Importe/)
     let value = ""
     for (const digit of text) {
       value += digit
@@ -148,7 +148,7 @@ describe("transaction form regression", () => {
     "blocks %s and keeps the invalid text visible",
     async (text) => {
       const dialog = await open()
-      const input = within(dialog).getByLabelText("Amount")
+      const input = within(dialog).getByLabelText(/^Importe/)
       fireEvent.change(input, { target: { value: text } })
       fireEvent.blur(input)
       expect(input).toHaveValue(text)
@@ -162,7 +162,7 @@ describe("transaction form regression", () => {
 
   it("submits a single negative-cent adjustment", async () => {
     const dialog = await open("ADJUSTMENT")
-    const input = within(dialog).getByLabelText("Amount")
+    const input = within(dialog).getByLabelText(/^Importe/)
     fireEvent.change(input, { target: { value: "-0.02" } })
     fireEvent.blur(input)
     expect(input).toHaveValue("-0.02")
@@ -176,7 +176,7 @@ describe("transaction form regression", () => {
 
   it("enables a transfer only with complete, valid, exactly opposite amounts", async () => {
     const dialog = await open("TRANSFER")
-    fireEvent.change(within(dialog).getByLabelText("Amount"), { target: { value: "-0.1" } })
+    fireEvent.change(within(dialog).getByLabelText(/^Importe/), { target: { value: "-0.1" } })
     fireEvent.click(within(dialog).getByRole("button", { name: "Add Line" }))
     fireEvent.change(within(dialog).getByRole("combobox", { name: "Account 2" }), {
       target: { value: "1" },
@@ -184,7 +184,7 @@ describe("transaction form regression", () => {
     fireEvent.change(within(dialog).getByRole("combobox", { name: "Envelope 2" }), {
       target: { value: "2" },
     })
-    const second = within(dialog).getAllByLabelText("Amount")[1]
+    const second = within(dialog).getAllByLabelText(/^Importe/)[1]
     const button = within(dialog).getByRole("button", { name: "Create Transaction" })
     fireEvent.change(second, { target: { value: "0.09" } })
     expect(button).toBeDisabled()

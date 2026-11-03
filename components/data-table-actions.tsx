@@ -32,7 +32,12 @@ export function DataTableActions({
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 p-0"
+            aria-label="Acciones del registro"
+          >
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -62,12 +67,12 @@ export function DataTableActions({
   return (
     <div className="flex justify-end gap-2">
       {onEdit && (
-        <Button variant="ghost" size="sm" onClick={onEdit}>
+        <Button variant="ghost" size="sm" onClick={onEdit} aria-label="Editar registro">
           <Edit2 className="h-4 w-4" />
         </Button>
       )}
       {onDelete && (
-        <Button variant="ghost" size="sm" onClick={onDelete}>
+        <Button variant="ghost" size="sm" onClick={onDelete} aria-label="Desactivar registro">
           <Trash2 className="h-4 w-4" />
         </Button>
       )}

@@ -1,6 +1,7 @@
 "use client"
 
-import { Edit2, Plus, ShieldCheck } from "lucide-react"
+import { Building2, Edit2, FolderTree, Plus, ShieldCheck } from "lucide-react"
+import Link from "next/link"
 import * as React from "react"
 
 import { SettingsCashDenominationsSection } from "@/components/settings-cash-denominations-section"
@@ -257,12 +258,37 @@ export function SettingsContent() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
+        <h2 className="text-3xl font-semibold tracking-tight">Ajustes</h2>
         <p className="text-muted-foreground">
-          Manage your preferences, profile, cash denominations, and automation rules
+          Tu perfil, catálogos y reglas, organizados en un solo lugar.
         </p>
       </div>
-
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/institutions"
+          className="flex min-h-20 items-center gap-4 rounded-2xl border bg-card p-5 transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <Building2 className="h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
+          <div>
+            <p className="font-semibold">Instituciones</p>
+            <p className="text-sm text-muted-foreground">
+              Bancos y otras entidades de tus cuentas.
+            </p>
+          </div>
+        </Link>
+        <Link
+          href="/categories"
+          className="flex min-h-20 items-center gap-4 rounded-2xl border bg-card p-5 transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <FolderTree className="h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
+          <div>
+            <p className="font-semibold">Categorías</p>
+            <p className="text-sm text-muted-foreground">
+              Organiza los conceptos de tus sobres y presupuestos.
+            </p>
+          </div>
+        </Link>
+      </div>
       <div className="flex flex-wrap items-center gap-3">
         <Badge variant="secondary">
           {rules.filter((rule) => rule.isActive).length} active rules

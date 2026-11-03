@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
+import { getAccountingDate } from "@/lib/date-only"
 import { tryDecimalInput } from "@/lib/money"
 import { type ExchangeRate } from "@/lib/settings-api"
 
@@ -42,10 +43,7 @@ type GenerateReportDialogProps = {
 }
 
 const currentMonthValue = () => {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, "0")
-  return `${year}-${month}`
+  return getAccountingDate().slice(0, 7)
 }
 
 const MONTH_OPTIONS = [

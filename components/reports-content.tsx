@@ -234,15 +234,15 @@ export function ReportsContent() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold tracking-tight">Reports</h2>
+          <h2 className="text-3xl font-semibold tracking-tight">Reportes</h2>
           <p className="text-muted-foreground">
-            View, generate, and download historical financial snapshots.
+            Una perspectiva clara de tus versiones históricas.
           </p>
         </div>
 
         <Button type="button" onClick={() => setIsGenerateOpen(true)}>
           <Plus className="h-4 w-4" />
-          Generate Report
+          Generar reporte
         </Button>
       </div>
 

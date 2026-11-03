@@ -5,6 +5,13 @@ on:
   push:
     branches:
       - main
+      - staging
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   quality:
@@ -38,3 +45,11 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  docker:
+    name: Publish validated image
+    needs: quality
+    uses: ./.github/workflows/docker-image.yml
+    permissions:
+      contents: read
+      packages: write

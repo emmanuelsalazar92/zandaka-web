@@ -223,3 +223,7 @@ export async function archiveReportSnapshot(id: number, userId = SETTINGS_USER_I
 export function getReportPdfUrl(id: number, disposition: "inline" | "attachment" = "attachment") {
   return buildUrl(`/reports/${id}/pdf`, { disposition })
 }
+
+export function getReportHtmlUrl(id: number) {
+  return buildUrl(`/reports/${id}/html`)
+}

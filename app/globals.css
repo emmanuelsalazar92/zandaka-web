@@ -5,112 +5,114 @@
 
 :root {
   /* Background & Surface Colors */
-  --background: #f7fbfc;
-  --foreground: #16323d;
+  --background: #f4f7fb;
+  --foreground: #172b46;
   --card: #ffffff;
-  --card-foreground: #16323d;
+  --card-foreground: #172b46;
   --popover: #ffffff;
-  --popover-foreground: #16323d;
+  --popover-foreground: #172b46;
 
   /* Primary & Secondary */
-  --primary: #006e90;
-  --primary-foreground: #f8fdff;
-  --secondary: #e8f1f5;
-  --secondary-foreground: #18414f;
-  --muted: #edf4f7;
-  --muted-foreground: #587481;
-  --accent: #d8edf3;
-  --accent-foreground: #144252;
+  --primary: #245bdb;
+  --primary-foreground: #ffffff;
+  --secondary: #eaf0fb;
+  --secondary-foreground: #183b78;
+  --muted: #eef2f8;
+  --muted-foreground: #56677e;
+  --accent: #e6f4f3;
+  --accent-foreground: #086b68;
 
   /* Destructive */
-  --destructive: #c94f3d;
+  --destructive: #b73c31;
   --destructive-foreground: #fff8f7;
-  --border: #d7e5ea;
-  --input: #f1f6f8;
-  --ring: #41bbd9;
+  --border: #dce4ef;
+  --input: #dce4ef;
+  --ring: #245bdb;
 
   /* Financial Colors - Income/Expense/Warning */
-  --success: #99c24d;
-  --success-foreground: #20310a;
-  --warning: #f18f01;
-  --warning-foreground: #402400;
-  --error: #c94f3d;
+  --success: #08765c;
+  --success-foreground: #ffffff;
+  --warning: #8d4c08;
+  --warning-foreground: #ffffff;
+  --error: #b73c31;
   --error-foreground: #fff8f7;
 
   /* Chart Colors */
-  --chart-1: #006e90;
-  --chart-2: #41bbd9;
-  --chart-3: #99c24d;
-  --chart-4: #f18f01;
-  --chart-5: #adcad6;
+  --chart-1: #245bdb;
+  --chart-2: #0b858b;
+  --chart-3: #102b57;
+  --chart-4: #6886c4;
+  --chart-5: #9bc9ce;
 
-  --radius: 0.5rem;
+  --radius: 0.875rem;
 
   /* Sidebar */
-  --sidebar: #eef5f7;
-  --sidebar-foreground: #18414f;
-  --sidebar-primary: #006e90;
-  --sidebar-primary-foreground: #f8fdff;
-  --sidebar-accent: #d8edf3;
-  --sidebar-accent-foreground: #144252;
-  --sidebar-border: #d7e5ea;
-  --sidebar-ring: #41bbd9;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #4b607c;
+  --sidebar-primary: #245bdb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #edf2ff;
+  --sidebar-accent-foreground: #1946b0;
+  --sidebar-border: #e4eaf3;
+  --sidebar-ring: #245bdb;
+  --brand-deep: #102b57;
+  --brand-turquoise: #16b8ae;
 }
 
 .dark {
   /* Background & Surface Colors */
-  --background: #11181c;
-  --foreground: #e7f2f6;
-  --card: #192328;
-  --card-foreground: #e7f2f6;
-  --popover: #192328;
-  --popover-foreground: #e7f2f6;
+  --background: #0d1523;
+  --foreground: #edf3ff;
+  --card: #152237;
+  --card-foreground: #edf3ff;
+  --popover: #19283f;
+  --popover-foreground: #edf3ff;
 
   /* Primary & Secondary */
-  --primary: #41bbd9;
-  --primary-foreground: #0f232b;
-  --secondary: #202d33;
-  --secondary-foreground: #e7f2f6;
-  --muted: #243138;
-  --muted-foreground: #9fb8c2;
-  --accent: #213741;
-  --accent-foreground: #eef8fb;
+  --primary: #98b9ff;
+  --primary-foreground: #0c244d;
+  --secondary: #21334f;
+  --secondary-foreground: #e6eeff;
+  --muted: #1e2f47;
+  --muted-foreground: #b2c1d8;
+  --accent: #143b42;
+  --accent-foreground: #8ce3d9;
 
   /* Destructive */
-  --destructive: #dd6b57;
-  --destructive-foreground: #fff8f7;
+  --destructive: #ffa396;
+  --destructive-foreground: #38130e;
   --border: #2a3941;
   --input: #1a262c;
   --ring: #41bbd9;
 
   /* Financial Colors - Income/Expense/Warning */
-  --success: #99c24d;
+  --success: #77ddbd;
   --success-foreground: #132000;
-  --warning: #f18f01;
+  --warning: #ffc273;
   --warning-foreground: #301b00;
-  --error: #dd6b57;
-  --error-foreground: #fff8f7;
+  --error: #ffa396;
+  --error-foreground: #38130e;
 
   /* Chart Colors */
-  --chart-1: #41bbd9;
-  --chart-2: #99c24d;
-  --chart-3: #f18f01;
-  --chart-4: #adcad6;
-  --chart-5: #006e90;
+  --chart-1: #98b9ff;
+  --chart-2: #78dbd1;
+  --chart-3: #c5d7ff;
+  --chart-4: #7d9bc7;
+  --chart-5: #8ab7c8;
 
   /* Sidebar */
-  --sidebar: #151f24;
-  --sidebar-foreground: #d7ebf2;
-  --sidebar-primary: #41bbd9;
-  --sidebar-primary-foreground: #0f232b;
-  --sidebar-accent: #213741;
-  --sidebar-accent-foreground: #eef8fb;
-  --sidebar-border: #2a3941;
-  --sidebar-ring: #41bbd9;
+  --sidebar: #111d30;
+  --sidebar-foreground: #c1cee3;
+  --sidebar-primary: #98b9ff;
+  --sidebar-primary-foreground: #0c244d;
+  --sidebar-accent: #213554;
+  --sidebar-accent-foreground: #e6eeff;
+  --sidebar-border: #273a55;
+  --sidebar-ring: #98b9ff;
 }
 
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback", "Segoe UI", system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", "Cascadia Code", Consolas, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -162,5 +164,43 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+  }
+}
+
+/* Atlántico: emphasis belongs to the headline, not every data row. */
+.atlantic-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(ellipse at 110% 0%, #0d657d 0%, transparent 52%),
+    linear-gradient(120deg, #102b57 0%, #1c49b1 75%, #245bdb 100%);
+  color: #ffffff;
+  box-shadow: 0 16px 40px #102b5714;
+}
+
+.atlantic-hero .hero-caption {
+  color: #e3edff;
+}
+
+.atlantic-hero .hero-amount {
+  font-size: clamp(1.75rem, 5.5vw, 3.75rem);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

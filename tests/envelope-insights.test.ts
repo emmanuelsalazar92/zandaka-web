@@ -17,8 +17,9 @@ describe("envelope insights", () => {
   })
 
   it("assigns visual states consistently", () => {
-    expect(getEnvelopeVisualStatus(1000, 10000)).toBe("healthy")
-    expect(getEnvelopeVisualStatus(100, 10000)).toBe("low")
+    expect(getEnvelopeVisualStatus(1000, 10000)).toBe("positive")
+    expect(getEnvelopeVisualStatus(100, 10000)).toBe("positive")
+    expect(getEnvelopeVisualStatus(100, 1000000)).toBe("positive")
     expect(getEnvelopeVisualStatus(0, 10000)).toBe("empty")
     expect(getEnvelopeVisualStatus(-25, 10000)).toBe("critical")
   })
@@ -64,8 +65,8 @@ describe("envelope insights", () => {
     ]
 
     const insights = buildEnvelopeInsights(envelopes, 5475)
-    expect(insights[0].statusVisual).toBe("healthy")
-    expect(insights[1].statusVisual).toBe("healthy")
+    expect(insights[0].statusVisual).toBe("positive")
+    expect(insights[1].statusVisual).toBe("positive")
     expect(insights[2].statusVisual).toBe("critical")
     expect(insights[3].statusVisual).toBe("empty")
 
