@@ -22,7 +22,8 @@ describe("Atlántico readable financial tokens", () => {
   for (const theme of ["light", "dark"]) {
     it(`${theme}: financial text and filled controls preserve AA contrast, including tinted and hover backgrounds`, () => {
       const block =
-        theme === "light" ? css.split(".dark {")[0] : css.split(".dark {")[1].split("@theme")[0]
+        css.split(".dark {")[0] +
+        (theme === "dark" ? css.split(".dark {")[1].split("@theme")[0] : "")
       const tokens = Object.fromEntries(
         [...block.matchAll(/--([a-z-]+): (#[0-9a-f]{6});/g)].map((match) => [
           match[1],
@@ -50,8 +51,30 @@ describe("Atlántico readable financial tokens", () => {
         }
       }
       // A blended gradient stays inside its stop colors; verify caption contrast against all stops.
-      for (const stop of ["#102b57", "#1c49b1", "#245bdb", "#0d657d"])
-        expect(contrast(rgb("#e3edff"), rgb(stop))).toBeGreaterThanOrEqual(4.5)
+      for (const stop of ["brand-deep", "hero-mid", "hero-end", "hero-glow"])
+        expect(contrast(tokens["hero-caption"], tokens[stop])).toBeGreaterThanOrEqual(4.5)
+
+      for (const [text, surface] of [
+        ["foreground", "background"],
+        ["card-foreground", "card"],
+        ["popover-foreground", "popover"],
+        ["muted-foreground", "background"],
+        ["muted-foreground", "card"],
+        ["primary", "background"],
+        ["primary", "card"],
+        ["secondary-foreground", "secondary"],
+        ["accent-foreground", "accent"],
+      ])
+        expect(
+          contrast(tokens[text], tokens[surface]),
+          `${text} on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5)
+      for (const surface of ["background", "card", "popover"])
+        for (const boundary of ["control-border", "ring"])
+          expect(
+            contrast(tokens[boundary], tokens[surface]),
+            `${boundary} on ${surface}`,
+          ).toBeGreaterThanOrEqual(3)
     })
   }
 })

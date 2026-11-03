@@ -158,6 +158,8 @@ function AppHeader() {
     }
   }, [pathname])
 
+  const Title = pathname === "/design-system" ? "p" : "h1"
+
   const toggleTheme = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark")
   }
@@ -174,13 +176,18 @@ function AppHeader() {
               : "Abrir navegación"
           }
         />
-        <h1 className="text-sm font-medium text-muted-foreground">
-          {[...NAV_ITEMS, ...CATALOG_ITEMS, { label: "Ajustes", href: "/settings" }]
+        <Title className="text-sm font-medium text-muted-foreground">
+          {[
+            ...NAV_ITEMS,
+            ...CATALOG_ITEMS,
+            { label: "Ajustes", href: "/settings" },
+            { label: "Galería visual", href: "/design-system" },
+          ]
             .sort((left, right) => right.href.length - left.href.length)
             .find((item) =>
               item.href === "/" ? pathname === item.href : pathname.startsWith(item.href),
             )?.label || "Resumen"}
-        </h1>
+        </Title>
       </div>
       <Button
         variant="ghost"

@@ -46,6 +46,26 @@
 
   --radius: 0.875rem;
 
+  /* Shared geometry: rem units preserve text enlargement. */
+  --type-display: clamp(2.25rem, 4vw, 3.5rem);
+  --type-amount: clamp(1.75rem, 5.5vw, 3.75rem);
+  --type-tracking-display: -0.045em;
+  --space-unit: 0.25rem;
+  --control-height: 2.75rem;
+  --control-compact: 2.25rem;
+  --control-large: 3rem;
+  --control-border: #7c8ca3;
+  --elevation-surface: 0 2px 8px #102b5708;
+  --elevation-overlay: 0 16px 48px #102b5729;
+  --motion-fast: 140ms;
+  --motion-enter: 220ms;
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --hero-foreground: #ffffff;
+  --hero-caption: #e3edff;
+  --hero-mid: #1c49b1;
+  --hero-end: #245bdb;
+  --hero-glow: #0d657d;
+
   /* Sidebar */
   --sidebar: #ffffff;
   --sidebar-foreground: #4b607c;
@@ -61,6 +81,9 @@
 
 .dark {
   /* Background & Surface Colors */
+  --control-border: #6882a3;
+  --elevation-surface: 0 2px 8px #00000024;
+  --elevation-overlay: 0 16px 48px #00000066;
   --background: #0d1523;
   --foreground: #edf3ff;
   --card: #152237;
@@ -112,8 +135,18 @@
 }
 
 @theme inline {
+  --text-display: var(--type-display);
+  --spacing: var(--space-unit);
+  --spacing-control: var(--control-height);
+  --spacing-compact: var(--control-compact);
+  --spacing-large: var(--control-large);
+  --color-control-border: var(--control-border);
+  --shadow-surface: var(--elevation-surface);
+  --shadow-overlay: var(--elevation-overlay);
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", "Cascadia Code", Consolas, monospace;
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-turquoise: var(--brand-turquoise);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -148,6 +181,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-hero: calc(var(--radius) + 10px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -173,25 +207,43 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border-radius: 1.5rem;
+  border-radius: var(--radius-hero);
   background:
-    radial-gradient(ellipse at 110% 0%, #0d657d 0%, transparent 52%),
-    linear-gradient(120deg, #102b57 0%, #1c49b1 75%, #245bdb 100%);
-  color: #ffffff;
+    radial-gradient(ellipse at 110% 0%, var(--hero-glow) 0%, transparent 52%),
+    linear-gradient(120deg, var(--brand-deep) 0%, var(--hero-mid) 75%, var(--hero-end) 100%);
+  color: var(--hero-foreground);
   box-shadow: 0 16px 40px #102b5714;
 }
 
 .atlantic-hero .hero-caption {
-  color: #e3edff;
+  color: var(--hero-caption);
 }
 
 .atlantic-hero .hero-amount {
-  font-size: clamp(1.75rem, 5.5vw, 3.75rem);
+  font-size: var(--type-amount);
   font-weight: 600;
-  letter-spacing: -0.045em;
+  letter-spacing: var(--type-tracking-display);
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
   overflow-wrap: anywhere;
+}
+
+/* Shared interaction rhythm; consumers keep Radix focus and state semantics. */
+[data-slot="button"],
+[data-slot="input"],
+[data-slot="textarea"],
+[data-slot="select-trigger"],
+[data-slot="badge"],
+[data-slot="table-row"] {
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--motion-ease);
+}
+[data-slot="dialog-content"],
+[data-slot="sheet-content"],
+[data-slot="popover-content"],
+[data-slot="select-content"] {
+  animation-duration: var(--motion-enter);
+  transition-duration: var(--motion-enter);
 }
 
 @media (prefers-reduced-motion: reduce) {
