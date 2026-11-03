@@ -33,10 +33,10 @@ describe("transaction timeline helpers", () => {
   it("creates friendly relative labels for recent dates", () => {
     const now = new Date(2026, 3, 1, 9, 30)
 
-    expect(formatTransactionGroupLabel("2026-04-01", { now })).toBe("Today")
-    expect(formatTransactionGroupLabel("2026-03-31", { now })).toBe("Yesterday")
-    expect(formatTransactionGroupLabel("2026-03-28", { now })).toBe("March 28, 2026")
-    expect(formatTransactionGroupLabel("invalid-date", { now })).toBe("Unknown date")
+    expect(formatTransactionGroupLabel("2026-04-01", { now })).toBe("Hoy")
+    expect(formatTransactionGroupLabel("2026-03-31", { now })).toBe("Ayer")
+    expect(formatTransactionGroupLabel("2026-03-28", { now })).toBe("28 de marzo de 2026")
+    expect(formatTransactionGroupLabel("invalid-date", { now })).toBe("Fecha sin identificar")
   })
 
   it("groups transactions by descending day and keeps invalid dates at the end", () => {
@@ -51,10 +51,10 @@ describe("transaction timeline helpers", () => {
     const groups = groupTransactionsForTimeline(transactions, { now })
 
     expect(groups.map((group) => group.label)).toEqual([
-      "Today",
-      "Yesterday",
-      "March 28, 2026",
-      "Unknown date",
+      "Hoy",
+      "Ayer",
+      "28 de marzo de 2026",
+      "Fecha sin identificar",
     ])
     expect(groups[0]?.items[0]?.id).toBe(2)
     expect(groups[3]?.items[0]?.id).toBe(4)
@@ -112,19 +112,19 @@ describe("transaction timeline helpers", () => {
 
   it("returns stable visual metadata per transaction type", () => {
     expect(getTransactionTypeMeta("INCOME")).toMatchObject({
-      label: "Income",
+      label: "Ingreso",
       tone: "income",
     })
     expect(getTransactionTypeMeta("EXPENSE")).toMatchObject({
-      label: "Expense",
+      label: "Gasto",
       tone: "expense",
     })
     expect(getTransactionTypeMeta("TRANSFER")).toMatchObject({
-      label: "Transfer",
+      label: "Transferencia",
       tone: "transfer",
     })
     expect(getTransactionTypeMeta("ADJUSTMENT")).toMatchObject({
-      label: "Adjustment",
+      label: "Ajuste",
       tone: "adjustment",
     })
   })

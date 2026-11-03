@@ -178,7 +178,9 @@ export function NewBudgetDialog({ open, onOpenChange }: NewBudgetDialogProps) {
           if (cancelled) return
           setPayrollPreview(null)
           setPayrollError(
-            cause instanceof Error ? cause.message : "Failed to load payroll preview.",
+            cause instanceof Error
+              ? cause.message
+              : "No pudimos cargar el cálculo de nómina. Vuelve a intentar.",
           )
         })
         .finally(() => {
@@ -195,11 +197,11 @@ export function NewBudgetDialog({ open, onOpenChange }: NewBudgetDialogProps) {
 
   const handleSubmit = async () => {
     if (!state.month || !state.currency || !isGrossSalaryValid) {
-      setError("Enter a month, select a currency, and provide an original income greater than 0.")
+      setError("Elige mes y moneda, e introduce un ingreso mayor que cero.")
       return
     }
     if (!isFxAmountValid) {
-      setError("Exchange-rate reserve must be zero or greater.")
+      setError("La reserva cambiaria debe ser igual o mayor que cero.")
       return
     }
     if (
@@ -207,11 +209,11 @@ export function NewBudgetDialog({ open, onOpenChange }: NewBudgetDialogProps) {
       automaticDeductionsSelected &&
       (!payrollPreview || payrollLoading || payrollError)
     ) {
-      setError(payrollError || "Payroll deductions are still being resolved.")
+      setError(payrollError || "Estamos calculando las deducciones de nómina.")
       return
     }
     if (!finalBudgetIncomeIsValid) {
-      setError("The final budget income must be greater than 0 after deductions.")
+      setError("El ingreso final debe ser mayor que cero después de las deducciones.")
       return
     }
 
@@ -238,23 +240,23 @@ export function NewBudgetDialog({ open, onOpenChange }: NewBudgetDialogProps) {
         try {
           await copyBudgetFromPrevious(createdBudget.id)
           toast({
-            title: "Budget created",
-            description: "Budget lines were copied from the previous month.",
+            title: "Presupuesto creado",
+            description: "Se copiaron las categorías del mes anterior.",
           })
         } catch (copyError) {
           const message =
             copyError instanceof BudgetApiError
               ? copyError.message
-              : "Budget created, but previous lines could not be copied."
+              : "Se creó el presupuesto, pero no pudimos copiar las categorías anteriores."
           toast({
-            title: "Budget created",
+            title: "Presupuesto creado",
             description: message,
           })
         }
       } else {
         toast({
-          title: "Budget created",
-          description: "Your new budget is ready for planning.",
+          title: "Presupuesto creado",
+          description: "Tu presupuesto está listo para planificar.",
         })
       }
 
@@ -264,14 +266,12 @@ export function NewBudgetDialog({ open, onOpenChange }: NewBudgetDialogProps) {
       if (submitError instanceof BudgetApiError) {
         const alreadyExists = submitError.details.some((detail) => detail.field.includes("month"))
         setError(
-          alreadyExists
-            ? "A budget already exists for that month and currency."
-            : submitError.message,
+          alreadyExists ? "Ya existe un presupuesto para ese mes y moneda." : submitError.message,
         )
         return
       }
 
-      setError("Budget could not be created right now.")
+      setError("No pudimos crear el presupuesto. Vuelve a intentar.")
     } finally {
       setIsSubmitting(false)
     }
@@ -367,10 +367,10 @@ export function NewBudgetDialog({ open, onOpenChange }: NewBudgetDialogProps) {
       />
       <div className="min-w-0 space-y-1">
         <Label htmlFor="copy-from-previous" className="font-medium">
-          Copy lines from previous budget
+          Copiar categorías del presupuesto anterior
         </Label>
         <p className="text-sm text-muted-foreground">
-          Bring in the previous budget lines right after this budget is created.
+          Incluye las categorías del presupuesto anterior al crear este presupuesto.
         </p>
       </div>
     </div>
@@ -379,11 +379,11 @@ export function NewBudgetDialog({ open, onOpenChange }: NewBudgetDialogProps) {
   const actionButtons = (
     <div className="flex flex-col gap-2 sm:flex-row">
       <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
-        Cancel
+        Cancelar
       </Button>
       <Button onClick={handleSubmit} disabled={!canSubmit}>
         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-        {isSubmitting ? "Creating..." : "Create Budget"}
+        {isSubmitting ? "Creando…" : "Crear presupuesto"}
       </Button>
     </div>
   )
@@ -393,10 +393,10 @@ export function NewBudgetDialog({ open, onOpenChange }: NewBudgetDialogProps) {
       <Drawer open={open} onOpenChange={handleOpenChange}>
         <DrawerContent className="h-[96vh] max-h-[96vh]">
           <DrawerHeader className="border-b px-6 pb-4 pt-5 text-left">
-            <DrawerTitle>New Budget</DrawerTitle>
+            <DrawerTitle>Nuevo presupuesto</DrawerTitle>
             <DrawerDescription>
-              Simulate payroll deductions, add manual adjustments, and create the budget with the
-              final amount.
+              Calcula las deducciones de nómina, añade ajustes y crea el presupuesto con el importe
+              final.
             </DrawerDescription>
           </DrawerHeader>
 
@@ -417,10 +417,10 @@ export function NewBudgetDialog({ open, onOpenChange }: NewBudgetDialogProps) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-hidden p-0 sm:max-w-4xl xl:max-w-5xl [grid-template-rows:auto_minmax(0,1fr)_auto]">
         <DialogHeader className="border-b px-5 py-5 text-left">
-          <DialogTitle>New Budget</DialogTitle>
+          <DialogTitle>Nuevo presupuesto</DialogTitle>
           <DialogDescription>
-            Simulate payroll deductions, add manual adjustments, and create the budget with the
-            final amount.
+            Calcula las deducciones de nómina, añade ajustes y crea el presupuesto con el importe
+            final.
           </DialogDescription>
         </DialogHeader>
 

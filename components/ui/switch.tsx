@@ -3,9 +3,11 @@
 import * as SwitchPrimitive from "@radix-ui/react-switch"
 import * as React from "react"
 
+import { useFieldControl } from "@/components/ui/accessible-field"
 import { cn } from "@/lib/utils"
 
 function Switch({ className, ...props }: React.ComponentProps<typeof SwitchPrimitive.Root>) {
+  const fieldProps = useFieldControl(props)
   return (
     <SwitchPrimitive.Root
       data-slot="switch"
@@ -14,6 +16,7 @@ function Switch({ className, ...props }: React.ComponentProps<typeof SwitchPrimi
         className,
       )}
       {...props}
+      {...fieldProps}
     >
       <SwitchPrimitive.Thumb
         data-slot="switch-thumb"

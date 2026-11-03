@@ -1,4 +1,5 @@
 import type { AccountUi } from "@/components/accounts/types/accounts.types"
+import { AccessibleFieldError } from "@/components/ui/accessible-field"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -35,30 +36,31 @@ export function AccountDeactivateDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent data-testid="deactivate-form" aria-label="deactivate-form">
+      <AlertDialogContent data-testid="deactivate-form">
         <AlertDialogHeader>
-          <AlertDialogTitle>{isActive ? "Deactivate" : "Activate"} Account?</AlertDialogTitle>
+          <AlertDialogTitle>{isActive ? "Desactivar" : "Activar"} cuenta</AlertDialogTitle>
           <AlertDialogDescription>
-            This will {isActive ? "deactivate" : "activate"} the account. You can reverse this
-            action at any time.
+            Esta acción permitirá {isActive ? "deactivate" : "activate"} la cuenta. Puedes revertir
+            este cambio cuando lo necesites.
           </AlertDialogDescription>
           {isBlocked ? (
-            <p className="text-sm text-error">
-              Deactivate all active envelopes before deactivating this account.
-            </p>
+            <AccessibleFieldError className="text-sm text-error">
+              Desactiva los sobres activos antes de desactivar esta cuenta.
+            </AccessibleFieldError>
           ) : null}
-          {error ? <p className="text-sm text-error">{error}</p> : null}
+          {error ? (
+            <AccessibleFieldError className="text-sm text-error">{error}</AccessibleFieldError>
+          ) : null}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <Button
             type="button"
             data-testid="deactivate-submit"
-            aria-label="deactivate-submit"
             onClick={onConfirm}
             disabled={loading || isBlocked}
           >
-            {loading ? "Processing..." : "Confirm"}
+            {loading ? "Procesando…" : "Confirmar"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

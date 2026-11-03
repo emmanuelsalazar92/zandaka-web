@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import type { InstitutionUi } from "@/components/institutions/types/institutions.types"
+import { AccessibleFieldError } from "@/components/ui/accessible-field"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -37,30 +38,31 @@ export function InstitutionDeactivateDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent data-testid="deactivate-form" aria-label="deactivate-form">
+      <AlertDialogContent data-testid="deactivate-form">
         <AlertDialogHeader>
-          <AlertDialogTitle>{isActive ? "Deactivate" : "Activate"} Institution?</AlertDialogTitle>
+          <AlertDialogTitle>{isActive ? "Desactivar" : "Activar"} institución</AlertDialogTitle>
           <AlertDialogDescription>
-            This will {isActive ? "deactivate" : "activate"} the institution. You can reverse this
-            action at any time.
+            Esta acción permitirá {isActive ? "deactivate" : "activate"} la institución. Puedes
+            revertir este cambio cuando lo necesites.
           </AlertDialogDescription>
           {isBlocked ? (
-            <p className="text-sm text-error">
-              Deactivate all active accounts before deactivating this institution.
-            </p>
+            <AccessibleFieldError className="text-sm text-error">
+              Desactiva las cuentas activas antes de desactivar esta institución.
+            </AccessibleFieldError>
           ) : null}
-          {error ? <p className="text-sm text-error">{error}</p> : null}
+          {error ? (
+            <AccessibleFieldError className="text-sm text-error">{error}</AccessibleFieldError>
+          ) : null}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <Button
             data-testid="deactivate-submit"
-            aria-label="deactivate-submit"
             type="button"
             onClick={onConfirm}
             disabled={loading || isBlocked}
           >
-            {loading ? "Processing..." : "Confirm"}
+            {loading ? "Procesando…" : "Confirmar"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

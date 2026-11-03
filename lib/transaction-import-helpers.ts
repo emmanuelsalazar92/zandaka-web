@@ -50,10 +50,10 @@ export function getImportRowValidationError(
   envelopesByAccount: Record<string, ImportEnvelopeOption[]>,
 ) {
   const accountId = parsePositiveInteger(row.accountId)
-  if (accountId === null) return "Account is required"
+  if (accountId === null) return "Elige una cuenta"
 
   const accountExists = accounts.some((account) => account.id === accountId)
-  if (!accountExists) return "Selected account no longer exists"
+  if (!accountExists) return "La cuenta seleccionada ya no está disponible"
 
   const selectedAccount = accounts.find((account) => account.id === accountId)
   if (selectedAccount && selectedAccount.currency.toUpperCase() !== row.currency.toUpperCase()) {
@@ -61,24 +61,24 @@ export function getImportRowValidationError(
   }
 
   const envelopeId = parsePositiveInteger(row.envelopeId)
-  if (envelopeId === null) return "Envelope is required"
+  if (envelopeId === null) return "Elige un sobre"
 
   const envelopeExists = (envelopesByAccount[row.accountId] ?? []).some(
     (envelope) => envelope.id === envelopeId,
   )
-  if (!envelopeExists) return "Selected envelope no longer exists"
+  if (!envelopeExists) return "El sobre seleccionado ya no está disponible"
 
   if (!row.date || !ISO_DATE_ONLY_PATTERN.test(row.date)) {
-    return "Date is required"
+    return "Elige una fecha"
   }
 
   try {
     assertMoney(row.amount, row.currency)
   } catch {
-    return "Invalid amount precision or range"
+    return "Revisa el rango y la cantidad de decimales del importe"
   }
 
-  if (row.amount === 0) return "Amount must not be 0"
+  if (row.amount === 0) return "El importe debe ser distinto de cero"
 
   return null
 }
@@ -91,7 +91,7 @@ export function buildTransactionImportPayload(
   const envelopeId = parsePositiveInteger(row.envelopeId)
 
   if (accountId === null || envelopeId === null) {
-    throw new Error("Cannot build transaction payload without account and envelope")
+    throw new Error("Elige cuenta y sobre antes de guardar el movimiento")
   }
 
   return {

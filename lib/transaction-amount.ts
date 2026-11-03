@@ -26,6 +26,6 @@ export function normalizeAmountInput(value: string, type: TransactionType): stri
 
 export function transactionAmount(value: string, type: TransactionType, currency: string): number {
   const amount = assertMoney(applyTypeSign(type, parseAmountInput(value)), currency)
-  if (amount === 0) throw new MoneyError("Enter a non-zero amount")
+  if (amount === 0) throw new MoneyError("Introduce un importe distinto de cero")
   return amount
 }

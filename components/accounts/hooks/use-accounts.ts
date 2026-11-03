@@ -6,6 +6,7 @@ import type {
   InstitutionType,
   InstitutionUi,
 } from "@/components/accounts/types/accounts.types"
+import { publicErrorMessage } from "@/lib/public-error"
 
 const API_BASE_URL = "/api"
 const ACCOUNTS_URL = `${API_BASE_URL}/accounts`
@@ -46,22 +47,8 @@ const toBoolean = (value: unknown) => {
   return Boolean(value)
 }
 
-const getApiErrorMessage = (payload: unknown, fallback: string) => {
-  if (!payload || typeof payload !== "object") return fallback
-
-  const directMessage = (payload as { message?: unknown }).message
-  if (typeof directMessage === "string" && directMessage.trim().length > 0) {
-    return directMessage
-  }
-
-  const nested = (payload as { error?: { message?: unknown } }).error
-  const nestedMessage = nested?.message
-  if (typeof nestedMessage === "string" && nestedMessage.trim().length > 0) {
-    return nestedMessage
-  }
-
-  return fallback
-}
+const getApiErrorMessage = (payload: unknown, fallback: string) =>
+  publicErrorMessage(payload, fallback)
 
 export function useAccounts() {
   const [accounts, setAccounts] = React.useState<AccountUi[]>([])
@@ -91,12 +78,13 @@ export function useAccounts() {
         headers: { Accept: "application/json" },
       })
 
-      if (!res.ok) throw new Error("Failed to load institutions")
+      if (!res.ok) throw new Error("No pudimos cargar las instituciones. Vuelve a intentar.")
 
       const data = (await res.json()) as ApiInstitution[]
       setInstitutions(data.map(mapInstitution))
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to load institutions"
+      const message =
+        e instanceof Error ? e.message : "No pudimos cargar las instituciones. Vuelve a intentar."
       setError(message)
     } finally {
       setLoading(false)
@@ -112,7 +100,7 @@ export function useAccounts() {
         headers: { Accept: "application/json" },
       })
 
-      if (!res.ok) throw new Error("Failed to load accounts")
+      if (!res.ok) throw new Error("No pudimos cargar las cuentas. Vuelve a intentar.")
 
       const data = (await res.json()) as ApiAccountBalance[]
       setAccounts(
@@ -130,7 +118,8 @@ export function useAccounts() {
         })),
       )
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to load accounts"
+      const message =
+        e instanceof Error ? e.message : "No pudimos cargar las cuentas. Vuelve a intentar."
       setError(message)
     } finally {
       setLoading(false)
@@ -168,7 +157,7 @@ export function useAccounts() {
       })
 
       if (!res.ok) {
-        let message = "Failed to create account"
+        let message = "No pudimos crear la cuenta. Revisa los datos y vuelve a intentar."
         try {
           const err = await res.json()
           message = err?.message || message
@@ -178,7 +167,7 @@ export function useAccounts() {
 
       const created = await res.json()
       const institutionName =
-        institutions.find((inst) => inst.id === payload.institutionId)?.name ?? "Unknown"
+        institutions.find((inst) => inst.id === payload.institutionId)?.name ?? "Sin identificar"
 
       setAccounts((prev) => [
         ...prev,
@@ -199,7 +188,8 @@ export function useAccounts() {
       setIsCreateOpen(false)
       setFormData(DEFAULT_FORM_DATA)
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Unexpected error creating account"
+      const message =
+        e instanceof Error ? e.message : "No pudimos crear la cuenta. Vuelve a intentar."
       setError(message)
     } finally {
       setLoading(false)
@@ -223,7 +213,7 @@ export function useAccounts() {
       })
 
       if (!res.ok) {
-        throw new Error("Failed to update account")
+        throw new Error("No pudimos guardar la cuenta. Revisa los datos y vuelve a intentar.")
       }
 
       const updated = await res.json()
@@ -243,7 +233,10 @@ export function useAccounts() {
       setEditAccount(null)
       setFormData(DEFAULT_FORM_DATA)
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to update account"
+      const message =
+        e instanceof Error
+          ? e.message
+          : "No pudimos guardar la cuenta. Revisa los datos y vuelve a intentar."
       setError(message)
     } finally {
       setLoading(false)
@@ -255,7 +248,7 @@ export function useAccounts() {
 
     const currentAccount = accounts.find((account) => account.id === deactivateId)
     if (currentAccount?.active && currentAccount.hasActiveEnvelopes) {
-      setDeactivateError("Deactivate all active envelopes before deactivating this account.")
+      setDeactivateError("Desactiva los sobres activos antes de desactivar esta cuenta.")
       return
     }
 
@@ -273,14 +266,20 @@ export function useAccounts() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => null)
-        const message = getApiErrorMessage(err, "Failed to deactivate account")
+        const message = getApiErrorMessage(
+          err,
+          "No pudimos desactivar la cuenta. Revisa sus sobres activos.",
+        )
         throw new Error(message)
       }
 
       await fetchAccounts()
       setDeactivateId(null)
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to deactivate account"
+      const message =
+        e instanceof Error
+          ? e.message
+          : "No pudimos desactivar la cuenta. Revisa sus sobres activos."
       setDeactivateError(message)
     } finally {
       setLoading(false)

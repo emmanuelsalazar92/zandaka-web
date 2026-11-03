@@ -5,10 +5,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import * as React from "react"
 
+import { AccessibleField } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select,
@@ -35,6 +37,7 @@ import {
 } from "@/lib/bank-import"
 import { formatCurrency } from "@/lib/currency-formatter"
 import { formatIsoDateOnly } from "@/lib/date-only"
+import { readPublicError } from "@/lib/public-error"
 import { fetchAutoAssignmentRules, type AutoAssignmentRule } from "@/lib/settings-api"
 import {
   buildTransactionImportPayload,
@@ -155,7 +158,7 @@ export default function ImportTransactionsPage() {
         const res = await fetch(`${API_BASE_URL}/accounts`, {
           headers: { Accept: "application/json" },
         })
-        if (!res.ok) throw new Error("Failed to load accounts")
+        if (!res.ok) throw new Error("No pudimos cargar las cuentas. Vuelve a intentar.")
         const data = (await res.json()) as {
           id: number
           name: string
@@ -171,7 +174,8 @@ export default function ImportTransactionsPage() {
           })),
         )
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to load accounts"
+        const message =
+          e instanceof Error ? e.message : "No pudimos cargar las cuentas. Vuelve a intentar."
         setImportError(message)
       } finally {
         setAccountsLoading(false)
@@ -204,7 +208,7 @@ export default function ImportTransactionsPage() {
           `${API_BASE_URL}/reports/envelope-balances?accountId=${accountId}`,
           { headers: { Accept: "application/json" } },
         )
-        if (!res.ok) throw new Error("Failed to load envelopes")
+        if (!res.ok) throw new Error("No pudimos cargar los sobres. Vuelve a intentar.")
         const data = (await res.json()) as {
           envelopeId: number
           categoryId: number
@@ -219,7 +223,8 @@ export default function ImportTransactionsPage() {
           })),
         }))
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to load envelopes"
+        const message =
+          e instanceof Error ? e.message : "No pudimos cargar los sobres. Vuelve a intentar."
         setImportError(message)
       } finally {
         setEnvelopesLoading((prev) => ({ ...prev, [accountId]: false }))
@@ -349,7 +354,10 @@ export default function ImportTransactionsPage() {
         })
 
         if (!res.ok) {
-          await res.text()
+          await readPublicError(
+            res,
+            "No pudimos importar el movimiento. Revisa sus datos y vuelve a intentar.",
+          )
           failedCount += 1
           continue
         }
@@ -363,10 +371,10 @@ export default function ImportTransactionsPage() {
     setIsImporting(false)
 
     if (successCount === 0) {
-      const summary = `Imported 0 transactions, ${failedCount} failed`
+      const summary = `Se importaron 0 movimientos; ${failedCount} pendientes`
       setImportError(summary)
       toast({
-        title: "Import failed",
+        title: "No se completó la importación",
         description: summary,
         variant: "destructive",
       })
@@ -375,11 +383,11 @@ export default function ImportTransactionsPage() {
 
     const description =
       failedCount === 0
-        ? `${successCount} transactions imported successfully`
-        : `Imported ${successCount} transactions, ${failedCount} failed`
+        ? `${successCount} movimientos importados correctamente`
+        : `Se importaron ${successCount} movimientos; ${failedCount} pendientes`
 
     toast({
-      title: failedCount === 0 ? "Import complete" : "Import completed with issues",
+      title: failedCount === 0 ? "Importación completa" : "Importación con pendientes",
       description,
       variant: failedCount === 0 ? "default" : "destructive",
     })
@@ -391,15 +399,14 @@ export default function ImportTransactionsPage() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/transactions">
+          <Link href="/transactions" aria-label="Volver a Movimientos">
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Import Transactions</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Importar movimientos</h2>
           <p className="text-muted-foreground">
-            Paste transactions copied from your bank website, review them, and import them into your
-            account.
+            Pega los movimientos de tu banco, revísalos y asígnalos a tus cuentas y sobres.
           </p>
         </div>
       </div>
@@ -415,15 +422,15 @@ export default function ImportTransactionsPage() {
       {/* Top Section - Import Controls */}
       <Card>
         <CardHeader>
-          <CardTitle>Import Controls</CardTitle>
+          <CardTitle>Preparar importación</CardTitle>
           <CardDescription>
-            Select your bank format and paste the raw transaction data
+            Elige el formato del banco y pega los movimientos copiados
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-end gap-4">
-            <div className="w-64 space-y-2">
-              <label className="text-sm font-medium">Bank Format</label>
+            <AccessibleField className="w-64 space-y-2">
+              <Label className="text-sm font-medium">Formato del banco</Label>
               <Select value={bankFormat} onValueChange={(v) => setBankFormat(v as BankFormat)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -433,10 +440,10 @@ export default function ImportTransactionsPage() {
                   <SelectItem value="bac-credomatic">BAC Credomatic</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </AccessibleField>
             {bankFormat === "bac-credomatic" && (
-              <div className="w-52 space-y-2">
-                <label className="text-sm font-medium">BAC Currency</label>
+              <AccessibleField className="w-52 space-y-2">
+                <Label className="text-sm font-medium">Moneda de BAC</Label>
                 <Select
                   value={bacCurrency}
                   onValueChange={(v) => setBacCurrency(v as CurrencyCode)}
@@ -449,21 +456,21 @@ export default function ImportTransactionsPage() {
                     <SelectItem value="USD">USD</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </AccessibleField>
             )}
             <div className="flex gap-2">
               <Button onClick={handleProcess} disabled={!rawData.trim()}>
                 <FileUp className="mr-2 h-4 w-4" />
-                Process Transactions
+                Procesar movimientos
               </Button>
               <Button variant="outline" onClick={handleClear}>
-                Clear
+                Limpiar
               </Button>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Paste Transactions</label>
+          <AccessibleField className="space-y-2">
+            <Label className="text-sm font-medium">Pegar movimientos</Label>
             <Textarea
               placeholder={
                 bankFormat === "grupo-mutual"
@@ -474,7 +481,7 @@ export default function ImportTransactionsPage() {
               onChange={(e) => setRawData(e.target.value)}
               className="min-h-[200px] font-mono text-sm"
             />
-          </div>
+          </AccessibleField>
         </CardContent>
       </Card>
 
@@ -484,24 +491,26 @@ export default function ImportTransactionsPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Transaction Preview</CardTitle>
-                <CardDescription>Review and edit transactions before importing</CardDescription>
+                <CardTitle>Revisión de movimientos</CardTitle>
+                <CardDescription>
+                  Revisa y edita los movimientos antes de importarlos
+                </CardDescription>
               </div>
               <div className="flex gap-2">
                 <Badge variant="secondary" className="gap-1">
                   Total: {totalCount}
                 </Badge>
-                <Badge className="gap-1 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">
+                <Badge className="gap-1 bg-success/10 text-success hover:bg-success/20">
                   <Check className="h-3 w-3" />
-                  Valid: {validCount}
+                  Válidos: {validCount}
                 </Badge>
-                <Badge className="gap-1 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20">
+                <Badge className="gap-1 bg-warning/10 text-warning hover:bg-warning/20">
                   <AlertCircle className="h-3 w-3" />
-                  Warnings: {warningCount}
+                  Advertencias: {warningCount}
                 </Badge>
-                <Badge className="gap-1 bg-red-500/10 text-red-600 hover:bg-red-500/20">
+                <Badge className="gap-1 bg-error/10 text-error hover:bg-error/20">
                   <X className="h-3 w-3" />
-                  Errors: {errorCount}
+                  Errores: {errorCount}
                 </Badge>
               </div>
             </div>
@@ -510,26 +519,26 @@ export default function ImportTransactionsPage() {
             {transactions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <AlertCircle className="h-12 w-12 mb-4" />
-                <p>No transactions could be parsed from the input.</p>
-                <p className="text-sm">Please check the format and try again.</p>
+                <p>No pudimos reconocer movimientos en el texto.</p>
+                <p className="text-sm">Revisa el formato y vuelve a intentar.</p>
               </div>
             ) : (
               <ScrollArea className="h-[400px]">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[100px]">Date</TableHead>
-                      <TableHead className="min-w-[200px]">Description</TableHead>
-                      <TableHead className="w-[120px] text-right">Amount</TableHead>
-                      <TableHead className="w-[160px]">Account</TableHead>
-                      <TableHead className="w-[160px]">Envelope</TableHead>
-                      <TableHead className="w-[100px]">Type</TableHead>
-                      <TableHead className="w-[120px]">Status</TableHead>
+                      <TableHead className="w-[100px]">Fecha</TableHead>
+                      <TableHead className="min-w-[200px]">Descripción</TableHead>
+                      <TableHead className="w-[120px] text-right">Importe</TableHead>
+                      <TableHead className="w-[160px]">Cuenta</TableHead>
+                      <TableHead className="w-[160px]">Sobre</TableHead>
+                      <TableHead className="w-[100px]">Tipo</TableHead>
+                      <TableHead className="w-[120px]">Estado</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {transactions.map((transaction) => (
+                    {transactions.map((transaction, index) => (
                       <TableRow key={transaction.id}>
                         <TableCell className="font-medium">
                           {formatIsoDateOnly(transaction.date)}
@@ -542,14 +551,14 @@ export default function ImportTransactionsPage() {
                             <div>{transaction.description}</div>
                             {transaction.appliedRuleName && (
                               <div className="text-xs text-muted-foreground">
-                                Auto rule: {transaction.appliedRuleName}
+                                Regla automática: {transaction.appliedRuleName}
                               </div>
                             )}
                           </div>
                         </TableCell>
                         <TableCell
                           className={`text-right font-mono ${
-                            transaction.amount < 0 ? "text-red-600" : "text-emerald-600"
+                            transaction.amount < 0 ? "text-error" : "text-success"
                           }`}
                         >
                           {formatCurrency(transaction.amount, transaction.currency)}
@@ -560,8 +569,11 @@ export default function ImportTransactionsPage() {
                             onValueChange={(v) => updateTransaction(transaction.id, "accountId", v)}
                             disabled={accountsLoading}
                           >
-                            <SelectTrigger className="h-8">
-                              <SelectValue placeholder="Select..." />
+                            <SelectTrigger
+                              className="h-8"
+                              aria-label={`Cuenta del movimiento ${index + 1}`}
+                            >
+                              <SelectValue placeholder="Elige una opción…" />
                             </SelectTrigger>
                             <SelectContent>
                               {getAccountsForTransaction(transaction, activeAccounts).map(
@@ -584,8 +596,11 @@ export default function ImportTransactionsPage() {
                               !transaction.accountId || envelopesLoading[transaction.accountId]
                             }
                           >
-                            <SelectTrigger className="h-8">
-                              <SelectValue placeholder="Select..." />
+                            <SelectTrigger
+                              className="h-8"
+                              aria-label={`Sobre del movimiento ${index + 1}`}
+                            >
+                              <SelectValue placeholder="Elige una opción…" />
                             </SelectTrigger>
                             <SelectContent>
                               {(envelopesByAccount[transaction.accountId] || []).map((envelope) => (
@@ -603,34 +618,37 @@ export default function ImportTransactionsPage() {
                               updateTransaction(transaction.id, "type", v as TransactionType)
                             }
                           >
-                            <SelectTrigger className="h-8">
+                            <SelectTrigger
+                              className="h-8"
+                              aria-label={`Tipo del movimiento ${index + 1}`}
+                            >
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="EXPENSE">Expense</SelectItem>
-                              <SelectItem value="INCOME">Income</SelectItem>
+                              <SelectItem value="EXPENSE">Gasto</SelectItem>
+                              <SelectItem value="INCOME">Ingreso</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
                         <TableCell>
                           {transaction.status === "valid" && (
-                            <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">
+                            <Badge className="bg-success/10 text-success hover:bg-success/20">
                               <Check className="mr-1 h-3 w-3" />
-                              Valid
+                              Válido
                             </Badge>
                           )}
                           {transaction.status === "warning" && (
                             <Badge
-                              className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
+                              className="bg-warning/10 text-warning hover:bg-warning/20"
                               title={transaction.statusMessage}
                             >
                               <AlertCircle className="mr-1 h-3 w-3" />
-                              Warning
+                              Advertencia
                             </Badge>
                           )}
                           {transaction.status === "error" && (
                             <Badge
-                              className="bg-red-500/10 text-red-600 hover:bg-red-500/20"
+                              className="bg-error/10 text-error hover:bg-error/20"
                               title={transaction.statusMessage}
                             >
                               <X className="mr-1 h-3 w-3" />
@@ -644,6 +662,7 @@ export default function ImportTransactionsPage() {
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-destructive"
                             onClick={() => removeTransaction(transaction.id)}
+                            aria-label={`Quitar movimiento ${index + 1}`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -659,11 +678,11 @@ export default function ImportTransactionsPage() {
             {transactions.length > 0 && (
               <div className="flex items-center justify-between border-t pt-4 mt-4">
                 <p className="text-sm text-muted-foreground">
-                  Non-error rows with valid account, envelope, date, and amount will be imported (
-                  {importableCount} ready)
+                  Se importarán los movimientos sin errores que tengan cuenta, sobre, fecha e
+                  importe válidos ({importableCount} listos)
                 </p>
                 <Button onClick={handleImport} disabled={importableCount === 0 || isImporting}>
-                  {isImporting ? "Importing..." : `Import Transactions (${importableCount})`}
+                  {isImporting ? "Importando…" : `Importar movimientos (${importableCount})`}
                 </Button>
               </div>
             )}

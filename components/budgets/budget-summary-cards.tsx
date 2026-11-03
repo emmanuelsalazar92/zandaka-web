@@ -24,22 +24,22 @@ export function BudgetSummaryCards({
 }: BudgetSummaryCardsProps) {
   const items = [
     {
-      label: "Total Income",
+      label: "Ingreso total",
       value: formatCurrency(totalIncome, currency),
       tone: "text-foreground",
     },
     {
-      label: "Distributed Amount",
+      label: "Importe distribuido",
       value: formatCurrency(distributedAmount, currency),
       tone: "text-foreground",
     },
     {
-      label: "Distributed Percentage",
+      label: "Porcentaje distribuido",
       value: formatPercentage(distributedPercentage),
       tone: "text-foreground",
     },
     {
-      label: "Remaining Amount",
+      label: "Importe pendiente",
       value: formatCurrency(remainingAmount, currency),
       tone:
         remainingAmount === 0
@@ -47,7 +47,7 @@ export function BudgetSummaryCards({
           : "text-amber-600 dark:text-amber-400",
     },
     {
-      label: "Remaining Percentage",
+      label: "Porcentaje pendiente",
       value: formatPercentage(remainingPercentage),
       tone:
         remainingPercentage === 0

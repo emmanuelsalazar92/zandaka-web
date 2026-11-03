@@ -1,6 +1,7 @@
 "use client"
 
 import { format, parse } from "date-fns"
+import { es } from "date-fns/locale"
 import {
   AlertCircle,
   CheckCircle2,
@@ -26,6 +27,7 @@ import type {
   BudgetPlanningLineDraft,
   BudgetValidation,
 } from "@/components/budgets/types"
+import { AccessibleFieldError } from "@/components/ui/accessible-field"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -86,7 +88,7 @@ type BudgetDetailContentProps = {
 
 const formatBudgetMonth = (month: string) => {
   try {
-    return format(parse(month, "yyyy-MM", new Date()), "MMMM yyyy")
+    return format(parse(month, "yyyy-MM", new Date()), "MMMM yyyy", { locale: es })
   } catch {
     return month
   }
@@ -114,10 +116,10 @@ const buildDraftLines = (lines: BudgetLine[], categories: BudgetCategoryOption[]
         clientId: makeClientId(line, index),
         id: line.id,
         categoryId: line.categoryId,
-        categoryName: line.categoryName || category?.name || `Category ${line.categoryId}`,
+        categoryName: line.categoryName || category?.name || `Categoría ${line.categoryId}`,
         parentCategoryId: line.parentCategoryId ?? category?.parentId ?? null,
         parentCategoryName:
-          line.parentCategoryName ?? category?.parentName ?? parent?.name ?? "Uncategorized",
+          line.parentCategoryName ?? category?.parentName ?? parent?.name ?? "Sin categoría",
         amount: line.amount,
         percentage: line.percentage,
         notes: line.notes,
@@ -179,7 +181,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
 
   const loadWorkspace = React.useCallback(async () => {
     if (Number.isNaN(numericBudgetId)) {
-      setLoadError("Budget not found.")
+      setLoadError("No encontramos el presupuesto.")
       setIsLoading(false)
       return
     }
@@ -223,14 +225,14 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
         const message =
           categoriesResult.reason instanceof Error
             ? categoriesResult.reason.message
-            : "Categories could not be loaded."
+            : "No pudimos cargar las categorías. Vuelve a intentar."
         setCategoryError(message)
       }
     } catch (workspaceError) {
       const message =
         workspaceError instanceof Error
           ? workspaceError.message
-          : "Budget workspace could not be loaded."
+          : "No pudimos cargar el presupuesto. Vuelve a intentar."
       setLoadError(message)
     } finally {
       setIsLoading(false)
@@ -251,7 +253,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
 
   const groupedLines = draftLines.reduce<Record<string, BudgetPlanningLineDraft[]>>(
     (groups, line) => {
-      const key = line.parentCategoryName || "Uncategorized"
+      const key = line.parentCategoryName || "Sin categoría"
       const nextGroup = groups[key] ?? []
       nextGroup.push(line)
       groups[key] = nextGroup
@@ -340,7 +342,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
         categoryId,
         categoryName: selectedCategory.name,
         parentCategoryId: selectedCategory.parentId,
-        parentCategoryName: selectedCategory.parentName ?? "Uncategorized",
+        parentCategoryName: selectedCategory.parentName ?? "Sin categoría",
         amount,
         percentage:
           percentage > 0
@@ -370,14 +372,17 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
         })),
       )
       toast({
-        title: "Changes saved",
-        description: "Budget planning lines were updated.",
+        title: "Cambios guardados",
+        description: "Se actualizaron las categorías del presupuesto.",
       })
       await loadWorkspace()
     } catch (saveError) {
-      const message = saveError instanceof Error ? saveError.message : "Changes could not be saved."
+      const message =
+        saveError instanceof Error
+          ? saveError.message
+          : "No pudimos guardar los cambios. Vuelve a intentar."
       toast({
-        title: "Save failed",
+        title: "No se guardaron los cambios",
         description: message,
         variant: "destructive",
       })
@@ -390,8 +395,8 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
     if (!budget) return
     if (hasUnsavedChanges) {
       toast({
-        title: "Unsaved changes",
-        description: "Save your planning changes before running validation.",
+        title: "Cambios sin guardar",
+        description: "Guarda los cambios antes de validar el presupuesto.",
       })
       return
     }
@@ -401,18 +406,18 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
       const nextValidation = await fetchBudgetValidation(budget.id)
       setValidation(nextValidation)
       toast({
-        title: nextValidation.isValid ? "Budget validated" : "Validation complete",
+        title: nextValidation.isValid ? "Presupuesto validado" : "Validación completa",
         description: nextValidation.isValid
-          ? "This budget is ready to finalize."
-          : "Resolve the remaining issues before finalizing.",
+          ? "El presupuesto está listo para finalizar."
+          : "Resuelve los puntos pendientes antes de finalizar.",
       })
     } catch (validationError) {
       const message =
         validationError instanceof Error
           ? validationError.message
-          : "Budget validation could not be completed."
+          : "No pudimos validar el presupuesto. Vuelve a intentar."
       toast({
-        title: "Validation failed",
+        title: "No se completó la validación",
         description: message,
         variant: "destructive",
       })
@@ -425,8 +430,8 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
     if (!budget) return
     if (hasUnsavedChanges) {
       toast({
-        title: "Unsaved changes",
-        description: "Save your planning changes before finalizing this budget.",
+        title: "Cambios sin guardar",
+        description: "Guarda los cambios antes de finalizar el presupuesto.",
       })
       return
     }
@@ -438,8 +443,8 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
 
       if (!nextValidation.isValid) {
         toast({
-          title: "Budget is not ready",
-          description: "Resolve the validation issues before finalizing.",
+          title: "El presupuesto aún no está listo",
+          description: "Resuelve los puntos de validación antes de finalizar.",
           variant: "destructive",
         })
         return
@@ -447,8 +452,8 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
 
       await finalizeBudget(budget.id)
       toast({
-        title: "Budget finalized",
-        description: "The budget is now locked for planning changes.",
+        title: "Presupuesto finalizado",
+        description: "La planificación del presupuesto quedó cerrada.",
       })
       await loadWorkspace()
     } catch (finalizeError) {
@@ -457,9 +462,11 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
       }
 
       const message =
-        finalizeError instanceof Error ? finalizeError.message : "Budget could not be finalized."
+        finalizeError instanceof Error
+          ? finalizeError.message
+          : "No pudimos finalizar el presupuesto. Vuelve a intentar."
       toast({
-        title: "Finalize failed",
+        title: "No se finalizó el presupuesto",
         description: message,
         variant: "destructive",
       })
@@ -472,8 +479,8 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
     if (!budget || !isEditable) return
     if (hasUnsavedChanges) {
       toast({
-        title: "Unsaved changes",
-        description: "Save or discard your current edits before copying from the previous budget.",
+        title: "Cambios sin guardar",
+        description: "Guarda o descarta tus cambios antes de copiar el presupuesto anterior.",
       })
       return
     }
@@ -482,14 +489,15 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
       setIsCopying(true)
       await copyBudgetFromPrevious(budget.id)
       toast({
-        title: "Lines copied",
-        description: "Planning lines were copied from the previous budget.",
+        title: "Categorías copiadas",
+        description: "Se copiaron las categorías del presupuesto anterior.",
       })
       await loadWorkspace()
     } catch (copyError) {
-      const message = copyError instanceof Error ? copyError.message : "Nothing was copied."
+      const message =
+        copyError instanceof Error ? copyError.message : "No se copió ninguna categoría."
       toast({
-        title: "Copy from previous",
+        title: "Copiar del anterior",
         description: message,
         variant:
           copyError instanceof BudgetApiError && copyError.status === 404
@@ -520,15 +528,15 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Budget unavailable</CardTitle>
-          <CardDescription>
-            The budget workspace could not be loaded with the current API response.
-          </CardDescription>
+          <CardTitle>Presupuesto no disponible</CardTitle>
+          <CardDescription>No pudimos consultar el presupuesto. Vuelve a intentar.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-destructive">{loadError ?? "Budget not found."}</p>
+          <AccessibleFieldError className="text-sm text-destructive">
+            {loadError ?? "No encontramos el presupuesto."}
+          </AccessibleFieldError>
           <Button asChild variant="outline">
-            <Link href="/budgets">Back to Budgets</Link>
+            <Link href="/budgets">Volver a Presupuestos</Link>
           </Button>
         </CardContent>
       </Card>
@@ -542,7 +550,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href="/budgets">Budgets</Link>
+                <Link href="/budgets">Presupuestos</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -556,13 +564,13 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-2xl font-bold tracking-tight">
-                {formatBudgetMonth(budget.month)} Budget
+                {formatBudgetMonth(budget.month)} Presupuesto
               </h2>
               <BudgetStatusBadge status={budget.status} />
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-              <span>Currency: {budget.currency}</span>
-              <span>Total Income: {formatCurrency(budget.totalIncome, budget.currency)}</span>
+              <span>Moneda: {budget.currency}</span>
+              <span>Ingreso total: {formatCurrency(budget.totalIncome, budget.currency)}</span>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -576,7 +584,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
               ) : (
                 <Copy className="mr-2 h-4 w-4" />
               )}
-              Copy from Previous
+              Copiar del anterior
             </Button>
             <Button
               variant="outline"
@@ -588,7 +596,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
               ) : (
                 <ShieldCheck className="mr-2 h-4 w-4" />
               )}
-              Validate
+              Validar
             </Button>
             <Button onClick={handleFinalize} disabled={!isEditable || isFinalizing}>
               {isFinalizing ? (
@@ -596,7 +604,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
               ) : (
                 <CheckCircle2 className="mr-2 h-4 w-4" />
               )}
-              Finalize
+              Finalizar
             </Button>
           </div>
         </div>
@@ -615,15 +623,15 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
         <Card className="border-blue-200 bg-blue-50/60 dark:border-blue-950 dark:bg-blue-950/20">
           <CardContent className="flex items-start gap-3 p-4 text-sm text-blue-900 dark:text-blue-100">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>This budget is no longer editable. Planning data is shown in read-only mode.</p>
+            <p>Este presupuesto está cerrado. Puedes consultar su planificación.</p>
           </CardContent>
         </Card>
       ) : null}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="planning">Planning</TabsTrigger>
-          <TabsTrigger value="funding">Funding</TabsTrigger>
+          <TabsTrigger value="planning">Planificación</TabsTrigger>
+          <TabsTrigger value="funding">Asignación a sobres</TabsTrigger>
         </TabsList>
 
         <TabsContent value="planning" className="space-y-4">
@@ -632,19 +640,19 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
               <div className="flex flex-wrap gap-3">
                 <div className="rounded-lg bg-muted px-3 py-2">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Distributed %
+                    % distribuido
                   </p>
                   <p className="text-sm font-semibold">{formatPercentage(distributedPercentage)}</p>
                 </div>
                 <div className="rounded-lg bg-muted px-3 py-2">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Remaining %
+                    % pendiente
                   </p>
                   <p className="text-sm font-semibold">{formatPercentage(remainingPercentage)}</p>
                 </div>
                 <div className="rounded-lg bg-muted px-3 py-2">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Remaining Amount
+                    Importe pendiente
                   </p>
                   <p className="text-sm font-semibold">
                     {formatCurrency(remainingAmount, budget.currency)}
@@ -658,7 +666,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                   disabled={!isEditable || categories.length === 0}
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Category
+                  Añadir categoría
                 </Button>
                 <Button
                   onClick={handleSaveChanges}
@@ -669,18 +677,18 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                   ) : (
                     <Save className="mr-2 h-4 w-4" />
                   )}
-                  Save Changes
+                  Guardar cambios
                 </Button>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               {hasUnsavedChanges ? (
-                <span>Local edits are not saved yet.</span>
+                <span>Hay cambios que aún no se han guardado.</span>
               ) : (
-                <span>All changes saved.</span>
+                <span>Todos los cambios están guardados.</span>
               )}
               {hasUnsavedChanges ? (
-                <span>Summary cards show the last saved validation snapshot.</span>
+                <span>El resumen corresponde a la última validación guardada.</span>
               ) : null}
               {categoryError ? <span className="text-destructive">{categoryError}</span> : null}
             </div>
@@ -696,9 +704,9 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                     <EmptyMedia variant="icon">
                       <Plus className="h-5 w-5" />
                     </EmptyMedia>
-                    <EmptyTitle>No planning categories yet</EmptyTitle>
+                    <EmptyTitle>Todavía no hay categorías</EmptyTitle>
                     <EmptyDescription>
-                      Add child categories to start distributing this month&apos;s income.
+                      Añade subcategorías para distribuir el ingreso de este mes.
                     </EmptyDescription>
                   </EmptyHeader>
                   <EmptyContent>
@@ -707,7 +715,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                       disabled={!isEditable || categories.length === 0}
                     >
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Category
+                      Añadir categoría
                     </Button>
                   </EmptyContent>
                 </Empty>
@@ -724,15 +732,16 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                     <div>
                       <CardTitle>{groupName}</CardTitle>
                       <CardDescription>
-                        {lines.length} categor{lines.length === 1 ? "y" : "ies"} in this group
+                        {lines.length} {lines.length === 1 ? "categoría" : "categorías"} en este
+                        grupo
                       </CardDescription>
                     </div>
                     <div className="flex flex-wrap gap-2 text-sm">
                       <span className="rounded-md bg-muted px-3 py-2">
-                        Amount: {formatCurrency(groupAmount, budget.currency)}
+                        Importe: {formatCurrency(groupAmount, budget.currency)}
                       </span>
                       <span className="rounded-md bg-muted px-3 py-2">
-                        Percentage: {formatPercentage(groupPercentage)}
+                        Porcentaje: {formatPercentage(groupPercentage)}
                       </span>
                     </div>
                   </CardHeader>
@@ -741,11 +750,11 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                       <Table className="table-fixed">
                         <TableHeader>
                           <TableRow className="bg-muted/30 hover:bg-muted/30">
-                            <TableHead className="w-[28%] px-6">Category</TableHead>
-                            <TableHead className="w-[16%]">Amount</TableHead>
-                            <TableHead className="w-[14%]">Percentage</TableHead>
-                            <TableHead className="w-[34%]">Notes</TableHead>
-                            <TableHead className="w-[8%] px-6 text-right">Actions</TableHead>
+                            <TableHead className="w-[28%] px-6">Categoría</TableHead>
+                            <TableHead className="w-[16%]">Importe</TableHead>
+                            <TableHead className="w-[14%]">Porcentaje</TableHead>
+                            <TableHead className="w-[34%]">Notas</TableHead>
+                            <TableHead className="w-[8%] px-6 text-right">Acciones</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -755,12 +764,13 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                                 <div className="space-y-1">
                                   <p className="truncate font-medium">{line.categoryName}</p>
                                   <p className="text-xs text-muted-foreground">
-                                    Child category in {groupName}
+                                    Subcategoría de {groupName}
                                   </p>
                                 </div>
                               </TableCell>
                               <TableCell className="py-3">
                                 <Input
+                                  aria-label={"Importe de " + line.categoryName}
                                   type="number"
                                   min="0"
                                   step={currencyStep(budget?.currency ?? "CRC")}
@@ -774,6 +784,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                               </TableCell>
                               <TableCell className="py-3">
                                 <Input
+                                  aria-label={"Porcentaje de " + line.categoryName}
                                   type="number"
                                   min="0"
                                   step="0.01"
@@ -787,11 +798,12 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                               </TableCell>
                               <TableCell className="py-3 whitespace-normal">
                                 <Input
+                                  aria-label={"Notas de " + line.categoryName}
                                   value={line.notes}
                                   onChange={(event) =>
                                     handleLineNotesChange(line.clientId, event.target.value)
                                   }
-                                  placeholder="Add notes"
+                                  placeholder="Añadir notas"
                                   disabled={!isEditable}
                                   className="h-9"
                                 />
@@ -803,7 +815,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                                   onClick={() => handleRemoveLine(line.clientId)}
                                   disabled={!isEditable}
                                   className="h-8 w-8"
-                                  title={`Remove ${line.categoryName}`}
+                                  title={`Quitar ${line.categoryName}`}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -813,7 +825,9 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                         </TableBody>
                         <TableFooter className="bg-muted/40">
                           <TableRow className="hover:bg-muted/40">
-                            <TableCell className="px-6 py-3 font-medium">Group subtotal</TableCell>
+                            <TableCell className="px-6 py-3 font-medium">
+                              Subtotal del grupo
+                            </TableCell>
                             <TableCell className="py-3 font-medium">
                               {formatCurrency(groupAmount, budget.currency)}
                             </TableCell>
@@ -849,9 +863,10 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                           <div className="mt-4 grid gap-3">
                             <div className="space-y-2">
                               <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                Amount
+                                Importe
                               </p>
                               <Input
+                                aria-label={"Importe de " + line.categoryName}
                                 type="number"
                                 min="0"
                                 step={currencyStep(budget?.currency ?? "CRC")}
@@ -864,9 +879,10 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                             </div>
                             <div className="space-y-2">
                               <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                Percentage
+                                Porcentaje
                               </p>
                               <Input
+                                aria-label={"Porcentaje de " + line.categoryName}
                                 type="number"
                                 min="0"
                                 step="0.01"
@@ -879,14 +895,15 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                             </div>
                             <div className="space-y-2">
                               <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                Notes
+                                Notas
                               </p>
                               <Input
+                                aria-label={"Notas de " + line.categoryName}
                                 value={line.notes}
                                 onChange={(event) =>
                                   handleLineNotesChange(line.clientId, event.target.value)
                                 }
-                                placeholder="Add notes"
+                                placeholder="Añadir notas"
                                 disabled={!isEditable}
                               />
                             </div>
@@ -894,7 +911,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
                         </div>
                       ))}
                       <div className="rounded-lg bg-muted/40 p-4 text-sm font-medium">
-                        Group subtotal: {formatCurrency(groupAmount, budget.currency)} /{" "}
+                        Subtotal del grupo: {formatCurrency(groupAmount, budget.currency)} /{" "}
                         {formatPercentage(groupPercentage)}
                       </div>
                     </div>

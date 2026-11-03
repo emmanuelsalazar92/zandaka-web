@@ -4,9 +4,11 @@ import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
 import { CheckIcon } from "lucide-react"
 import * as React from "react"
 
+import { useFieldControl } from "@/components/ui/accessible-field"
 import { cn } from "@/lib/utils"
 
 function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
+  const fieldProps = useFieldControl(props)
   return (
     <CheckboxPrimitive.Root
       data-slot="checkbox"
@@ -15,6 +17,7 @@ function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxP
         className,
       )}
       {...props}
+      {...fieldProps}
     >
       <CheckboxPrimitive.Indicator
         data-slot="checkbox-indicator"

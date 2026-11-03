@@ -56,6 +56,8 @@ Example request:
 
 ## Learn More
 
+Las convenciones financieras, el glosario español y la accesibilidad se documentan en [Confianza financiera y accesibilidad — ZA-79](docs/confianza-accesibilidad.md).
+
 La regresión de layout móvil y ampliación de texto de Movimientos se documenta en [ZA-78](docs/za-78-layout.md). Ejecutar `npm run build` y `npm run test:e2e` para comprobarla con datos sintéticos.
 
 To learn more about Next.js, take a look at the following resources:

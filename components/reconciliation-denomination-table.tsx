@@ -47,7 +47,7 @@ export function ReconciliationDenominationTable({
         className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground"
         data-testid="cash-denomination-empty"
       >
-        No denominations are configured for this currency yet.
+        Todavía no hay denominaciones configuradas para esta moneda.
       </div>
     )
   }
@@ -58,9 +58,9 @@ export function ReconciliationDenominationTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[120px]">Quantity</TableHead>
-              <TableHead>Denomination</TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead className="w-[120px]">Cantidad</TableHead>
+              <TableHead>Denominación</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead className="text-right">Subtotal</TableHead>
             </TableRow>
           </TableHeader>
@@ -73,7 +73,7 @@ export function ReconciliationDenominationTable({
                 <TableRow key={denomination.id}>
                   <TableCell>
                     <Input
-                      aria-label={`Quantity for ${denomination.label || formatCurrency(denomination.value, denomination.currency)}`}
+                      aria-label={`Cantidad de ${denomination.label || formatCurrency(denomination.value, denomination.currency)}`}
                       inputMode="numeric"
                       pattern="[0-9]*"
                       value={quantities[denomination.id] ?? ""}
@@ -87,7 +87,7 @@ export function ReconciliationDenominationTable({
                     {denomination.label ||
                       formatCurrency(denomination.value, denomination.currency)}
                   </TableCell>
-                  <TableCell>{denomination.type === "BILL" ? "Bill" : "Coin"}</TableCell>
+                  <TableCell>{denomination.type === "BILL" ? "Billete" : "Moneda"}</TableCell>
                   <TableCell
                     className="text-right font-mono"
                     data-testid={`subtotal-${denomination.id}`}
@@ -103,7 +103,7 @@ export function ReconciliationDenominationTable({
 
       <div className="flex justify-end">
         <div className="rounded-lg border px-4 py-3 text-right">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Counted Total</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total contado</p>
           <p className="font-mono text-lg font-semibold" data-testid="denomination-counted-total">
             {formatCurrency(countedTotal, currency)}
           </p>

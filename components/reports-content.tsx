@@ -53,7 +53,7 @@ const messageOf = (error: unknown, fallback: string) =>
 const resolveMonthEndDate = (reportMonth: string) => {
   const [year, month] = reportMonth.split("-").map((value) => Number.parseInt(value, 10))
   if (!Number.isInteger(year) || !Number.isInteger(month)) {
-    throw new Error("Invalid report month.")
+    throw new Error("Elige un mes válido para el reporte.")
   }
 
   const monthEnd = new Date(Date.UTC(year, month, 0))
@@ -123,7 +123,7 @@ export function ReportsContent() {
         return selectDefaultSnapshot(snapshotData)?.id ?? null
       })
     } catch (cause) {
-      setError(messageOf(cause, "Failed to load reports."))
+      setError(messageOf(cause, "No pudimos cargar los reportes. Vuelve a intentar."))
     } finally {
       setLoading(false)
     }
@@ -190,13 +190,16 @@ export function ReportsContent() {
       setSelectedReportId(created.id)
       setIsGenerateOpen(false)
       toast({
-        title: "Report generated",
-        description: `Snapshot ${created.reportMonth} v${created.version} is ready.`,
+        title: "Reporte generado",
+        description: `Versión ${created.reportMonth} v${created.version} está lista.`,
       })
     } catch (cause) {
       toast({
-        title: "Report generation failed",
-        description: messageOf(cause, "Failed to generate the report snapshot."),
+        title: "No se generó el reporte",
+        description: messageOf(
+          cause,
+          "No pudimos guardar el reporte. Revisa los datos y vuelve a intentar.",
+        ),
         variant: "destructive",
       })
     } finally {
@@ -216,13 +219,13 @@ export function ReportsContent() {
       setSelectedReportId(nextSelected?.id ?? null)
       setIsArchiveDialogOpen(false)
       toast({
-        title: "Report archived",
-        description: `Snapshot ${selectedReport.reportMonth} v${selectedReport.version} moved out of the main history.`,
+        title: "Reporte archivado",
+        description: `Versión ${selectedReport.reportMonth} v${selectedReport.version} se archivó.`,
       })
     } catch (cause) {
       toast({
-        title: "Archive failed",
-        description: messageOf(cause, "Failed to archive the selected report."),
+        title: "No se archivó el reporte",
+        description: messageOf(cause, "No pudimos archivar el reporte. Vuelve a intentar."),
         variant: "destructive",
       })
     } finally {
@@ -248,7 +251,7 @@ export function ReportsContent() {
 
       {error ? (
         <Alert>
-          <AlertTitle>Reports unavailable</AlertTitle>
+          <AlertTitle>Reportes no disponibles</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
@@ -271,15 +274,15 @@ export function ReportsContent() {
               <EmptyMedia variant="icon">
                 <FileStack />
               </EmptyMedia>
-              <EmptyTitle>No reports yet</EmptyTitle>
+              <EmptyTitle>Todavía no hay reportes</EmptyTitle>
               <EmptyDescription>
-                Generate your first historical financial snapshot to preview and download it here.
+                Genera tu primera versión de saldos para consultarla y descargarla aquí.
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
               <Button type="button" onClick={() => setIsGenerateOpen(true)}>
                 <Plus className="h-4 w-4" />
-                Generate your first report
+                Generar mi primer reporte
               </Button>
             </EmptyContent>
           </Empty>
@@ -312,17 +315,17 @@ export function ReportsContent() {
       <AlertDialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Archive report?</AlertDialogTitle>
+            <AlertDialogTitle>¿Archivar el reporte?</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedReport
-                ? `This will hide ${selectedReport.reportMonth} v${selectedReport.version} from the main report history without deleting the snapshot data.`
-                : "This will hide the selected report from the main report history without deleting it."}
+                ? `Se archivará ${selectedReport.reportMonth} v${selectedReport.version} from the main report history without deleting the snapshot data.`
+                : "El reporte dejará de aparecer en el historial principal. Su información se conservará."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={archiveBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={archiveBusy}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => void handleArchive()} disabled={archiveBusy}>
-              Archive report
+              Archivar reporte
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

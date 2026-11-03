@@ -20,11 +20,11 @@ export function StatusBadge({ status, children }: StatusBadgeProps) {
   }
 
   const displayText: Record<string, string> = {
-    active: "Active",
-    inactive: "Inactive",
-    pending: "Pending",
-    balanced: "Balanced",
-    difference: "Difference",
+    active: "Activo",
+    inactive: "Inactivo",
+    pending: "Pendiente",
+    balanced: "Sin diferencia",
+    difference: "Diferencia",
   }
 
   return <Badge variant={variantMap[status]}>{children || displayText[status]}</Badge>

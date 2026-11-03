@@ -56,9 +56,9 @@ const CATALOG_ITEMS = [
 
 function AppSidebar() {
   const pathname = usePathname()
-  const { isMobile, setOpenMobile } = useSidebar()
+  const { isMobile, closeMobileForNavigation } = useSidebar()
   const closeMobile = () => {
-    if (isMobile) setOpenMobile(false)
+    if (isMobile) closeMobileForNavigation()
   }
 
   return (
@@ -168,7 +168,11 @@ function AppHeader() {
         <SidebarTrigger
           className="-ml-1 size-11 text-muted-foreground"
           aria-expanded={isMobile ? openMobile : state === "expanded"}
-          aria-label={isMobile && openMobile ? "Cerrar navegación" : "Abrir navegación"}
+          aria-label={
+            (isMobile ? openMobile : state === "expanded")
+              ? "Cerrar navegación"
+              : "Abrir navegación"
+          }
         />
         <h1 className="text-sm font-medium text-muted-foreground">
           {[...NAV_ITEMS, ...CATALOG_ITEMS, { label: "Ajustes", href: "/settings" }]

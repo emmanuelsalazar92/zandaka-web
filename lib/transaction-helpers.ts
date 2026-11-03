@@ -22,19 +22,19 @@ export function validateTransaction(transaction: Partial<Transaction>): {
 } {
   const errors: string[] = []
 
-  if (!transaction.date) errors.push("Date is required")
-  if (!transaction.description) errors.push("Description is required")
+  if (!transaction.date) errors.push("Elige una fecha")
+  if (!transaction.description) errors.push("Introduce una descripción")
   if (!transaction.lines || transaction.lines.length === 0) {
-    errors.push("At least one line is required")
+    errors.push("Añade al menos un detalle")
   }
 
   if (transaction.type === "TRANSFER") {
     if (!transaction.lines || transaction.lines.length !== 2) {
-      errors.push("Transfers must have exactly 2 lines")
+      errors.push("Las transferencias requieren exactamente dos detalles")
     }
     const sum = sumMoney((transaction.lines || []).map((line) => line.amount))
     if (sum !== 0) {
-      errors.push("Transfer lines must sum to 0")
+      errors.push("Los importes de una transferencia deben sumar cero")
     }
   }
 

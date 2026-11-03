@@ -1,5 +1,6 @@
 import { getAccountingDate } from "@/lib/date-only"
 import { decimalNumber } from "@/lib/money"
+import { publicErrorMessage } from "@/lib/public-error"
 import { SETTINGS_USER_ID, fetchUserSettings } from "@/lib/settings-api"
 
 const API_BASE_URL = "/api"
@@ -142,14 +143,8 @@ const buildUrl = (path: string, query?: RequestOptions["query"]) => {
   return `${API_BASE_URL}${path}${queryString ? `?${queryString}` : ""}`
 }
 
-const getErrorMessage = (payload: ApiErrorPayload | null, fallback: string) => {
-  if (!payload || typeof payload !== "object") return fallback
-  if (typeof payload.message === "string" && payload.message.trim()) return payload.message
-  if (typeof payload.error?.message === "string" && payload.error.message.trim()) {
-    return payload.error.message
-  }
-  return fallback
-}
+const getErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
+  publicErrorMessage(payload, fallback)
 
 async function request<T>(path: string, options?: RequestOptions): Promise<T> {
   const response = await fetch(buildUrl(path, options?.query), {
@@ -170,7 +165,10 @@ async function request<T>(path: string, options?: RequestOptions): Promise<T> {
         errorPayload && typeof errorPayload === "object" && errorPayload.error?.code
           ? String(errorPayload.error.code)
           : null,
-      message: getErrorMessage(errorPayload, "Request failed."),
+      message: getErrorMessage(
+        errorPayload,
+        "No pudimos completar la consulta. Vuelve a intentar.",
+      ),
     })
   }
 
@@ -303,7 +301,7 @@ export async function fetchDashboardSummary(userId = SETTINGS_USER_ID): Promise<
         const reason = (result as { reason: unknown }).reason
         return reason instanceof Error && reason.message
           ? reason.message
-          : "Some dashboard data could not be loaded."
+          : "No pudimos consultar parte de la información. Vuelve a intentar."
       })
 
     return {
@@ -343,7 +341,9 @@ export async function fetchDashboardSummary(userId = SETTINGS_USER_ID): Promise<
     return {
       ...EMPTY_DASHBOARD_SUMMARY,
       warnings: [
-        error instanceof Error && error.message ? error.message : "Failed to load dashboard.",
+        error instanceof Error && error.message
+          ? error.message
+          : "No pudimos cargar el resumen. Vuelve a intentar.",
       ],
     }
   }

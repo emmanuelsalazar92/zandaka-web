@@ -1,5 +1,6 @@
 import { DEFAULT_USER_ID } from "@/lib/budgets-api"
 import { decimalNumber } from "@/lib/money"
+import { publicErrorMessage } from "@/lib/public-error"
 
 const API_BASE_URL = "/api"
 
@@ -224,23 +225,8 @@ const buildUrl = (path: string, query?: RequestOptions["query"]) => {
   return `${API_BASE_URL}${path}${queryString ? `?${queryString}` : ""}`
 }
 
-const getErrorMessage = (payload: ApiErrorPayload | null, fallback: string) => {
-  if (!payload || typeof payload !== "object") return fallback
-
-  if (typeof payload.message === "string" && payload.message.trim().length > 0) {
-    return payload.message
-  }
-
-  if (
-    payload.error &&
-    typeof payload.error.message === "string" &&
-    payload.error.message.trim().length > 0
-  ) {
-    return payload.error.message
-  }
-
-  return fallback
-}
+const getErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
+  publicErrorMessage(payload, fallback)
 
 async function request<T>(path: string, options?: RequestOptions): Promise<T> {
   const response = await fetch(buildUrl(path, options?.query), {
@@ -265,7 +251,10 @@ async function request<T>(path: string, options?: RequestOptions): Promise<T> {
         errorPayload && typeof errorPayload === "object" && errorPayload.error?.code
           ? String(errorPayload.error.code)
           : null,
-      message: getErrorMessage(errorPayload, "Request failed."),
+      message: getErrorMessage(
+        errorPayload,
+        "No pudimos completar la consulta. Vuelve a intentar.",
+      ),
     })
   }
 
@@ -486,7 +475,7 @@ export async function fetchExchangeRateByDate(date: string) {
     !Number.isInteger(normalizedMonth) ||
     !Number.isInteger(normalizedDay)
   ) {
-    throw new Error("Invalid exchange rate date.")
+    throw new Error("Revisa la fecha de la cotización.")
   }
 
   const data = await request<unknown>(

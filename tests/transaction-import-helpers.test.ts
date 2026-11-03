@@ -46,7 +46,7 @@ describe("transaction import helpers", () => {
         accounts,
         envelopesByAccount,
       ),
-    ).toBe("Account is required")
+    ).toBe("Elige una cuenta")
   })
 
   it("builds the API payload without converting the date string", () => {

@@ -41,14 +41,14 @@ const renderCalculatedAmount = ({
     return (
       <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Calculating
+        Calculando
       </div>
     )
   }
 
   return (
     <>
-      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Calculated</p>
+      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Calculado</p>
       <MoneyDisplay amount={amount} currency={currency} />
     </>
   )
@@ -70,19 +70,19 @@ export function AutomaticDeductionsCard({
     <Card className="border-border/70">
       <CardHeader>
         <div className="space-y-1">
-          <CardTitle>2. Automatic Deductions</CardTitle>
-          <CardDescription>Based on payroll rules for the selected month.</CardDescription>
+          <CardTitle>2. Deducciones automáticas</CardTitle>
+          <CardDescription>Según las reglas de nómina del mes elegido.</CardDescription>
         </div>
         <CardAction>
           {payrollRulesLabel ? (
-            <Badge variant="outline">Using payroll rules: {payrollRulesLabel}</Badge>
+            <Badge variant="outline">Reglas de nómina utilizadas: {payrollRulesLabel}</Badge>
           ) : null}
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-3">
         {!payrollAvailable ? (
           <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3 text-sm text-muted-foreground">
-            Automatic payroll deductions are currently available only for CRC budgets.
+            Las deducciones automáticas están disponibles para presupuestos en CRC.
           </div>
         ) : null}
 
@@ -97,8 +97,8 @@ export function AutomaticDeductionsCard({
           checked={ccssEnabled}
           onCheckedChange={onCcssToggle}
           disabled={!payrollAvailable}
-          title="CCSS Worker Contribution"
-          description="Uses official payroll rules over gross salary."
+          title="Aporte del trabajador a la CCSS"
+          description="Se calcula sobre el salario bruto con las reglas configuradas."
           hint="Rate and amount are resolved by the backend preview."
           meta={
             preview ? (
@@ -120,14 +120,14 @@ export function AutomaticDeductionsCard({
           checked={taxEnabled}
           onCheckedChange={onTaxToggle}
           disabled={!payrollAvailable}
-          title="Income Tax"
-          description="Progressive tax brackets applied over gross salary."
+          title="Impuesto sobre la renta"
+          description="Tramos progresivos sobre el salario bruto."
           hint="The backend computes the tax amount and bracket breakdown from gross salary."
           meta={
             preview ? (
               <Badge variant="outline" className="gap-1.5">
                 <ReceiptText className="h-3 w-3" />
-                Gross salary base
+                Salario bruto de referencia
               </Badge>
             ) : null
           }

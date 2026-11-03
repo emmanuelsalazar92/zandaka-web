@@ -14,6 +14,7 @@ import {
 import * as React from "react"
 
 import { EmptyState } from "@/components/empty-state"
+import { AccessibleFieldError, AccessibleField } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
@@ -37,6 +38,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -52,6 +54,7 @@ import {
   type EnvelopeInsightInput,
   type EnvelopeVisualStatus,
 } from "@/lib/envelope-insights"
+import { readPublicError } from "@/lib/public-error"
 import { cn } from "@/lib/utils"
 
 type EnvelopeRow = EnvelopeInsightInput
@@ -74,7 +77,7 @@ type CategoryOption = {
 
 const API_BASE_URL = "/api"
 
-const percentFormatter = new Intl.NumberFormat("en-US", {
+const percentFormatter = new Intl.NumberFormat("es-CR", {
   style: "percent",
   minimumFractionDigits: 0,
   maximumFractionDigits: 1,
@@ -156,10 +159,10 @@ function EnvelopeDistributionRow({
 }) {
   const isDeactivateDisabled = envelope.balance !== 0 || !envelope.active
   const deactivateTitle = !envelope.active
-    ? "Envelope already inactive"
+    ? "El sobre ya está inactivo"
     : envelope.balance !== 0
-      ? "Balance must be zero to deactivate"
-      : "Deactivate envelope"
+      ? "El saldo debe ser cero para desactivar el sobre"
+      : "Desactivar sobre"
 
   return (
     <div className="group rounded-xl border border-border/80 bg-card/60 p-4 transition-colors hover:border-primary/25 hover:bg-muted/15">
@@ -170,7 +173,7 @@ function EnvelopeDistributionRow({
             <Badge variant="outline" className={statusBadgeClassName(envelope.statusVisual)}>
               {statusLabel(envelope.statusVisual)}
             </Badge>
-            {!envelope.active ? <Badge variant="secondary">Inactive</Badge> : null}
+            {!envelope.active ? <Badge variant="secondary">Inactivo</Badge> : null}
           </div>
 
           <div className="space-y-2">
@@ -192,7 +195,7 @@ function EnvelopeDistributionRow({
 
         <div className="flex items-center justify-between gap-4 xl:min-w-[280px] xl:justify-end">
           <div className="text-right">
-            <p
+            <AccessibleFieldError
               className={cn(
                 "font-mono text-lg font-semibold",
                 envelope.statusVisual === "critical" && "text-error",
@@ -200,7 +203,7 @@ function EnvelopeDistributionRow({
               )}
             >
               {formatCurrency(envelope.balance, accountCurrency)}
-            </p>
+            </AccessibleFieldError>
             <p className="text-xs text-muted-foreground">
               {envelope.statusVisual === "critical"
                 ? "Revisa los movimientos de este sobre"
@@ -272,20 +275,20 @@ function LinkCategoryDialog({
       <DialogTrigger asChild>
         <Button disabled={disabled}>
           <Plus className="mr-2 h-4 w-4" />
-          Link Category
+          Vincular categoría
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Link Category to Account</DialogTitle>
+          <DialogTitle>Vincular categoría a la cuenta</DialogTitle>
           <DialogDescription>
-            Create an envelope by linking a category to {selectedAccountLabel}
+            Crea un sobre vinculando una categoría a {selectedAccountLabel}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Category</label>
+          <AccessibleField className="space-y-2">
+            <Label className="text-sm font-medium">Categoría</Label>
             <Select
               value={formData.categoryId}
               onValueChange={(value) => setFormData({ categoryId: value })}
@@ -295,10 +298,10 @@ function LinkCategoryDialog({
                 <SelectValue
                   placeholder={
                     categoriesLoading
-                      ? "Loading categories..."
+                      ? "Cargando categorías…"
                       : !hasCategories
-                        ? "No active categories"
-                        : "Select a category"
+                        ? "No hay categorías activas"
+                        : "Elige una categoría"
                   }
                 />
               </SelectTrigger>
@@ -310,9 +313,17 @@ function LinkCategoryDialog({
                 ))}
               </SelectContent>
             </Select>
-            {categoriesError ? <p className="text-sm text-error">{categoriesError}</p> : null}
-            {linkError ? <p className="text-sm text-error">{linkError}</p> : null}
-          </div>
+            {categoriesError ? (
+              <AccessibleFieldError className="text-sm text-error">
+                {categoriesError}
+              </AccessibleFieldError>
+            ) : null}
+            {linkError ? (
+              <AccessibleFieldError className="text-sm text-error">
+                {linkError}
+              </AccessibleFieldError>
+            ) : null}
+          </AccessibleField>
         </div>
 
         <DialogFooter>
@@ -323,13 +334,13 @@ function LinkCategoryDialog({
               setFormData({ categoryId: "" })
             }}
           >
-            Cancel
+            Cancelar
           </Button>
           <Button
             onClick={() => void handleLinkCategory()}
             disabled={!formData.categoryId || isLinking}
           >
-            {isLinking ? "Linking..." : "Link Category"}
+            {isLinking ? "Linking..." : "Vincular categoría"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -367,7 +378,7 @@ export function EnvelopesContent() {
         const res = await fetch(`${API_BASE_URL}/reports/account-balances?isActive=true`, {
           headers: { Accept: "application/json" },
         })
-        if (!res.ok) throw new Error("Failed to load accounts")
+        if (!res.ok) throw new Error("No pudimos cargar las cuentas. Vuelve a intentar.")
 
         const data = (await res.json()) as Array<{
           id: number
@@ -391,7 +402,9 @@ export function EnvelopesContent() {
           })),
         )
       } catch (error) {
-        setAccountsError(normalizeErrorMessage(error, "Failed to load accounts"))
+        setAccountsError(
+          normalizeErrorMessage(error, "No pudimos cargar las cuentas. Vuelve a intentar."),
+        )
       } finally {
         setAccountsLoading(false)
       }
@@ -408,7 +421,7 @@ export function EnvelopesContent() {
         const res = await fetch(`${API_BASE_URL}/categories?activeOnly=true`, {
           headers: { Accept: "application/json" },
         })
-        if (!res.ok) throw new Error("Failed to load categories")
+        if (!res.ok) throw new Error("No pudimos cargar las categorías. Vuelve a intentar.")
 
         const data = (await res.json()) as Array<{
           id: number
@@ -431,7 +444,9 @@ export function EnvelopesContent() {
           })),
         )
       } catch (error) {
-        setCategoriesError(normalizeErrorMessage(error, "Failed to load categories"))
+        setCategoriesError(
+          normalizeErrorMessage(error, "No pudimos cargar las categorías. Vuelve a intentar."),
+        )
       } finally {
         setCategoriesLoading(false)
       }
@@ -470,7 +485,7 @@ export function EnvelopesContent() {
       const res = await fetch(`${API_BASE_URL}/reports/envelope-balances?accountId=${accountId}`, {
         headers: { Accept: "application/json" },
       })
-      if (!res.ok) throw new Error("Failed to load envelope balances")
+      if (!res.ok) throw new Error("No pudimos cargar los saldos de los sobres. Vuelve a intentar.")
 
       const data = (await res.json()) as Array<{
         envelopeId: number
@@ -492,7 +507,12 @@ export function EnvelopesContent() {
         })),
       )
     } catch (error) {
-      setEnvelopesError(normalizeErrorMessage(error, "Failed to load envelope balances"))
+      setEnvelopesError(
+        normalizeErrorMessage(
+          error,
+          "No pudimos cargar los saldos de los sobres. Vuelve a intentar.",
+        ),
+      )
       setEnvelopes([])
     } finally {
       setEnvelopesLoading(false)
@@ -528,22 +548,18 @@ export function EnvelopesContent() {
       })
 
       if (!res.ok) {
-        let message = "Failed to link category"
-        try {
-          const err = (await res.json()) as {
-            error?: { message?: string }
-            message?: string
-          }
-          message = err?.error?.message || err?.message || message
-        } catch {}
-        throw new Error(message)
+        throw new Error(
+          await readPublicError(res, "No pudimos vincular la categoría. Vuelve a intentar."),
+        )
       }
 
       setIsLinkOpen(false)
       setFormData({ categoryId: "" })
       await fetchEnvelopes(selectedAccountId)
     } catch (error) {
-      setLinkError(normalizeErrorMessage(error, "Failed to link category"))
+      setLinkError(
+        normalizeErrorMessage(error, "No pudimos vincular la categoría. Vuelve a intentar."),
+      )
     } finally {
       setIsLinking(false)
     }
@@ -555,7 +571,7 @@ export function EnvelopesContent() {
     const envelope = envelopes.find((item) => item.id === deactivateId)
     if (!envelope) return
     if (envelope.balance !== 0) {
-      setDeactivateError("Cannot deactivate an envelope with a non-zero balance.")
+      setDeactivateError("El saldo del sobre debe ser cero para desactivarlo.")
       return
     }
 
@@ -569,12 +585,9 @@ export function EnvelopesContent() {
       })
 
       if (!res.ok) {
-        let message = "Failed to deactivate envelope."
-        try {
-          const err = (await res.json()) as { error?: { message?: string }; message?: string }
-          message = err?.error?.message || err?.message || message
-        } catch {}
-        throw new Error(message)
+        throw new Error(
+          await readPublicError(res, "No pudimos desactivar el sobre. Vuelve a intentar."),
+        )
       }
 
       if (!Number.isNaN(selectedAccountId)) {
@@ -582,13 +595,15 @@ export function EnvelopesContent() {
       }
       setDeactivateId(null)
     } catch (error) {
-      setDeactivateError(normalizeErrorMessage(error, "Failed to deactivate envelope."))
+      setDeactivateError(
+        normalizeErrorMessage(error, "No pudimos desactivar el sobre. Vuelve a intentar."),
+      )
     } finally {
       setIsDeactivating(false)
     }
   }
 
-  const selectedAccountLabel = selectedAccountData?.name ?? "this account"
+  const selectedAccountLabel = selectedAccountData?.name ?? "esta cuenta"
   const selectedAccountCurrency = selectedAccountData?.currency ?? "CRC"
   const envelopeRows = envelopes.filter((envelope) => envelope.accountId === selectedAccountId)
   const envelopeInsights = buildEnvelopeInsights(
@@ -604,9 +619,9 @@ export function EnvelopesContent() {
     return (
       <EmptyState
         icon={AlertTriangle}
-        title="Unable to load envelopes"
+        title="No pudimos cargar los sobres"
         description={accountsError}
-        actionLabel="Retry"
+        actionLabel="Volver a intentar"
         onAction={() => window.location.reload()}
       />
     )
@@ -617,7 +632,7 @@ export function EnvelopesContent() {
       <div className="space-y-4">
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
-            Loading envelopes workspace...
+            Cargando sobres…
           </CardContent>
         </Card>
       </div>
@@ -628,8 +643,8 @@ export function EnvelopesContent() {
     return (
       <EmptyState
         icon={Wallet}
-        title="No active accounts"
-        description="Activate or create an account before managing its envelope distribution."
+        title="No hay cuentas activas"
+        description="Activa o crea una cuenta para organizar sus sobres."
       />
     )
   }
@@ -638,8 +653,8 @@ export function EnvelopesContent() {
     return (
       <EmptyState
         icon={Layers3}
-        title="Select an account"
-        description="Choose an account to understand how its money is distributed across envelopes."
+        title="Elige una cuenta"
+        description="Elige una cuenta para ver cómo se distribuye su saldo entre sobres."
       />
     )
   }
@@ -648,18 +663,18 @@ export function EnvelopesContent() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Envelopes</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Sobres</h2>
           <p className="text-muted-foreground">
-            Understand how money is distributed inside the selected account.
+            Cómo se distribuye el dinero de la cuenta seleccionada.
           </p>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="min-w-[260px] space-y-2">
-            <p className="text-sm font-medium">Account</p>
+            <p className="text-sm font-medium">Cuenta</p>
             <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select an account" />
+              <SelectTrigger className="w-full" aria-label="Cuenta de los sobres">
+                <SelectValue placeholder="Elige una cuenta" />
               </SelectTrigger>
               <SelectContent>
                 {activeAccounts.map((account) => (
@@ -709,11 +724,11 @@ export function EnvelopesContent() {
               <CardDescription className="flex flex-wrap items-center gap-4 text-sm">
                 <span className="inline-flex items-center gap-2">
                   <Landmark className="h-4 w-4" />
-                  {selectedAccountData.institution || "Institution unavailable"}
+                  {selectedAccountData.institution || "Institución no disponible"}
                 </span>
                 <span className="inline-flex items-center gap-2">
                   <Layers3 className="h-4 w-4" />
-                  {summary.activeEnvelopesCount} active envelope
+                  {summary.activeEnvelopesCount} sobre activo
                   {summary.activeEnvelopesCount === 1 ? "" : "s"}
                 </span>
               </CardDescription>
@@ -721,7 +736,7 @@ export function EnvelopesContent() {
 
             <div className="rounded-2xl border border-primary/15 bg-primary/5 px-5 py-4">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                Account Balance
+                Saldo de la cuenta
               </p>
               <p className="mt-2 text-3xl font-semibold tracking-tight">
                 {formatCurrency(selectedAccountData.balance, selectedAccountCurrency)}
@@ -732,47 +747,49 @@ export function EnvelopesContent() {
 
         <CardContent className="grid gap-4 p-6 md:grid-cols-2 xl:grid-cols-5">
           <MetricCard
-            title="Envelope Coverage"
+            title="Distribución en sobres"
             value={`${summary.assignedPercentage.toFixed(1)}%`}
-            description="Envelope total compared with account balance."
+            description="Saldo de sobres comparado con el saldo de la cuenta."
             icon={ArrowRightLeft}
             tone={coverageTone}
           />
           <MetricCard
-            title="Unassigned Delta"
+            title="Saldo sin asignar"
             value={formatSignedCurrency(summary.availableDelta, selectedAccountCurrency)}
-            description="Difference between account balance and summed envelopes."
+            description="Diferencia entre el saldo de la cuenta y la suma de sus sobres."
             icon={MinusCircle}
             tone={summary.availableDelta === 0 ? "success" : "warning"}
           />
           <MetricCard
-            title="Largest Envelope"
-            value={summary.largestEnvelope ? summary.largestEnvelope.category : "No envelopes yet"}
+            title="Sobre con mayor saldo"
+            value={
+              summary.largestEnvelope ? summary.largestEnvelope.category : "Todavía no hay sobres"
+            }
             description={
               summary.largestEnvelope
                 ? formatCurrency(summary.largestEnvelope.balance, selectedAccountCurrency)
-                : "Link a category to start."
+                : "Vincula una categoría para comenzar."
             }
             icon={Wallet}
           />
           <MetricCard
-            title="Smallest Positive"
+            title="Menor saldo positivo"
             value={
               summary.smallestPositiveEnvelope
                 ? summary.smallestPositiveEnvelope.category
-                : "No positive envelopes"
+                : "No hay sobres con saldo positivo"
             }
             description={
               summary.smallestPositiveEnvelope
                 ? formatCurrency(summary.smallestPositiveEnvelope.balance, selectedAccountCurrency)
-                : "Nothing active with balance yet."
+                : "Todavía no hay sobres activos con saldo positivo."
             }
             icon={Layers3}
           />
           <MetricCard
-            title="Negative Envelopes"
+            title="Sobres con saldo negativo"
             value={String(summary.negativeEnvelopesCount)}
-            description="Envelopes below zero that need review."
+            description="Sobres por debajo de cero que requieren revisión."
             icon={TrendingDown}
             tone={summary.negativeEnvelopesCount > 0 ? "critical" : "success"}
           />
@@ -782,22 +799,22 @@ export function EnvelopesContent() {
       {envelopesError ? (
         <EmptyState
           icon={AlertTriangle}
-          title="Unable to load envelopes"
+          title="No pudimos cargar los sobres"
           description={envelopesError}
-          actionLabel="Retry"
+          actionLabel="Volver a intentar"
           onAction={() => void fetchEnvelopes(selectedAccountId)}
         />
       ) : envelopesLoading ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            Loading envelope distribution...
+            Cargando distribución de sobres…
           </CardContent>
         </Card>
       ) : envelopeInsights.length === 0 ? (
         <EmptyState
           icon={Layers3}
-          title="No envelopes linked yet"
-          description={`There are no envelopes for ${selectedAccountLabel}. Link a category to start organizing this account.`}
+          title="Todavía no hay sobres vinculados"
+          description={`No hay sobres en ${selectedAccountLabel}. Vincula una categoría para comenzar.`}
         >
           <div className="mt-4">
             <LinkCategoryDialog
@@ -823,9 +840,9 @@ export function EnvelopesContent() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Envelope Distribution</CardTitle>
+            <CardTitle>Distribución de sobres</CardTitle>
             <CardDescription>
-              Envelopes are sorted by balance so you can quickly see what carries the most weight.
+              Los sobres se ordenan por saldo para facilitar la revisión.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -847,12 +864,12 @@ export function EnvelopesContent() {
       {hasNegativeEnvelopes ? (
         <Alert className="border-error/35 bg-error/5">
           <AlertTriangle className="h-4 w-4 text-error" />
-          <AlertTitle className="text-error">Negative balance attention needed</AlertTitle>
+          <AlertTitle className="text-error">Revisa los saldos negativos</AlertTitle>
           <AlertDescription>
-            {summary.negativeEnvelopesCount} envelope
-            {summary.negativeEnvelopesCount === 1 ? "" : "s"} in {selectedAccountLabel}{" "}
-            {summary.negativeEnvelopesCount === 1 ? "is" : "are"} below zero. Review transfers or
-            recent spending to bring them back to a healthy state.
+            {summary.negativeEnvelopesCount} sobre
+            {summary.negativeEnvelopesCount === 1 ? "" : "s"} en {selectedAccountLabel}{" "}
+            {summary.negativeEnvelopesCount === 1 ? "is" : "are"} tienen saldo negativo. Revisa sus
+            movimientos y transferencias.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -868,9 +885,9 @@ export function EnvelopesContent() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate Envelope?</AlertDialogTitle>
+            <AlertDialogTitle>¿Desactivar el sobre?</AlertDialogTitle>
             <AlertDialogDescription>
-              Deactivate {envelopes.find((envelope) => envelope.id === deactivateId)?.category} from{" "}
+              Desactivar {envelopes.find((envelope) => envelope.id === deactivateId)?.category} de{" "}
               {selectedAccountLabel}.
             </AlertDialogDescription>
             {deactivateError ? (
@@ -880,7 +897,7 @@ export function EnvelopesContent() {
             ) : null}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault()
@@ -888,7 +905,7 @@ export function EnvelopesContent() {
               }}
               disabled={isDeactivating}
             >
-              {isDeactivating ? "Deactivating..." : "Confirm"}
+              {isDeactivating ? "Deactivating..." : "Confirmar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

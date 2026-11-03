@@ -68,7 +68,7 @@ function buildSecondaryLabel(transaction: TimelineTransaction) {
   }
 
   const uniqueAccounts = new Set(transaction.lines.map((line) => line.account))
-  return `${transaction.lines.length} ledger lines across ${uniqueAccounts.size} account${uniqueAccounts.size === 1 ? "" : "s"}`
+  return `${transaction.lines.length} detalles en ${uniqueAccounts.size} cuenta${uniqueAccounts.size === 1 ? "" : "s"}`
 }
 
 function buildAmountText(transaction: TimelineTransaction) {
@@ -77,8 +77,8 @@ function buildAmountText(transaction: TimelineTransaction) {
 
   if (!currency) {
     return {
-      value: "Mixed currencies",
-      caption: "Review line-level amounts below",
+      value: "Varias monedas",
+      caption: "Consulta los importes de cada cuenta abajo",
     }
   }
 
@@ -102,7 +102,9 @@ function TransactionTimelineItem({ transaction }: { transaction: TimelineTransac
   const tones = toneClasses(meta.tone)
   const amountText = buildAmountText(transaction)
   const hasUnresolvedLine = transaction.lines.some(
-    (line) => line.account.startsWith("Unknown") || line.envelope.startsWith("Unknown"),
+    (line) =>
+      line.account.startsWith("Cuenta sin identificar") ||
+      line.envelope.startsWith("Sobre sin identificar"),
   )
 
   return (
@@ -133,7 +135,7 @@ function TransactionTimelineItem({ transaction }: { transaction: TimelineTransac
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="truncate text-sm font-semibold sm:text-base">
-                    {transaction.description || "Untitled transaction"}
+                    {transaction.description || "Movimiento sin descripción"}
                   </p>
                   <Badge variant="outline" className={tones.badge}>
                     {meta.label}
@@ -143,7 +145,7 @@ function TransactionTimelineItem({ transaction }: { transaction: TimelineTransac
                       variant="outline"
                       className="border-warning/35 bg-warning/10 text-warning"
                     >
-                      Needs review
+                      Requiere revisión
                     </Badge>
                   ) : null}
                 </div>
@@ -154,10 +156,10 @@ function TransactionTimelineItem({ transaction }: { transaction: TimelineTransac
 
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span>
-                    {transaction.lines.length} line{transaction.lines.length === 1 ? "" : "s"}
+                    {transaction.lines.length} detalle{transaction.lines.length === 1 ? "" : "s"}
                   </span>
                   {transaction.lines.length > 1 ? (
-                    <span>Expanded below for account-by-account detail</span>
+                    <span>Desglose por cuenta a continuación</span>
                   ) : null}
                 </div>
               </div>
@@ -219,7 +221,7 @@ function TransactionDateGroup({ group }: { group: TransactionTimelineGroup }) {
         </div>
 
         <Badge variant="secondary" className="w-fit">
-          {group.transactionCount} transaction{group.transactionCount === 1 ? "" : "s"}
+          {group.transactionCount} movimiento{group.transactionCount === 1 ? "" : "s"}
         </Badge>
       </div>
 

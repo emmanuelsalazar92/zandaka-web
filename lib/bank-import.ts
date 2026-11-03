@@ -119,7 +119,7 @@ export function parseGrupoMutual(raw: string): ParsedTransaction[] {
         envelopeId: "",
         sourceAmountText: amountLine,
         status: "error",
-        statusMessage: "Invalid bank amount or unsupported precision",
+        statusMessage: "Revisa el importe del banco y la cantidad de decimales",
       })
       continue
     }
@@ -137,7 +137,7 @@ export function parseGrupoMutual(raw: string): ParsedTransaction[] {
       accountId: "",
       envelopeId: "",
       status: "warning",
-      statusMessage: "Select account and envelope",
+      statusMessage: "Elige cuenta y sobre",
     })
   }
 
@@ -168,7 +168,7 @@ export function parseBacCredomatic(
         accountId: "",
         envelopeId: "",
         status: "error",
-        statusMessage: "Invalid format: expected BAC transaction columns",
+        statusMessage: "Revisa las columnas del formato de BAC",
       })
       continue
     }
@@ -215,7 +215,7 @@ export function parseBacCredomatic(
         envelopeId: "",
         sourceAmountText: debitStr + " | " + creditStr,
         status: "error",
-        statusMessage: "Invalid BAC amount or unsupported precision",
+        statusMessage: "Revisa el importe de BAC y la cantidad de decimales",
       })
       continue
     }
@@ -232,7 +232,7 @@ export function parseBacCredomatic(
         accountId: "",
         envelopeId: "",
         status: "warning",
-        statusMessage: "Both debit and credit have values",
+        statusMessage: "El débito y el crédito tienen importes; revisa el movimiento",
       })
       continue
     }
@@ -249,7 +249,7 @@ export function parseBacCredomatic(
         accountId: "",
         envelopeId: "",
         status: "warning",
-        statusMessage: "Both debit and credit are zero",
+        statusMessage: "El débito y el crédito están en cero",
       })
       continue
     }
@@ -276,7 +276,7 @@ export function parseBacCredomatic(
       accountId: "",
       envelopeId: "",
       status: "warning",
-      statusMessage: "Select account and envelope",
+      statusMessage: "Elige cuenta y sobre",
     })
   }
 

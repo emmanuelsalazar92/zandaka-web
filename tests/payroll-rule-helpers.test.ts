@@ -20,14 +20,14 @@ describe("payroll rule helpers", () => {
         effectiveFrom: "2026-01-01",
         effectiveTo: "2026-12-31",
       }),
-    ).toBe("01/01/2026 to 31/12/2026")
+    ).toBe("01/01/2026 a 31/12/2026")
 
     expect(
       formatPayrollRuleWindow({
         effectiveFrom: "2027-01-01",
         effectiveTo: null,
       }),
-    ).toBe("01/01/2027 to Open-ended")
+    ).toBe("01/01/2027 a Sin fecha final")
   })
 
   it("returns the Costa Rica date-only value for today", () => {
@@ -67,7 +67,7 @@ describe("payroll rule helpers", () => {
         amountFrom: 918000,
         amountTo: null,
       }),
-    ).toContain("and above")
+    ).toContain("en adelante")
 
     expect(createIncomeTaxBracketDraft(1, 0)).toEqual({
       rangeOrder: "1",

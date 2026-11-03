@@ -58,9 +58,9 @@ export function AccountsContent() {
       <AccountFormDialog
         open={isEditOpen}
         onOpenChange={(open) => (!open ? closeEdit() : null)}
-        title="Edit Account"
-        description="Update account details"
-        submitLabel="Save Changes"
+        title="Editar cuenta"
+        description="Actualiza los datos de la cuenta"
+        submitLabel="Guardar cambios"
         submitDisabled={!formData.name || loading}
         onSubmit={handleEdit}
         formData={formData}

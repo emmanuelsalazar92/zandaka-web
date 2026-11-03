@@ -60,34 +60,34 @@ export function BudgetSummaryCard({
     <Card className="border-cyan-500/20 bg-gradient-to-br from-cyan-500/8 via-card to-card">
       <CardHeader>
         <div className="space-y-1">
-          <CardTitle>4. Results Summary</CardTitle>
+          <CardTitle>4. Resumen de resultados</CardTitle>
           <CardDescription>
-            Review the official payroll preview and the final budget income that will be created.
+            Revisa el cálculo de nómina y el ingreso final del presupuesto.
           </CardDescription>
         </div>
         <CardAction>
           {payrollLoading ? (
             <Badge variant="outline" className="gap-1.5">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Updating preview
+              Actualizando cálculo
             </Badge>
           ) : payrollRulesLabel ? (
-            <Badge variant="outline">Using payroll rules: {payrollRulesLabel}</Badge>
+            <Badge variant="outline">Reglas de nómina utilizadas: {payrollRulesLabel}</Badge>
           ) : null}
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <SummaryRow label="Gross Salary" amount={grossSalary} currency={currency} />
-          <SummaryRow label="- CCSS" amount={ccssDeduction} currency={currency} tone="negative" />
+          <SummaryRow label="Salario bruto" amount={grossSalary} currency={currency} />
+          <SummaryRow label="− CCSS" amount={ccssDeduction} currency={currency} tone="negative" />
           <SummaryRow
-            label="- Income Tax"
+            label="− Impuesto sobre la renta"
             amount={incomeTaxDeduction}
             currency={currency}
             tone="negative"
           />
           <SummaryRow
-            label="- FX Reserve"
+            label="− Reserva cambiaria"
             amount={exchangeLossDeduction}
             currency={currency}
             tone="negative"
@@ -100,7 +100,7 @@ export function BudgetSummaryCard({
           <div className="rounded-xl border border-border/70 bg-background/40 px-4 py-3">
             <div className="mb-1 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-cyan-300" />
-              <p className="text-sm font-medium">Net Salary Preview</p>
+              <p className="text-sm font-medium">Salario neto estimado</p>
             </div>
             {payrollAvailable ? (
               preview ? (
@@ -112,24 +112,23 @@ export function BudgetSummaryCard({
                     className="block text-right"
                   />
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Gross salary minus CCSS and income tax, both resolved from gross salary for the
-                    selected month.
+                    Salario bruto menos CCSS e impuesto sobre la renta del mes seleccionado.
                   </p>
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Enter a valid income and month to load the payroll preview.
+                  Introduce un ingreso y un mes válidos para ver el cálculo.
                 </p>
               )
             ) : (
               <p className="text-sm text-muted-foreground">
-                Payroll preview is unavailable for this currency.
+                El cálculo de nómina no está disponible para esta moneda.
               </p>
             )}
           </div>
 
           <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-4">
-            <p className="text-sm font-medium text-cyan-50">Final Budget Income</p>
+            <p className="text-sm font-medium text-cyan-50">Ingreso final del presupuesto</p>
             <MoneyDisplay
               amount={finalBudgetIncome}
               currency={currency}
@@ -137,7 +136,7 @@ export function BudgetSummaryCard({
               className="mt-2 block text-right text-cyan-50"
             />
             <p className="mt-2 text-xs text-cyan-100/70">
-              This is the amount that will be sent into the budget screen after selected deductions.
+              Este es el importe del presupuesto después de las deducciones seleccionadas.
             </p>
           </div>
         </div>

@@ -5,6 +5,7 @@ import type {
   InstitutionType,
   InstitutionUi,
 } from "@/components/institutions/types/institutions.types"
+import { publicErrorMessage } from "@/lib/public-error"
 
 const API_BASE_URL = "/api/institutions"
 const ACCOUNT_BALANCES_URL = "/api/reports/account-balances?isActive=true"
@@ -22,22 +23,8 @@ type ApiAccountBalance = {
   is_active: number
 }
 
-const getApiErrorMessage = (payload: unknown, fallback: string) => {
-  if (!payload || typeof payload !== "object") return fallback
-
-  const directMessage = (payload as { message?: unknown }).message
-  if (typeof directMessage === "string" && directMessage.trim().length > 0) {
-    return directMessage
-  }
-
-  const nested = (payload as { error?: { message?: unknown } }).error
-  const nestedMessage = nested?.message
-  if (typeof nestedMessage === "string" && nestedMessage.trim().length > 0) {
-    return nestedMessage
-  }
-
-  return fallback
-}
+const getApiErrorMessage = (payload: unknown, fallback: string) =>
+  publicErrorMessage(payload, fallback)
 
 export function useInstitutions() {
   const [institutions, setInstitutions] = React.useState<InstitutionUi[]>([])
@@ -73,7 +60,7 @@ export function useInstitutions() {
       ])
 
       if (!institutionRes.ok || !accountBalancesRes.ok) {
-        throw new Error("Failed to load institutions")
+        throw new Error("No pudimos cargar las instituciones. Vuelve a intentar.")
       }
 
       const institutionsData = (await institutionRes.json()) as ApiInstitution[]
@@ -95,7 +82,8 @@ export function useInstitutions() {
         ),
       )
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to load institutions"
+      const message =
+        e instanceof Error ? e.message : "No pudimos cargar las instituciones. Vuelve a intentar."
       setError(message)
     } finally {
       setLoading(false)
@@ -122,14 +110,14 @@ export function useInstitutions() {
       })
 
       if (!response.ok) {
-        throw new Error("Error creating institution")
+        throw new Error("No pudimos crear la institución. Revisa los datos y vuelve a intentar.")
       }
 
       setIsCreateOpen(false)
       setFormData(DEFAULT_FORM_DATA)
       await fetchInstitutions()
     } catch {
-      alert("Error creating institution")
+      alert("No pudimos crear la institución. Revisa los datos y vuelve a intentar.")
     }
   }
 
@@ -150,7 +138,7 @@ export function useInstitutions() {
       })
 
       if (!response.ok) {
-        throw new Error("Error updating institution")
+        throw new Error("No pudimos guardar la institución. Vuelve a intentar.")
       }
 
       setIsEditOpen(false)
@@ -158,7 +146,7 @@ export function useInstitutions() {
       setFormData(DEFAULT_FORM_DATA)
       await fetchInstitutions()
     } catch {
-      alert("Error updating institution")
+      alert("No pudimos guardar la institución. Vuelve a intentar.")
     }
   }
 
@@ -167,7 +155,7 @@ export function useInstitutions() {
 
     const currentInstitution = institutions.find((institution) => institution.id === deactivateId)
     if (currentInstitution?.status === "Active" && currentInstitution.activeAccountsCount > 0) {
-      setDeactivateError("Deactivate all active accounts before deactivating this institution.")
+      setDeactivateError("Desactiva las cuentas activas antes de desactivar esta institución.")
       return
     }
 
@@ -182,13 +170,19 @@ export function useInstitutions() {
 
       if (!response.ok) {
         const errorPayload = await response.json().catch(() => null)
-        throw new Error(getApiErrorMessage(errorPayload, "Failed to deactivate institution"))
+        throw new Error(
+          getApiErrorMessage(
+            errorPayload,
+            "No pudimos desactivar la institución. Revisa sus cuentas activas.",
+          ),
+        )
       }
 
       await fetchInstitutions()
       setDeactivateId(null)
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Error deactivating institution"
+      const message =
+        e instanceof Error ? e.message : "No pudimos desactivar la institución. Vuelve a intentar."
       setDeactivateError(message)
     }
   }

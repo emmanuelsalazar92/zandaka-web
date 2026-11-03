@@ -6,6 +6,7 @@ import * as React from "react"
 
 import { EmptyState } from "@/components/empty-state"
 import { ReconciliationDenominationTable } from "@/components/reconciliation-denomination-table"
+import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   AlertDialog,
@@ -110,7 +111,7 @@ function isBalanced(difference: number) {
 }
 
 function getCountMethodLabel(countMethod: ReconciliationCountMethod) {
-  return countMethod === "DENOMINATION_COUNT" ? "Denominations" : "Manual Total"
+  return countMethod === "DENOMINATION_COUNT" ? "Denominaciones" : "Total manual"
 }
 
 function StatusIndicator({ status }: { status: ReconciliationStatus }) {
@@ -123,7 +124,7 @@ function StatusIndicator({ status }: { status: ReconciliationStatus }) {
         status === "IGNORED" && "border-muted bg-muted text-muted-foreground",
       )}
     >
-      {status === "OPEN" ? "Open" : status === "BALANCED" ? "Balanced" : "Ignored"}
+      {status === "OPEN" ? "Abierta" : status === "BALANCED" ? "Sin diferencia" : "Ignorada"}
     </Badge>
   )
 }
@@ -215,25 +216,25 @@ export function ReconciliationContent() {
   const createFormErrors = React.useMemo(() => {
     if (createForm.countMethod === "DENOMINATION_COUNT") {
       return {
-        accountId: createForm.accountId ? "" : "Select an account.",
-        date: createForm.date ? "" : "Select a reconciliation date.",
+        accountId: createForm.accountId ? "" : "Elige una cuenta.",
+        date: createForm.date ? "" : "Elige una fecha de conciliación.",
         countedTotal:
           cashCatalog?.denominations.length === 0
-            ? "Configure at least one denomination for this currency."
+            ? "Configura al menos una denominación para esta moneda."
             : denominationPayloadLines.length === 0
-              ? "Enter at least one denomination quantity greater than zero."
+              ? "Introduce al menos una cantidad mayor que cero."
               : "",
       }
     }
 
     return {
-      accountId: createForm.accountId ? "" : "Select an account.",
-      date: createForm.date ? "" : "Select a reconciliation date.",
+      accountId: createForm.accountId ? "" : "Elige una cuenta.",
+      date: createForm.date ? "" : "Elige una fecha de conciliación.",
       countedTotal:
         createForm.manualCountedTotal.trim().length === 0
-          ? "Enter the counted total."
+          ? "Introduce el total contado."
           : manualCountedTotal === null
-            ? "Enter a valid numeric amount."
+            ? "Introduce un importe numérico válido."
             : "",
     }
   }, [
@@ -299,7 +300,8 @@ export function ReconciliationContent() {
       setSelectedAccountId(nextSelectedAccountId)
       return nextSelectedAccountId
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to load accounts"
+      const message =
+        error instanceof Error ? error.message : "No pudimos cargar las cuentas. Vuelve a intentar."
       setAccounts([])
       setAccountsError(message)
       return ""
@@ -324,7 +326,9 @@ export function ReconciliationContent() {
       setReconciliations(history)
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to load reconciliation history"
+        error instanceof Error
+          ? error.message
+          : "No pudimos cargar el historial de conciliación. Vuelve a intentar."
       setReconciliations([])
       setHistoryError(message)
     } finally {
@@ -361,7 +365,10 @@ export function ReconciliationContent() {
         }
       })
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to load denominations"
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No pudimos cargar las denominaciones. Vuelve a intentar."
       setCashCatalog(null)
       setCashCatalogError(message)
     } finally {
@@ -382,7 +389,10 @@ export function ReconciliationContent() {
       const payload = await fetchExpectedTotalForAccount(Number(accountId), date)
       setExpectedPreview(payload)
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to load expected total"
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No pudimos consultar el saldo esperado. Vuelve a intentar."
       setExpectedPreview(null)
       setExpectedPreviewError(message)
     } finally {
@@ -420,7 +430,7 @@ export function ReconciliationContent() {
 
   const handleCreate = async () => {
     if (!isCreateFormValid) {
-      setCreateError("Complete the required fields with valid values.")
+      setCreateError("Revisa los campos obligatorios antes de continuar.")
       return
     }
 
@@ -449,7 +459,10 @@ export function ReconciliationContent() {
         setSelectedAccountId(accountId)
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to create reconciliation"
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No pudimos crear la conciliación. Revisa los datos y vuelve a intentar."
       setCreateError(message)
     } finally {
       setCreateLoading(false)
@@ -472,7 +485,10 @@ export function ReconciliationContent() {
       setIgnoreId(null)
       await loadReconciliationHistory(selectedAccount.id.toString())
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to ignore reconciliation"
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No pudimos ignorar la conciliación. Vuelve a intentar."
       setIgnoreError(message)
     } finally {
       setIgnoreLoading(false)
@@ -488,7 +504,9 @@ export function ReconciliationContent() {
       setDetailRecord(detail)
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to load reconciliation detail"
+        error instanceof Error
+          ? error.message
+          : "No pudimos consultar el detalle. Vuelve a intentar."
       setDetailRecord(null)
       setDetailError(message)
     } finally {
@@ -510,9 +528,9 @@ export function ReconciliationContent() {
     return (
       <EmptyState
         icon={AlertCircle}
-        title="Unable to load reconciliation screen"
+        title="No pudimos cargar la conciliación"
         description={accountsError}
-        actionLabel="Try Again"
+        actionLabel="Volver a intentar"
         onAction={() => void handleRefresh()}
       />
     )
@@ -522,9 +540,9 @@ export function ReconciliationContent() {
     return (
       <EmptyState
         icon={Scale}
-        title="No accounts available"
-        description="Create or activate an account to view its reconciliation history."
-        actionLabel="Refresh"
+        title="No hay cuentas disponibles"
+        description="Crea o activa una cuenta para consultar sus conciliaciones."
+        actionLabel="Actualizar"
         onAction={() => void handleRefresh()}
       />
     )
@@ -534,18 +552,19 @@ export function ReconciliationContent() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Reconciliation History</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Historial de conciliación</h2>
           <p className="text-muted-foreground">
-            Reconcile manually or, for CASH accounts, count by denominations with persisted detail.
+            Compara el saldo contado con el esperado. Para cuentas de efectivo, puedes contar por
+            denominaciones.
           </p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="min-w-[240px] space-y-2">
-            <p className="text-sm font-medium">Account</p>
+            <p className="text-sm font-medium">Cuenta</p>
             <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select account" />
+              <SelectTrigger aria-label="Cuenta a conciliar">
+                <SelectValue placeholder="Elige una cuenta" />
               </SelectTrigger>
               <SelectContent>
                 {selectableAccounts.map((account) => (
@@ -559,7 +578,7 @@ export function ReconciliationContent() {
 
           <Button onClick={handleOpenCreate}>
             <Plus className="mr-2 h-4 w-4" />
-            New Reconciliation
+            Nueva conciliación
           </Button>
 
           <Button
@@ -569,7 +588,7 @@ export function ReconciliationContent() {
             disabled={accountsLoading || historyLoading}
           >
             <RefreshCw className={cn("mr-2 h-4 w-4", historyLoading && "animate-spin")} />
-            Refresh
+            Actualizar
           </Button>
         </div>
       </div>
@@ -577,11 +596,11 @@ export function ReconciliationContent() {
       <Card>
         <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <CardTitle>{selectedAccount?.name ?? "Selected account"}</CardTitle>
+            <CardTitle>{selectedAccount?.name ?? "Cuenta seleccionada"}</CardTitle>
             <CardDescription>
               {selectedAccount?.type === "CASH"
-                ? "This CASH account can be reconciled using denomination counts or a manual total."
-                : "Use the existing manual total flow for this account."}
+                ? "Puedes contar esta cuenta de efectivo por denominaciones o introducir un total manual."
+                : "Introduce el total contado para esta cuenta."}
             </CardDescription>
           </div>
 
@@ -589,7 +608,7 @@ export function ReconciliationContent() {
             <div className="flex items-center gap-3 rounded-lg border px-4 py-3">
               <div>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Latest reconciliation
+                  Última conciliación
                 </p>
                 <p className="text-sm font-medium">{formatDate(latestReconciliation.date)}</p>
               </div>
@@ -602,9 +621,9 @@ export function ReconciliationContent() {
           {historyError ? (
             <EmptyState
               icon={AlertCircle}
-              title="Unable to load reconciliation history"
+              title="No pudimos cargar el historial de conciliación"
               description={historyError}
-              actionLabel="Retry"
+              actionLabel="Volver a intentar"
               onAction={() => void loadReconciliationHistory(selectedAccountId)}
             />
           ) : historyLoading ? (
@@ -614,22 +633,22 @@ export function ReconciliationContent() {
           ) : reconciliations.length === 0 ? (
             <EmptyState
               icon={Scale}
-              title="No reconciliation history"
-              description={`There are no reconciliations for ${selectedAccount?.name ?? "this account"} yet.`}
-              actionLabel="Refresh"
+              title="Todavía no hay conciliaciones"
+              description={`Todavía no hay conciliaciones de ${selectedAccount?.name ?? "esta cuenta"}.`}
+              actionLabel="Actualizar"
               onAction={() => void loadReconciliationHistory(selectedAccountId)}
             />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead className="text-right">Counted Total</TableHead>
-                  <TableHead className="text-right">Expected Total</TableHead>
-                  <TableHead className="text-right">Difference</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Método</TableHead>
+                  <TableHead className="text-right">Total contado</TableHead>
+                  <TableHead className="text-right">Total esperado</TableHead>
+                  <TableHead className="text-right">Diferencia</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -650,7 +669,7 @@ export function ReconciliationContent() {
                           <p className="font-medium">{formatDate(reconciliation.date)}</p>
                           {reconciliation.closedAt && (
                             <p className="text-xs text-muted-foreground">
-                              Closed {formatDate(reconciliation.closedAt)}
+                              Cerrada {formatDate(reconciliation.closedAt)}
                             </p>
                           )}
                         </div>
@@ -691,7 +710,7 @@ export function ReconciliationContent() {
                             onClick={() => void handleViewDetail(reconciliation.id)}
                           >
                             <Eye className="mr-2 h-4 w-4" />
-                            View
+                            Ver detalle
                           </Button>
                           {reconciliation.status === "OPEN" ? (
                             <Button
@@ -702,7 +721,7 @@ export function ReconciliationContent() {
                                 setIgnoreId(reconciliation.id)
                               }}
                             >
-                              Ignore
+                              Ignorar
                             </Button>
                           ) : null}
                         </div>
@@ -728,11 +747,11 @@ export function ReconciliationContent() {
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
           <DialogHeader>
-            <DialogTitle>New Reconciliation</DialogTitle>
+            <DialogTitle>Nueva conciliación</DialogTitle>
             <DialogDescription>
               {createAccountIsCash
-                ? "Choose a count method. Denomination counts are recalculated and persisted line by line."
-                : "Record the counted total for the selected account and date."}
+                ? "Elige cómo contar el saldo. El conteo por denominaciones conserva el desglose de cada importe."
+                : "Registra el total contado para la cuenta y fecha seleccionadas."}
             </DialogDescription>
           </DialogHeader>
 
@@ -745,8 +764,8 @@ export function ReconciliationContent() {
             )}
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="reconciliation-account">Account</Label>
+              <AccessibleField className="space-y-2">
+                <Label htmlFor="reconciliation-account">Cuenta</Label>
                 <Select
                   value={createForm.accountId}
                   onValueChange={(value) => {
@@ -768,7 +787,7 @@ export function ReconciliationContent() {
                     id="reconciliation-account"
                     aria-invalid={Boolean(createFormErrors.accountId)}
                   >
-                    <SelectValue placeholder="Select account" />
+                    <SelectValue placeholder="Elige una cuenta" />
                   </SelectTrigger>
                   <SelectContent>
                     {selectableAccounts.map((account) => (
@@ -779,12 +798,14 @@ export function ReconciliationContent() {
                   </SelectContent>
                 </Select>
                 {createFormErrors.accountId && (
-                  <p className="text-xs text-destructive">{createFormErrors.accountId}</p>
+                  <AccessibleFieldError className="text-xs text-destructive">
+                    {createFormErrors.accountId}
+                  </AccessibleFieldError>
                 )}
-              </div>
+              </AccessibleField>
 
-              <div className="space-y-2">
-                <Label htmlFor="reconciliation-date">Reconciliation Date</Label>
+              <AccessibleField className="space-y-2">
+                <Label htmlFor="reconciliation-date">Fecha de conciliación</Label>
                 <Input
                   id="reconciliation-date"
                   type="date"
@@ -798,14 +819,16 @@ export function ReconciliationContent() {
                   aria-invalid={Boolean(createFormErrors.date)}
                 />
                 {createFormErrors.date && (
-                  <p className="text-xs text-destructive">{createFormErrors.date}</p>
+                  <AccessibleFieldError className="text-xs text-destructive">
+                    {createFormErrors.date}
+                  </AccessibleFieldError>
                 )}
-              </div>
+              </AccessibleField>
             </div>
 
             {createAccountIsCash && (
-              <div className="space-y-2">
-                <Label htmlFor="reconciliation-count-method">Count Method</Label>
+              <AccessibleField className="space-y-2">
+                <Label htmlFor="reconciliation-count-method">Método de conteo</Label>
                 <Select
                   value={createForm.countMethod}
                   onValueChange={(value) =>
@@ -819,21 +842,21 @@ export function ReconciliationContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="DENOMINATION_COUNT">Count by denominations</SelectItem>
-                    <SelectItem value="MANUAL_TOTAL">Enter total manually</SelectItem>
+                    <SelectItem value="DENOMINATION_COUNT">Contar por denominaciones</SelectItem>
+                    <SelectItem value="MANUAL_TOTAL">Introducir total manual</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </AccessibleField>
             )}
 
             {createForm.countMethod === "MANUAL_TOTAL" ? (
-              <div className="space-y-2">
-                <Label htmlFor="reconciliation-counted-total">Counted Total</Label>
+              <AccessibleField className="space-y-2">
+                <Label htmlFor="reconciliation-counted-total">Total contado</Label>
                 <Input
                   id="reconciliation-counted-total"
                   type="text"
                   inputMode="decimal"
-                  placeholder="e.g. 123456.78"
+                  placeholder="Por ejemplo, 123456.78"
                   value={createForm.manualCountedTotal}
                   onChange={(event) =>
                     setCreateForm((current) => ({
@@ -845,13 +868,15 @@ export function ReconciliationContent() {
                   aria-invalid={Boolean(createFormErrors.countedTotal)}
                 />
                 {createFormErrors.countedTotal ? (
-                  <p className="text-xs text-destructive">{createFormErrors.countedTotal}</p>
+                  <AccessibleFieldError className="text-xs text-destructive">
+                    {createFormErrors.countedTotal}
+                  </AccessibleFieldError>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Use digits with an optional decimal separator.
+                    Usa punto decimal y no incluyas separadores de miles. Por ejemplo: 1234.56.
                   </p>
                 )}
-              </div>
+              </AccessibleField>
             ) : (
               <div className="space-y-4">
                 {cashCatalogError && (
@@ -885,27 +910,29 @@ export function ReconciliationContent() {
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <span>
-                        There are no denominations configured for{" "}
-                        {createAccount?.currency ?? "this currency"}.
+                        No hay denominaciones configuradas para{" "}
+                        {createAccount?.currency ?? "esta moneda"}.
                       </span>
                       <Button asChild variant="outline" size="sm">
-                        <Link href="/settings">Open Settings</Link>
+                        <Link href="/settings">Abrir Ajustes</Link>
                       </Button>
                     </AlertDescription>
                   </Alert>
                 )}
 
                 {createFormErrors.countedTotal && !cashCatalogLoading && (
-                  <p className="text-xs text-destructive">{createFormErrors.countedTotal}</p>
+                  <AccessibleFieldError className="text-xs text-destructive">
+                    {createFormErrors.countedTotal}
+                  </AccessibleFieldError>
                 )}
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="reconciliation-note">Notes</Label>
+            <AccessibleField className="space-y-2">
+              <Label htmlFor="reconciliation-note">Notas</Label>
               <Textarea
                 id="reconciliation-note"
-                placeholder="Optional note for this reconciliation"
+                placeholder="Nota opcional para esta conciliación"
                 value={createForm.note}
                 onChange={(event) =>
                   setCreateForm((current) => ({
@@ -915,12 +942,12 @@ export function ReconciliationContent() {
                 }
                 rows={3}
               />
-            </div>
+            </AccessibleField>
 
             <div className="grid gap-4 rounded-lg border p-4 md:grid-cols-3">
               <div>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Counted Total
+                  Total contado
                 </p>
                 <p className="font-mono text-lg font-semibold">
                   {formatCurrency(countedTotalPreview, createAccount?.currency ?? "CRC")}
@@ -928,24 +955,26 @@ export function ReconciliationContent() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Expected Total
+                  Total esperado
                 </p>
                 <p className="font-mono text-lg font-semibold">
                   {expectedPreviewLoading
-                    ? "Loading..."
+                    ? "Cargando…"
                     : expectedPreview
                       ? formatCurrency(
                           expectedPreview.expectedTotal,
                           expectedPreview.currency || createAccount?.currency || "CRC",
                         )
-                      : "Unavailable"}
+                      : "No disponible"}
                 </p>
                 {expectedPreviewError && (
-                  <p className="text-xs text-destructive">{expectedPreviewError}</p>
+                  <AccessibleFieldError className="text-xs text-destructive">
+                    {expectedPreviewError}
+                  </AccessibleFieldError>
                 )}
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Difference</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Diferencia</p>
                 <p
                   className={cn(
                     "font-mono text-lg font-semibold",
@@ -957,7 +986,7 @@ export function ReconciliationContent() {
                   )}
                 >
                   {differencePreview === null
-                    ? "Unavailable"
+                    ? "No disponible"
                     : formatSignedCurrency(
                         differencePreview,
                         expectedPreview?.currency || createAccount?.currency || "CRC",
@@ -976,10 +1005,10 @@ export function ReconciliationContent() {
               }}
               disabled={createLoading}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button onClick={handleCreate} disabled={!isCreateFormValid || createLoading}>
-              {createLoading ? "Creating..." : "Create Reconciliation"}
+              {createLoading ? "Creando…" : "Crear conciliación"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -997,9 +1026,9 @@ export function ReconciliationContent() {
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Reconciliation Detail</DialogTitle>
+            <DialogTitle>Detalle de conciliación</DialogTitle>
             <DialogDescription>
-              Review the persisted snapshot, including denomination lines when applicable.
+              Consulta los saldos guardados y el desglose por denominaciones cuando corresponda.
             </DialogDescription>
           </DialogHeader>
 
@@ -1016,21 +1045,21 @@ export function ReconciliationContent() {
             <div className="space-y-4">
               <div className="grid gap-4 rounded-lg border p-4 md:grid-cols-2 xl:grid-cols-4">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Date</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Fecha</p>
                   <p className="font-medium">{formatDate(detailRecord.date)}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Method</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Método</p>
                   <p className="font-medium">{getCountMethodLabel(detailRecord.countMethod)}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Counted</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Contado</p>
                   <p className="font-mono">
                     {formatCurrency(detailRecord.countedTotal, detailRecord.currency)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Expected</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Esperado</p>
                   <p className="font-mono">
                     {formatCurrency(detailRecord.expectedTotal, detailRecord.currency)}
                   </p>
@@ -1040,21 +1069,23 @@ export function ReconciliationContent() {
               <div className="grid gap-4 rounded-lg border p-4 md:grid-cols-2 xl:grid-cols-3">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Difference
+                    Diferencia
                   </p>
                   <p className="font-mono font-semibold">
                     {formatSignedCurrency(detailRecord.difference, detailRecord.currency)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Status</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Estado</p>
                   <div className="pt-1">
                     <StatusIndicator status={detailRecord.status} />
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Notes</p>
-                  <p className="text-sm text-muted-foreground">{detailRecord.note || "No notes"}</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Notas</p>
+                  <p className="text-sm text-muted-foreground">
+                    {detailRecord.note || "Sin notas"}
+                  </p>
                 </div>
               </div>
 
@@ -1064,10 +1095,10 @@ export function ReconciliationContent() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Denomination</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead className="text-right">Quantity</TableHead>
-                          <TableHead className="text-right">Line Total</TableHead>
+                          <TableHead>Denominación</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead className="text-right">Cantidad</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1078,7 +1109,7 @@ export function ReconciliationContent() {
                                 formatCurrency(line.denominationValue, detailRecord.currency)}
                             </TableCell>
                             <TableCell>
-                              {line.denominationType === "BILL" ? "Bill" : "Coin"}
+                              {line.denominationType === "BILL" ? "Billete" : "Moneda"}
                             </TableCell>
                             <TableCell className="text-right font-mono">{line.quantity}</TableCell>
                             <TableCell className="text-right font-mono">
@@ -1107,10 +1138,10 @@ export function ReconciliationContent() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Ignore this reconciliation?</AlertDialogTitle>
+            <AlertDialogTitle>¿Ignorar esta conciliación?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will mark the active reconciliation as ignored, close it, and let you create a
-              new reconciliation for the same account.
+              La conciliación activa se marcará como ignorada y quedará cerrada. Podrás crear otra
+              para la misma cuenta.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -1129,7 +1160,7 @@ export function ReconciliationContent() {
               }}
               disabled={ignoreLoading}
             >
-              Cancel
+              Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={(event) => {
@@ -1138,7 +1169,7 @@ export function ReconciliationContent() {
               }}
               disabled={ignoreLoading}
             >
-              {ignoreLoading ? "Ignoring..." : "Ignore Reconciliation"}
+              {ignoreLoading ? "Ignoring..." : "Ignorar conciliación"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

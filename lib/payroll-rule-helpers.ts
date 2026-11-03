@@ -13,8 +13,8 @@ export function formatPayrollRuleWindow(
   rule: Pick<PayrollRuleSet, "effectiveFrom" | "effectiveTo">,
 ) {
   const start = formatIsoDateOnly(rule.effectiveFrom)
-  const end = rule.effectiveTo ? formatIsoDateOnly(rule.effectiveTo) : "Open-ended"
-  return `${start} to ${end}`
+  const end = rule.effectiveTo ? formatIsoDateOnly(rule.effectiveTo) : "Sin fecha final"
+  return `${start} a ${end}`
 }
 
 export function getPayrollTopTaxRate(brackets: PayrollIncomeTaxBracket[]) {
@@ -29,7 +29,7 @@ export function formatIncomeTaxBracketRange(
     maximumFractionDigits: 2,
   }).format(bracket.amountFrom)
   if (bracket.amountTo === null) {
-    return `${start} and above`
+    return `${start} en adelante`
   }
 
   const end = new Intl.NumberFormat("es-CR", {
@@ -37,7 +37,7 @@ export function formatIncomeTaxBracketRange(
     maximumFractionDigits: 2,
   }).format(bracket.amountTo)
 
-  return `${start} to ${end}`
+  return `${start} a ${end}`
 }
 
 export function createIncomeTaxBracketDraft(

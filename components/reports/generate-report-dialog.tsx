@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { AccessibleField } from "@/components/ui/accessible-field"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -47,30 +48,30 @@ const currentMonthValue = () => {
 }
 
 const MONTH_OPTIONS = [
-  { value: "01", label: "January" },
-  { value: "02", label: "February" },
-  { value: "03", label: "March" },
-  { value: "04", label: "April" },
-  { value: "05", label: "May" },
-  { value: "06", label: "June" },
-  { value: "07", label: "July" },
-  { value: "08", label: "August" },
-  { value: "09", label: "September" },
-  { value: "10", label: "October" },
-  { value: "11", label: "November" },
-  { value: "12", label: "December" },
+  { value: "01", label: "Enero" },
+  { value: "02", label: "Febrero" },
+  { value: "03", label: "Marzo" },
+  { value: "04", label: "Abril" },
+  { value: "05", label: "Mayo" },
+  { value: "06", label: "Junio" },
+  { value: "07", label: "Julio" },
+  { value: "08", label: "Agosto" },
+  { value: "09", label: "Septiembre" },
+  { value: "10", label: "Octubre" },
+  { value: "11", label: "Noviembre" },
+  { value: "12", label: "Diciembre" },
 ] as const
 
 const rateModeOptions = (baseCurrency: string) =>
   baseCurrency === "CRC"
     ? [
-        { value: "auto", label: "Automatic month-end rate" },
-        { value: "stored", label: "Stored exchange rate" },
-        { value: "manual", label: "Manual USD to CRC rate" },
+        { value: "auto", label: "Cotización automática de fin de mes" },
+        { value: "stored", label: "Cotización guardada" },
+        { value: "manual", label: "Cotización manual de USD a CRC" },
       ]
     : [
-        { value: "auto", label: "Automatic month-end rate" },
-        { value: "stored", label: "Stored exchange rate" },
+        { value: "auto", label: "Cotización automática de fin de mes" },
+        { value: "stored", label: "Cotización guardada" },
       ]
 
 export function GenerateReportDialog({
@@ -153,20 +154,20 @@ export function GenerateReportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Generate Report</DialogTitle>
+          <DialogTitle>Generar reporte</DialogTitle>
           <DialogDescription>
-            Create a new historical snapshot for a month and immediately add it to the report
-            archive.
+            Guarda una versión de los saldos actuales identificada por mes de referencia. La captura
+            no reconstruye un cierre contable mensual.
           </DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <Label>Report Month</Label>
+            <Label>Mes de referencia</Label>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
               <Select value={reportMonthPart} onValueChange={setReportMonthPart}>
-                <SelectTrigger className="w-full" aria-label="Report month">
-                  <SelectValue placeholder="Select month" />
+                <SelectTrigger className="w-full" aria-label="Mes del reporte">
+                  <SelectValue placeholder="Elige el mes" />
                 </SelectTrigger>
                 <SelectContent>
                   {MONTH_OPTIONS.map((month) => (
@@ -186,28 +187,28 @@ export function GenerateReportDialog({
                   setReportYear(event.target.value.replace(/\D/g, "").slice(0, 4))
                 }
                 placeholder="2026"
-                aria-label="Report year"
+                aria-label="Año del reporte"
                 required
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="report-base-currency">Base Currency</Label>
+          <AccessibleField className="space-y-2">
+            <Label htmlFor="report-base-currency">Moneda de presentación</Label>
             <Input id="report-base-currency" value={baseCurrency} disabled readOnly />
             <p className="text-xs text-muted-foreground">
-              This follows the user profile configured in Settings.
+              Corresponde a la moneda de tu perfil en Ajustes.
             </p>
-          </div>
+          </AccessibleField>
 
-          <div className="space-y-2">
-            <Label htmlFor="report-rate-mode">Exchange Rate Source</Label>
+          <AccessibleField className="space-y-2">
+            <Label htmlFor="report-rate-mode">Origen de la cotización</Label>
             <Select
               value={rateMode}
               onValueChange={(value) => setRateMode(value as "auto" | "stored" | "manual")}
             >
               <SelectTrigger id="report-rate-mode" className="w-full">
-                <SelectValue placeholder="Select how to resolve the rate" />
+                <SelectValue placeholder="Elige cómo obtener la cotización" />
               </SelectTrigger>
               <SelectContent>
                 {rateModeOptions(baseCurrency).map((option) => (
@@ -217,14 +218,14 @@ export function GenerateReportDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </AccessibleField>
 
           {rateMode === "stored" ? (
-            <div className="space-y-2">
-              <Label htmlFor="stored-rate">Stored Exchange Rate</Label>
+            <AccessibleField className="space-y-2">
+              <Label htmlFor="stored-rate">Cotización guardada</Label>
               <Select value={selectedRateId} onValueChange={setSelectedRateId}>
                 <SelectTrigger id="stored-rate" className="w-full">
-                  <SelectValue placeholder="Select a stored rate" />
+                  <SelectValue placeholder="Elige una cotización guardada" />
                 </SelectTrigger>
                 <SelectContent>
                   {eligibleRates.map((rate) => (
@@ -237,16 +238,16 @@ export function GenerateReportDialog({
               </Select>
               {eligibleRates.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  No stored rates available for the current base currency. Automatic lookup will
-                  still work.
+                  No hay cotizaciones guardadas para esta moneda. Puedes usar la consulta
+                  automática.
                 </p>
               ) : null}
-            </div>
+            </AccessibleField>
           ) : null}
 
           {rateMode === "manual" && baseCurrency === "CRC" ? (
-            <div className="space-y-2">
-              <Label htmlFor="manual-rate">Manual USD to CRC Rate</Label>
+            <AccessibleField className="space-y-2">
+              <Label htmlFor="manual-rate">Cotización manual de USD a CRC</Label>
               <Input
                 id="manual-rate"
                 type="number"
@@ -257,18 +258,18 @@ export function GenerateReportDialog({
                 onChange={(event) => setManualRate(event.target.value)}
                 placeholder="512.3400"
               />
-            </div>
+            </AccessibleField>
           ) : null}
 
-          <div className="space-y-2">
-            <Label htmlFor="report-notes">Notes</Label>
+          <AccessibleField className="space-y-2">
+            <Label htmlFor="report-notes">Notas</Label>
             <Textarea
               id="report-notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="Optional note for this report version"
+              placeholder="Nota opcional para esta versión del reporte"
             />
-          </div>
+          </AccessibleField>
 
           <DialogFooter>
             <Button
@@ -277,7 +278,7 @@ export function GenerateReportDialog({
               onClick={() => onOpenChange(false)}
               disabled={generating}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button
               type="submit"
@@ -289,7 +290,7 @@ export function GenerateReportDialog({
               }
             >
               {generating ? <Spinner className="h-4 w-4" /> : null}
-              Generate Report
+              Generar reporte
             </Button>
           </DialogFooter>
         </form>

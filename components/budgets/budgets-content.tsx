@@ -1,6 +1,7 @@
 "use client"
 
 import { format, parse } from "date-fns"
+import { es } from "date-fns/locale"
 import { ArrowUpRight, CalendarRange, Plus, RefreshCw, Trash2 } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
@@ -10,6 +11,7 @@ import { BudgetStatusBadge } from "@/components/budgets/budget-status-badge"
 import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
 import type { Budget } from "@/components/budgets/types"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
+import { AccessibleFieldError } from "@/components/ui/accessible-field"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,7 +55,7 @@ const ALL_FILTER = "all"
 
 const formatBudgetMonth = (month: string) => {
   try {
-    return format(parse(month, "yyyy-MM", new Date()), "MMMM yyyy")
+    return format(parse(month, "yyyy-MM", new Date()), "MMMM yyyy", { locale: es })
   } catch {
     return month
   }
@@ -78,7 +80,9 @@ export function BudgetsContent() {
       setBudgets(nextBudgets)
     } catch (loadError) {
       const message =
-        loadError instanceof Error ? loadError.message : "Budgets could not be loaded."
+        loadError instanceof Error
+          ? loadError.message
+          : "No pudimos cargar los presupuestos. Vuelve a intentar."
       setError(message)
       setBudgets([])
     } finally {
@@ -106,14 +110,16 @@ export function BudgetsContent() {
       setDeleteTarget(null)
       await loadBudgets()
       toast({
-        title: "Budget deleted",
-        description: `${formatBudgetMonth(deleteTarget.month)} was removed.`,
+        title: "Presupuesto eliminado",
+        description: `${formatBudgetMonth(deleteTarget.month)} se eliminó.`,
       })
     } catch (deleteError) {
       const message =
-        deleteError instanceof BudgetApiError ? deleteError.message : "Budget could not be deleted."
+        deleteError instanceof BudgetApiError
+          ? deleteError.message
+          : "No pudimos eliminar el presupuesto. Vuelve a intentar."
       toast({
-        title: "Delete failed",
+        title: "No se completó la eliminación",
         description: message,
         variant: "destructive",
       })
@@ -126,12 +132,12 @@ export function BudgetsContent() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Budgets</h2>
-          <p className="text-muted-foreground">Plan and manage monthly budgets</p>
+          <h2 className="text-2xl font-bold tracking-tight">Presupuestos</h2>
+          <p className="text-muted-foreground">Planifica tus presupuestos mensuales</p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          New Budget
+          Nuevo presupuesto
         </Button>
       </div>
 
@@ -139,11 +145,11 @@ export function BudgetsContent() {
         <CardContent className="flex flex-col gap-3 p-4 md:flex-row">
           <div className="min-w-0 flex-1">
             <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by currency" />
+              <SelectTrigger aria-label="Filtrar por moneda">
+                <SelectValue placeholder="Filtrar por moneda" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_FILTER}>All currencies</SelectItem>
+                <SelectItem value={ALL_FILTER}>Todas las monedas</SelectItem>
                 {currencies.map((currency) => (
                   <SelectItem key={currency} value={currency}>
                     {currency}
@@ -154,14 +160,14 @@ export function BudgetsContent() {
           </div>
           <div className="min-w-0 flex-1">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by status" />
+              <SelectTrigger aria-label="Filtrar por estado">
+                <SelectValue placeholder="Filtrar por estado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_FILTER}>All statuses</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="finalized">Finalized</SelectItem>
-                <SelectItem value="funded">Funded</SelectItem>
+                <SelectItem value={ALL_FILTER}>Todos los estados</SelectItem>
+                <SelectItem value="draft">Borrador</SelectItem>
+                <SelectItem value="finalized">Finalizado</SelectItem>
+                <SelectItem value="funded">Asignado</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -169,13 +175,13 @@ export function BudgetsContent() {
             <BudgetMonthPicker
               value={monthFilter}
               onChange={setMonthFilter}
-              emptyLabel="All months"
+              emptyLabel="Todos los meses"
               allowClear
             />
           </div>
           <Button variant="outline" onClick={loadBudgets} disabled={isLoading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh
+            Actualizar
           </Button>
         </CardContent>
       </Card>
@@ -189,15 +195,17 @@ export function BudgetsContent() {
       ) : error ? (
         <Card>
           <CardHeader>
-            <CardTitle>Budgets unavailable</CardTitle>
+            <CardTitle>Presupuestos no disponibles</CardTitle>
             <CardDescription>
-              The budget list endpoint returned an error. You can retry or create a budget directly.
+              No pudimos consultar los presupuestos. Vuelve a intentar o crea uno nuevo.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm text-destructive">{error}</p>
+            <AccessibleFieldError className="text-sm text-destructive">
+              {error}
+            </AccessibleFieldError>
             <Button variant="outline" onClick={loadBudgets}>
-              Retry
+              Volver a intentar
             </Button>
           </CardContent>
         </Card>
@@ -209,15 +217,15 @@ export function BudgetsContent() {
                 <EmptyMedia variant="icon">
                   <CalendarRange className="h-5 w-5" />
                 </EmptyMedia>
-                <EmptyTitle>No budgets yet</EmptyTitle>
+                <EmptyTitle>Todavía no hay presupuestos</EmptyTitle>
                 <EmptyDescription>
-                  Create your first monthly budget to start planning your income by category.
+                  Crea tu primer presupuesto mensual para distribuir tus ingresos por categoría.
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
                 <Button onClick={() => setIsCreateOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Budget
+                  Crear presupuesto
                 </Button>
               </EmptyContent>
             </Empty>
@@ -227,22 +235,22 @@ export function BudgetsContent() {
         <>
           <Card className="hidden md:block">
             <CardHeader>
-              <CardTitle>Monthly Budgets</CardTitle>
+              <CardTitle>Presupuestos mensuales</CardTitle>
               <CardDescription>
-                Review budget progress, remaining allocation, and current status.
+                Consulta la distribución, el importe pendiente y el estado de cada presupuesto.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Month</TableHead>
-                    <TableHead>Currency</TableHead>
-                    <TableHead>Total Income</TableHead>
-                    <TableHead>Distributed Amount</TableHead>
-                    <TableHead>Remaining Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Mes</TableHead>
+                    <TableHead>Moneda</TableHead>
+                    <TableHead>Ingreso total</TableHead>
+                    <TableHead>Importe distribuido</TableHead>
+                    <TableHead>Importe pendiente</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -269,11 +277,11 @@ export function BudgetsContent() {
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            title={`Open ${formatBudgetMonth(budget.month)} budget`}
+                            title={`Abrir ${formatBudgetMonth(budget.month)} presupuesto`}
                           >
                             <Link
                               href={`/budgets/${budget.id}`}
-                              aria-label={`Open ${formatBudgetMonth(budget.month)} budget`}
+                              aria-label={`Abrir ${formatBudgetMonth(budget.month)} presupuesto`}
                             >
                               <ArrowUpRight className="h-4 w-4" />
                             </Link>
@@ -283,7 +291,7 @@ export function BudgetsContent() {
                               variant="ghost"
                               size="sm"
                               className="h-8 w-8 p-0 text-destructive"
-                              title={`Delete ${formatBudgetMonth(budget.month)} budget`}
+                              title={`Eliminar ${formatBudgetMonth(budget.month)} presupuesto`}
                               onClick={() => setDeleteTarget(budget)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -312,7 +320,7 @@ export function BudgetsContent() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                        Total Income
+                        Ingreso total
                       </p>
                       <p className="font-medium">
                         {formatCurrency(budget.totalIncome, budget.currency)}
@@ -320,7 +328,7 @@ export function BudgetsContent() {
                     </div>
                     <div>
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                        Distributed
+                        Distribuido
                       </p>
                       <p className="font-medium">
                         {formatCurrency(budget.distributedAmount, budget.currency)}
@@ -328,7 +336,7 @@ export function BudgetsContent() {
                     </div>
                     <div>
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                        Remaining
+                        Pendiente
                       </p>
                       <p className="font-medium">
                         {formatCurrency(budget.remainingAmount, budget.currency)}
@@ -337,14 +345,14 @@ export function BudgetsContent() {
                   </div>
                   <div className="flex gap-2">
                     <Button asChild className="flex-1" variant="outline">
-                      <Link href={`/budgets/${budget.id}`}>Open Budget</Link>
+                      <Link href={`/budgets/${budget.id}`}>Abrir presupuesto</Link>
                     </Button>
                     {budget.status === "draft" ? (
                       <Button
                         variant="ghost"
                         size="icon"
                         className="shrink-0 text-destructive"
-                        title={`Delete ${formatBudgetMonth(budget.month)} budget`}
+                        title={`Eliminar ${formatBudgetMonth(budget.month)} presupuesto`}
                         onClick={() => setDeleteTarget(budget)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -369,17 +377,17 @@ export function BudgetsContent() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete draft budget?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar el presupuesto en borrador?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget
-                ? `This will permanently delete ${formatBudgetMonth(deleteTarget.month)}.`
-                : "This action cannot be undone."}
+                ? `Se eliminará definitivamente ${formatBudgetMonth(deleteTarget.month)}.`
+                : "Esta acción no se puede deshacer."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteBudget} disabled={isDeleting}>
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? "Eliminando…" : "Eliminar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

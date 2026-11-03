@@ -24,9 +24,9 @@ export function InstitutionEditDialog({
     <InstitutionFormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Edit Institution"
-      description="Update institution details"
-      submitLabel="Save Changes"
+      title="Editar institución"
+      description="Actualiza los datos de la institución"
+      submitLabel="Guardar cambios"
       submitDisabled={submitDisabled}
       onSubmit={onSubmit}
       formData={formData}

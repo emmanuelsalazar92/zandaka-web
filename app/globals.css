@@ -30,11 +30,11 @@
   --ring: #245bdb;
 
   /* Financial Colors - Income/Expense/Warning */
-  --success: #08765c;
+  --success: #07694f;
   --success-foreground: #ffffff;
   --warning: #8d4c08;
   --warning-foreground: #ffffff;
-  --error: #b73c31;
+  --error: #a83028;
   --error-foreground: #fff8f7;
 
   /* Chart Colors */

@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import type { BudgetCategoryOption } from "@/components/budgets/types"
+import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -150,19 +151,19 @@ export function AddBudgetCategoryDialog({
     const parsedPercentage = tryDecimalInput(percentage || "0")
 
     if (!parentCategoryId || !childCategoryId || Number.isNaN(parsedCategoryId)) {
-      setError("Choose a parent category and a child category.")
+      setError("Elige una categoría principal y una subcategoría.")
       return
     }
 
     if (existingCategoryIds.includes(parsedCategoryId)) {
-      setError("That category is already part of this budget.")
+      setError("Esa categoría ya forma parte del presupuesto.")
       return
     }
 
     try {
       assertMoney(parsedAmount, currency)
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Invalid amount")
+      setError(error instanceof Error ? error.message : "Revisa el importe")
       return
     }
     onConfirm({
@@ -178,18 +179,17 @@ export function AddBudgetCategoryDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add Category</DialogTitle>
+          <DialogTitle>Añadir categoría</DialogTitle>
           <DialogDescription>
-            Add a child category to this budget plan. You can set an initial amount, percentage, and
-            notes.
+            Añade una subcategoría al presupuesto con su importe, porcentaje y notas.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="budget-parent-category">Parent Category</Label>
+          <AccessibleField className="space-y-2">
+            <Label htmlFor="budget-parent-category">Categoría principal</Label>
             <Select value={parentCategoryId} onValueChange={handleParentChange}>
               <SelectTrigger id="budget-parent-category">
-                <SelectValue placeholder="Select parent category" />
+                <SelectValue placeholder="Elige una categoría principal" />
               </SelectTrigger>
               <SelectContent>
                 {parentCategories.map((category) => (
@@ -199,16 +199,16 @@ export function AddBudgetCategoryDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="budget-child-category">Child Category</Label>
+          </AccessibleField>
+          <AccessibleField className="space-y-2">
+            <Label htmlFor="budget-child-category">Subcategoría</Label>
             <Select
               value={childCategoryId}
               onValueChange={setChildCategoryId}
               disabled={!parentCategoryId}
             >
               <SelectTrigger id="budget-child-category">
-                <SelectValue placeholder="Select child category" />
+                <SelectValue placeholder="Elige una subcategoría" />
               </SelectTrigger>
               <SelectContent>
                 {childCategories.map((category) => (
@@ -218,10 +218,10 @@ export function AddBudgetCategoryDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </AccessibleField>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="budget-category-amount">Amount</Label>
+            <AccessibleField className="space-y-2">
+              <Label htmlFor="budget-category-amount">Importe</Label>
               <Input
                 id="budget-category-amount"
                 type="number"
@@ -231,9 +231,9 @@ export function AddBudgetCategoryDialog({
                 onChange={(event) => handleAmountChange(event.target.value)}
                 disabled={!isAmountInputMode}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="budget-category-percentage">Percentage</Label>
+            </AccessibleField>
+            <AccessibleField className="space-y-2">
+              <Label htmlFor="budget-category-percentage">Porcentaje</Label>
               <Input
                 id="budget-category-percentage"
                 type="number"
@@ -243,7 +243,7 @@ export function AddBudgetCategoryDialog({
                 onChange={(event) => handlePercentageChange(event.target.value)}
                 disabled={isAmountInputMode}
               />
-            </div>
+            </AccessibleField>
           </div>
           <div className="flex items-start gap-3 rounded-lg border p-3">
             <Checkbox
@@ -252,30 +252,34 @@ export function AddBudgetCategoryDialog({
               onCheckedChange={(checked) => handleInputModeChange(Boolean(checked))}
             />
             <div className="space-y-1">
-              <Label htmlFor="budget-category-input-mode">Edit amount directly</Label>
+              <Label htmlFor="budget-category-input-mode">Editar el importe directamente</Label>
               <p className="text-sm text-muted-foreground">
-                Enabled by default. Amount stays editable and percentage is auto-calculated. Turn it
-                off to edit percentage and auto-calculate amount.
+                El importe se puede editar y el porcentaje se calcula automáticamente. Desactiva
+                esta opción para editar el porcentaje.
               </p>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="budget-category-notes">Notes</Label>
+          <AccessibleField className="space-y-2">
+            <Label htmlFor="budget-category-notes">Notas</Label>
             <Input
               id="budget-category-notes"
-              placeholder="Optional notes"
+              placeholder="Notas opcionales"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
             />
-          </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          </AccessibleField>
+          {error && (
+            <AccessibleFieldError className="text-sm text-destructive">
+              {error}
+            </AccessibleFieldError>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
-            Cancel
+            Cancelar
           </Button>
           <Button onClick={handleConfirm} disabled={!canSubmit}>
-            Add Category
+            Añadir categoría
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -3,9 +3,9 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 const STATUS_LABELS: Record<BudgetStatus, string> = {
-  draft: "Draft",
-  finalized: "Finalized",
-  funded: "Funded",
+  draft: "Borrador",
+  finalized: "Finalizado",
+  funded: "Asignado",
 }
 
 const STATUS_STYLES: Record<BudgetStatus, string> = {

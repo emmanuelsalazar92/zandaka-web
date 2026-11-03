@@ -37,7 +37,7 @@ describe("money contract shared with the backend", () => {
     expect(roundMoney("-1.005", "USD")).toBe(-1.01)
     expect(convertMoney(75000, 520, "USD", true)).toBe(144.23)
     expect(convertMoney(1, "1.2345", "BHD")).toBe(1.235)
-    expect(formatCurrency(1.234, "BHD")).toContain("1.234")
+    expect(formatCurrency(1.234, "BHD")).toContain("1,234")
     expect(formatCurrency(123, "JPY")).not.toContain(".00")
   })
   it("rejects unsupported precision and unsafe numeric transport", () => {
@@ -90,7 +90,7 @@ describe("money contract shared with the backend", () => {
     expect(
       validateTransaction({
         date: "2026-03-01",
-        description: "Transfer",
+        description: "Transferencia",
         type: "TRANSFER",
         lines: [
           { accountId: 1, envelopeId: 1, amount: -0.1 },

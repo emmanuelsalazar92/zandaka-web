@@ -3,6 +3,7 @@
 import { Calculator, Edit2, Landmark, Percent, Plus, RefreshCw, Trash2 } from "lucide-react"
 import * as React from "react"
 
+import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -84,7 +85,7 @@ const formatTimestamp = (value: string) =>
     ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
         new Date(value),
       )
-    : "Unavailable"
+    : "No disponible"
 
 const createDraftKey = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -188,7 +189,9 @@ export function SettingsPayrollRulesSection() {
     } catch (cause) {
       setActiveCcssRule(null)
       setActiveIncomeTaxRule(null)
-      setActiveRuleError(messageOf(cause, "Failed to resolve the active payroll rules."))
+      setActiveRuleError(
+        messageOf(cause, "No pudimos consultar las reglas de nómina vigentes. Vuelve a intentar."),
+      )
     }
   }, [])
 
@@ -211,7 +214,7 @@ export function SettingsPayrollRulesSection() {
         setIncomeTaxRules(incomeTaxHistory.items)
         await resolveActiveRules(activeDate)
       } catch (cause) {
-        setError(messageOf(cause, "Failed to load payroll rules."))
+        setError(messageOf(cause, "No pudimos cargar las reglas de nómina. Vuelve a intentar."))
       } finally {
         setLoading(false)
         setRefreshing(false)
@@ -297,23 +300,23 @@ export function SettingsPayrollRulesSection() {
     const employerRate = toNumberOrNull(ccssForm.employerRate)
 
     if (!ccssForm.name.trim()) {
-      setEditorError("Rule name is required.")
+      setEditorError("Introduce un nombre para la regla.")
       return
     }
     if (!ccssForm.effectiveFrom) {
-      setEditorError("Effective from date is required.")
+      setEditorError("Elige la fecha de inicio de vigencia.")
       return
     }
     if (ccssForm.effectiveTo && ccssForm.effectiveTo < ccssForm.effectiveFrom) {
-      setEditorError("Effective to date cannot be earlier than effective from.")
+      setEditorError("La fecha final no puede ser anterior al inicio de vigencia.")
       return
     }
     if (!Number.isFinite(employeeRate) || employeeRate < 0 || employeeRate > 1) {
-      setEditorError("Employee rate must be between 0 and 1.")
+      setEditorError("La tasa del trabajador debe estar entre 0 y 1.")
       return
     }
     if (employerRate !== null && (employerRate < 0 || employerRate > 1)) {
-      setEditorError("Employer rate must be between 0 and 1 when provided.")
+      setEditorError("La tasa patronal debe estar entre 0 y 1 cuando se indique.")
       return
     }
 
@@ -332,8 +335,8 @@ export function SettingsPayrollRulesSection() {
           baseType: ccssForm.baseType,
         })
         toast({
-          title: "CCSS rule updated",
-          description: `${ccssForm.name} is now saved.`,
+          title: "Regla de CCSS actualizada",
+          description: `${ccssForm.name} se guardó.`,
         })
       } else {
         await createPayrollCcssRule({
@@ -346,15 +349,20 @@ export function SettingsPayrollRulesSection() {
           baseType: ccssForm.baseType,
         })
         toast({
-          title: "CCSS rule created",
-          description: `${ccssForm.name} was added to the payroll rule history.`,
+          title: "Regla de CCSS creada",
+          description: `${ccssForm.name} se añadió al historial de reglas de nómina.`,
         })
       }
 
       await loadRules({ silent: true })
       resetEditor()
     } catch (cause) {
-      setEditorError(messageOf(cause, "Failed to save the CCSS rule."))
+      setEditorError(
+        messageOf(
+          cause,
+          "No pudimos guardar la regla de CCSS. Revisa los datos y vuelve a intentar.",
+        ),
+      )
     } finally {
       setSavingEditor(false)
     }
@@ -362,19 +370,19 @@ export function SettingsPayrollRulesSection() {
 
   const handleSaveIncomeTaxRule = async () => {
     if (!incomeTaxForm.name.trim()) {
-      setEditorError("Rule name is required.")
+      setEditorError("Introduce un nombre para la regla.")
       return
     }
     if (!incomeTaxForm.effectiveFrom) {
-      setEditorError("Effective from date is required.")
+      setEditorError("Elige la fecha de inicio de vigencia.")
       return
     }
     if (incomeTaxForm.effectiveTo && incomeTaxForm.effectiveTo < incomeTaxForm.effectiveFrom) {
-      setEditorError("Effective to date cannot be earlier than effective from.")
+      setEditorError("La fecha final no puede ser anterior al inicio de vigencia.")
       return
     }
     if (incomeTaxForm.brackets.length === 0) {
-      setEditorError("At least one tax bracket is required.")
+      setEditorError("Añade al menos un tramo de renta.")
       return
     }
 
@@ -386,27 +394,27 @@ export function SettingsPayrollRulesSection() {
       const taxRate = tryDecimalInput(bracket.taxRate)
 
       if (!Number.isFinite(amountFrom) || amountFrom < 0) {
-        setEditorError(`Bracket ${index + 1} requires a valid amount from.`)
+        setEditorError(`Tramo ${index + 1} requiere un importe inicial válido.`)
         return
       }
       if (amountTo !== null && amountTo <= amountFrom) {
-        setEditorError(`Bracket ${index + 1} must end after its amount from.`)
+        setEditorError(`Tramo ${index + 1} debe terminar después de su importe inicial.`)
         return
       }
       if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 1) {
-        setEditorError(`Bracket ${index + 1} requires a tax rate between 0 and 1.`)
+        setEditorError(`Tramo ${index + 1} requiere una tasa entre 0 y 1.`)
         return
       }
       if (index === 0 && amountFrom !== 0) {
-        setEditorError("The first tax bracket must start at 0.")
+        setEditorError("El primer tramo debe comenzar en cero.")
         return
       }
       if (index < incomeTaxForm.brackets.length - 1 && amountTo === null) {
-        setEditorError("Only the last tax bracket can be open-ended.")
+        setEditorError("Solo el último tramo puede quedar sin límite superior.")
         return
       }
       if (bracket.isExempt && taxRate !== 0) {
-        setEditorError(`Bracket ${index + 1} is exempt and must use a 0 tax rate.`)
+        setEditorError(`Tramo ${index + 1} está exento y debe tener tasa cero.`)
         return
       }
 
@@ -432,8 +440,8 @@ export function SettingsPayrollRulesSection() {
           brackets: parsedBrackets,
         })
         toast({
-          title: "Income tax rule updated",
-          description: `${incomeTaxForm.name} is now saved.`,
+          title: "Regla de renta actualizada",
+          description: `${incomeTaxForm.name} se guardó.`,
         })
       } else {
         await createPayrollIncomeTaxRule({
@@ -444,15 +452,20 @@ export function SettingsPayrollRulesSection() {
           brackets: parsedBrackets,
         })
         toast({
-          title: "Income tax rule created",
-          description: `${incomeTaxForm.name} was added to the payroll rule history.`,
+          title: "Regla de renta creada",
+          description: `${incomeTaxForm.name} se añadió al historial de reglas de nómina.`,
         })
       }
 
       await loadRules({ silent: true })
       resetEditor()
     } catch (cause) {
-      setEditorError(messageOf(cause, "Failed to save the income tax rule."))
+      setEditorError(
+        messageOf(
+          cause,
+          "No pudimos guardar la regla de renta. Revisa los datos y vuelve a intentar.",
+        ),
+      )
     } finally {
       setSavingEditor(false)
     }
@@ -463,8 +476,8 @@ export function SettingsPayrollRulesSection() {
       setDeactivatingRuleId(rule.id)
       await deactivatePayrollRule(rule.id)
       toast({
-        title: "Rule deactivated",
-        description: `${rule.name} is now inactive.`,
+        title: "Regla desactivada",
+        description: `${rule.name} está inactiva.`,
       })
       await loadRules({ silent: true })
       if (editor?.mode === "edit" && editor.ruleId === rule.id) {
@@ -472,8 +485,11 @@ export function SettingsPayrollRulesSection() {
       }
     } catch (cause) {
       toast({
-        title: "Unable to deactivate rule",
-        description: messageOf(cause, "Failed to deactivate the payroll rule."),
+        title: "No se pudo desactivar la regla",
+        description: messageOf(
+          cause,
+          "No pudimos desactivar la regla de nómina. Vuelve a intentar.",
+        ),
         variant: "destructive",
       })
     } finally {
@@ -485,11 +501,11 @@ export function SettingsPayrollRulesSection() {
     const grossSalary = tryDecimalInput(simulatorForm.grossSalary)
 
     if (!Number.isFinite(grossSalary) || grossSalary <= 0) {
-      setSimulationError("Gross salary must be greater than zero.")
+      setSimulationError("El salario bruto debe ser mayor que cero.")
       return
     }
     if (!simulatorForm.periodDate) {
-      setSimulationError("Period date is required.")
+      setSimulationError("Elige la fecha del período.")
       return
     }
 
@@ -503,7 +519,12 @@ export function SettingsPayrollRulesSection() {
       setSimulation(result)
     } catch (cause) {
       setSimulation(null)
-      setSimulationError(messageOf(cause, "Failed to calculate the net salary."))
+      setSimulationError(
+        messageOf(
+          cause,
+          "No pudimos calcular el salario neto. Revisa los datos y vuelve a intentar.",
+        ),
+      )
     } finally {
       setSimulating(false)
     }
@@ -513,8 +534,8 @@ export function SettingsPayrollRulesSection() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Payroll Rules</CardTitle>
-          <CardDescription>Loading payroll history and simulator.</CardDescription>
+          <CardTitle>Reglas de nómina</CardTitle>
+          <CardDescription>Cargando historial y calculadora de nómina.</CardDescription>
         </CardHeader>
       </Card>
     )
@@ -524,17 +545,17 @@ export function SettingsPayrollRulesSection() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
-          <h3 className="text-xl font-semibold tracking-tight">Payroll Rules</h3>
+          <h3 className="text-xl font-semibold tracking-tight">Reglas de nómina</h3>
           <p className="text-sm text-muted-foreground">
-            Manage versioned CCSS and income tax rules, and simulate Costa Rica net salary by period
-            date.
+            Administra versiones de CCSS e impuesto sobre la renta y calcula el salario neto para
+            una fecha en Costa Rica.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
+          <AccessibleField className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
             <Label htmlFor="payroll-active-date" className="text-xs text-muted-foreground">
-              Active on
+              Vigentes al
             </Label>
             <Input
               id="payroll-active-date"
@@ -543,24 +564,24 @@ export function SettingsPayrollRulesSection() {
               onChange={(event) => setActiveDate(event.target.value)}
               className="h-8 w-[160px] border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
             />
-          </div>
+          </AccessibleField>
           <Button type="button" variant="outline" onClick={() => void loadRules({ silent: true })}>
             <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-            Refresh
+            Actualizar
           </Button>
         </div>
       </div>
 
       {error ? (
         <Alert>
-          <AlertTitle>Payroll unavailable</AlertTitle>
+          <AlertTitle>Nómina no disponible</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
 
       {activeRuleError ? (
         <Alert>
-          <AlertTitle>Active rule lookup failed</AlertTitle>
+          <AlertTitle>No pudimos consultar las reglas vigentes</AlertTitle>
           <AlertDescription>{activeRuleError}</AlertDescription>
         </Alert>
       ) : null}
@@ -568,24 +589,24 @@ export function SettingsPayrollRulesSection() {
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="border-cyan-500/20 bg-cyan-500/5">
           <CardHeader className="pb-3">
-            <CardDescription>CCSS active on {activeDate}</CardDescription>
+            <CardDescription>CCSS vigente al {activeDate}</CardDescription>
             <CardTitle className="text-lg">
-              {activeCcssRule?.name ?? "No active CCSS rule"}
+              {activeCcssRule?.name ?? "No hay una regla de CCSS vigente"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Employee rate</span>
+              <span className="text-muted-foreground">Tasa del trabajador</span>
               <span className="font-medium">
                 {activeCcssRule?.ccssDetail
                   ? formatPayrollRate(activeCcssRule.ccssDetail.employeeRate)
-                  : "Unavailable"}
+                  : "No disponible"}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Window</span>
+              <span className="text-muted-foreground">Vigencia</span>
               <span className="font-medium">
-                {activeCcssRule ? formatPayrollRuleWindow(activeCcssRule) : "No match"}
+                {activeCcssRule ? formatPayrollRuleWindow(activeCcssRule) : "Sin coincidencia"}
               </span>
             </div>
           </CardContent>
@@ -593,24 +614,24 @@ export function SettingsPayrollRulesSection() {
 
         <Card className="border-emerald-500/20 bg-emerald-500/5">
           <CardHeader className="pb-3">
-            <CardDescription>Income tax active on {activeDate}</CardDescription>
+            <CardDescription>Renta vigente al {activeDate}</CardDescription>
             <CardTitle className="text-lg">
-              {activeIncomeTaxRule?.name ?? "No active tax rule"}
+              {activeIncomeTaxRule?.name ?? "No hay una regla de renta vigente"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Brackets</span>
+              <span className="text-muted-foreground">Tramos</span>
               <span className="font-medium">
                 {activeIncomeTaxRule?.incomeTaxBrackets.length ?? 0}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Top rate</span>
+              <span className="text-muted-foreground">Tasa máxima</span>
               <span className="font-medium">
                 {activeIncomeTaxRule
                   ? formatPayrollRate(getPayrollTopTaxRate(activeIncomeTaxRule.incomeTaxBrackets))
-                  : "Unavailable"}
+                  : "No disponible"}
               </span>
             </div>
           </CardContent>
@@ -618,16 +639,16 @@ export function SettingsPayrollRulesSection() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardDescription>Versioned coverage</CardDescription>
-            <CardTitle className="text-lg">{totalRuleVersions} total rule versions</CardTitle>
+            <CardDescription>Historial de versiones</CardDescription>
+            <CardTitle className="text-lg">{totalRuleVersions} versiones de reglas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">CCSS versions</span>
+              <span className="text-muted-foreground">Versiones de CCSS</span>
               <span className="font-medium">{ccssRules.length}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Income tax versions</span>
+              <span className="text-muted-foreground">Versiones de renta</span>
               <span className="font-medium">{incomeTaxRules.length}</span>
             </div>
           </CardContent>
@@ -639,22 +660,23 @@ export function SettingsPayrollRulesSection() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div>
-                <CardTitle>CCSS Worker History</CardTitle>
+                <CardTitle>Historial de aportes a la CCSS</CardTitle>
                 <CardDescription>
-                  Versioned worker contribution rates used to calculate payroll deductions.
+                  Versiones de las tasas del trabajador utilizadas para calcular deducciones de
+                  nómina.
                 </CardDescription>
               </div>
               <Button type="button" onClick={() => openCreateEditor("CCSS_WORKER")}>
                 <Plus className="mr-2 h-4 w-4" />
-                New Version
+                Nueva versión
               </Button>
             </CardHeader>
             <CardContent>
               {ccssRules.length === 0 ? (
                 <Alert>
-                  <AlertTitle>No CCSS rules</AlertTitle>
+                  <AlertTitle>No hay reglas de CCSS</AlertTitle>
                   <AlertDescription>
-                    Create the first worker contribution rule version.
+                    Crea la primera versión del aporte del trabajador.
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -662,11 +684,11 @@ export function SettingsPayrollRulesSection() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Rate</TableHead>
-                        <TableHead>Effective Window</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Tasa</TableHead>
+                        <TableHead>Período de vigencia</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -681,23 +703,23 @@ export function SettingsPayrollRulesSection() {
                               <div className="space-y-1">
                                 <p className="font-medium">{rule.name}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  Updated {formatTimestamp(rule.updatedAt || rule.createdAt)}
+                                  Actualizado {formatTimestamp(rule.updatedAt || rule.createdAt)}
                                 </p>
                               </div>
                             </TableCell>
                             <TableCell>
                               {rule.ccssDetail
                                 ? formatPayrollRate(rule.ccssDetail.employeeRate)
-                                : "Unavailable"}
+                                : "No disponible"}
                             </TableCell>
                             <TableCell>{formatPayrollRuleWindow(rule)}</TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-2">
                                 <Badge variant={rule.isActive ? "secondary" : "outline"}>
-                                  {rule.isActive ? "Active" : "Inactive"}
+                                  {rule.isActive ? "Activo" : "Inactivo"}
                                 </Badge>
                                 {isSelectedDateRule ? (
-                                  <Badge variant="outline">Selected date</Badge>
+                                  <Badge variant="outline">Fecha seleccionada</Badge>
                                 ) : null}
                               </div>
                             </TableCell>
@@ -735,22 +757,22 @@ export function SettingsPayrollRulesSection() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div>
-                <CardTitle>Income Tax History</CardTitle>
+                <CardTitle>Historial de impuesto sobre la renta</CardTitle>
                 <CardDescription>
-                  Progressive salary tax brackets with explicit versioning and validity windows.
+                  Tramos progresivos del salario con versiones y períodos de vigencia.
                 </CardDescription>
               </div>
               <Button type="button" onClick={() => openCreateEditor("INCOME_TAX")}>
                 <Plus className="mr-2 h-4 w-4" />
-                New Version
+                Nueva versión
               </Button>
             </CardHeader>
             <CardContent>
               {incomeTaxRules.length === 0 ? (
                 <Alert>
-                  <AlertTitle>No income tax rules</AlertTitle>
+                  <AlertTitle>No hay reglas de renta</AlertTitle>
                   <AlertDescription>
-                    Create the first progressive tax rule version.
+                    Crea la primera versión de los tramos de renta.
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -758,12 +780,12 @@ export function SettingsPayrollRulesSection() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Brackets</TableHead>
-                        <TableHead>Top Rate</TableHead>
-                        <TableHead>Effective Window</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Tramos</TableHead>
+                        <TableHead>Tasa máxima</TableHead>
+                        <TableHead>Período de vigencia</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -778,7 +800,7 @@ export function SettingsPayrollRulesSection() {
                               <div className="space-y-1">
                                 <p className="font-medium">{rule.name}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  Updated {formatTimestamp(rule.updatedAt || rule.createdAt)}
+                                  Actualizado {formatTimestamp(rule.updatedAt || rule.createdAt)}
                                 </p>
                               </div>
                             </TableCell>
@@ -790,10 +812,10 @@ export function SettingsPayrollRulesSection() {
                             <TableCell>
                               <div className="flex flex-wrap gap-2">
                                 <Badge variant={rule.isActive ? "secondary" : "outline"}>
-                                  {rule.isActive ? "Active" : "Inactive"}
+                                  {rule.isActive ? "Activo" : "Inactivo"}
                                 </Badge>
                                 {isSelectedDateRule ? (
-                                  <Badge variant="outline">Selected date</Badge>
+                                  <Badge variant="outline">Fecha seleccionada</Badge>
                                 ) : null}
                               </div>
                             </TableCell>
@@ -835,46 +857,46 @@ export function SettingsPayrollRulesSection() {
                 {editor
                   ? editor.kind === "CCSS_WORKER"
                     ? editor.mode === "edit"
-                      ? "Edit CCSS Rule"
-                      : "New CCSS Rule"
+                      ? "Editar regla de CCSS"
+                      : "Nueva regla de CCSS"
                     : editor.mode === "edit"
-                      ? "Edit Income Tax Rule"
-                      : "New Income Tax Rule"
-                  : "Payroll Rule Editor"}
+                      ? "Editar regla de renta"
+                      : "Nueva regla de renta"
+                  : "Editar regla de nómina"}
               </CardTitle>
               <CardDescription>
                 {editor
                   ? editor.kind === "CCSS_WORKER"
-                    ? "Use this form to maintain CCSS worker rate versions."
-                    : "Use this form to maintain progressive salary tax brackets."
-                  : "Choose a rule from the history table or create a new version."}
+                    ? "Administra las versiones de la tasa del trabajador para la CCSS."
+                    : "Administra los tramos progresivos del impuesto sobre la renta."
+                  : "Elige una regla del historial o crea una nueva versión."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {!editor ? (
                 <Alert>
-                  <AlertTitle>No rule selected</AlertTitle>
+                  <AlertTitle>No hay una regla seleccionada</AlertTitle>
                   <AlertDescription>
-                    Pick a version from the history or create a new one to start editing.
+                    Elige una versión del historial o crea una para comenzar.
                   </AlertDescription>
                 </Alert>
               ) : editor.kind === "CCSS_WORKER" ? (
                 <>
-                  <div className="space-y-2">
-                    <Label htmlFor="ccss-rule-name">Rule name</Label>
+                  <AccessibleField className="space-y-2">
+                    <Label htmlFor="ccss-rule-name">Nombre de la regla</Label>
                     <Input
                       id="ccss-rule-name"
                       value={ccssForm.name}
                       onChange={(event) =>
                         setCcssForm((current) => ({ ...current, name: event.target.value }))
                       }
-                      placeholder="CCSS Worker 2027"
+                      placeholder="Aporte CCSS 2027"
                     />
-                  </div>
+                  </AccessibleField>
 
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="ccss-effective-from">Effective from</Label>
+                    <AccessibleField className="space-y-2">
+                      <Label htmlFor="ccss-effective-from">Vigente desde</Label>
                       <Input
                         id="ccss-effective-from"
                         type="date"
@@ -886,9 +908,9 @@ export function SettingsPayrollRulesSection() {
                           }))
                         }
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ccss-effective-to">Effective to</Label>
+                    </AccessibleField>
+                    <AccessibleField className="space-y-2">
+                      <Label htmlFor="ccss-effective-to">Vigente hasta</Label>
                       <Input
                         id="ccss-effective-to"
                         type="date"
@@ -900,12 +922,12 @@ export function SettingsPayrollRulesSection() {
                           }))
                         }
                       />
-                    </div>
+                    </AccessibleField>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="ccss-employee-rate">Employee rate</Label>
+                    <AccessibleField className="space-y-2">
+                      <Label htmlFor="ccss-employee-rate">Tasa del trabajador</Label>
                       <Input
                         id="ccss-employee-rate"
                         type="number"
@@ -921,9 +943,9 @@ export function SettingsPayrollRulesSection() {
                         }
                         placeholder="0.1083"
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ccss-employer-rate">Employer rate</Label>
+                    </AccessibleField>
+                    <AccessibleField className="space-y-2">
+                      <Label htmlFor="ccss-employer-rate">Tasa patronal</Label>
                       <Input
                         id="ccss-employer-rate"
                         type="number"
@@ -937,13 +959,13 @@ export function SettingsPayrollRulesSection() {
                             employerRate: event.target.value,
                           }))
                         }
-                        placeholder="Optional"
+                        placeholder="Opcional"
                       />
-                    </div>
+                    </AccessibleField>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="ccss-base-type">Base type</Label>
+                  <AccessibleField className="space-y-2">
+                    <Label htmlFor="ccss-base-type">Base de cálculo</Label>
                     <Input
                       id="ccss-base-type"
                       value={ccssForm.baseType}
@@ -954,16 +976,18 @@ export function SettingsPayrollRulesSection() {
                         }))
                       }
                     />
-                  </div>
+                  </AccessibleField>
 
                   <div className="flex items-center justify-between rounded-lg border px-3 py-2">
                     <div>
-                      <p className="font-medium">Active version</p>
+                      <p className="font-medium">Versión activa</p>
                       <p className="text-sm text-muted-foreground">
-                        Inactive versions stay visible in historical reports and settings.
+                        Las versiones inactivas permanecen en los reportes históricos y en los
+                        ajustes.
                       </p>
                     </div>
                     <Switch
+                      aria-label="Versión CCSS activa"
                       checked={ccssForm.isActive}
                       onCheckedChange={(checked) =>
                         setCcssForm((current) => ({ ...current, isActive: checked }))
@@ -971,38 +995,42 @@ export function SettingsPayrollRulesSection() {
                     />
                   </div>
 
-                  {editorError ? <p className="text-sm text-destructive">{editorError}</p> : null}
+                  {editorError ? (
+                    <AccessibleFieldError className="text-sm text-destructive">
+                      {editorError}
+                    </AccessibleFieldError>
+                  ) : null}
 
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={resetEditor}>
-                      Cancel
+                      Cancelar
                     </Button>
                     <Button
                       type="button"
                       onClick={() => void handleSaveCcssRule()}
                       disabled={savingEditor}
                     >
-                      {editor.mode === "edit" ? "Save Rule" : "Create Rule"}
+                      {editor.mode === "edit" ? "Guardar regla" : "Crear regla"}
                     </Button>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="space-y-2">
-                    <Label htmlFor="income-tax-rule-name">Rule name</Label>
+                  <AccessibleField className="space-y-2">
+                    <Label htmlFor="income-tax-rule-name">Nombre de la regla</Label>
                     <Input
                       id="income-tax-rule-name"
                       value={incomeTaxForm.name}
                       onChange={(event) =>
                         setIncomeTaxForm((current) => ({ ...current, name: event.target.value }))
                       }
-                      placeholder="Income Tax 2027"
+                      placeholder="Renta 2027"
                     />
-                  </div>
+                  </AccessibleField>
 
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="income-tax-effective-from">Effective from</Label>
+                    <AccessibleField className="space-y-2">
+                      <Label htmlFor="income-tax-effective-from">Vigente desde</Label>
                       <Input
                         id="income-tax-effective-from"
                         type="date"
@@ -1014,9 +1042,9 @@ export function SettingsPayrollRulesSection() {
                           }))
                         }
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="income-tax-effective-to">Effective to</Label>
+                    </AccessibleField>
+                    <AccessibleField className="space-y-2">
+                      <Label htmlFor="income-tax-effective-to">Vigente hasta</Label>
                       <Input
                         id="income-tax-effective-to"
                         type="date"
@@ -1028,17 +1056,18 @@ export function SettingsPayrollRulesSection() {
                           }))
                         }
                       />
-                    </div>
+                    </AccessibleField>
                   </div>
 
                   <div className="flex items-center justify-between rounded-lg border px-3 py-2">
                     <div>
-                      <p className="font-medium">Active version</p>
+                      <p className="font-medium">Versión activa</p>
                       <p className="text-sm text-muted-foreground">
-                        Deactivated versions remain available for historical lookups.
+                        Las versiones desactivadas se conservan para las consultas históricas.
                       </p>
                     </div>
                     <Switch
+                      aria-label="Versión de renta activa"
                       checked={incomeTaxForm.isActive}
                       onCheckedChange={(checked) =>
                         setIncomeTaxForm((current) => ({ ...current, isActive: checked }))
@@ -1047,10 +1076,13 @@ export function SettingsPayrollRulesSection() {
                   </div>
 
                   <div className="rounded-lg border bg-muted/10 p-3 text-sm text-muted-foreground">
-                    Brackets use a contiguous lower-inclusive, upper-exclusive convention:{" "}
-                    <span className="font-medium text-foreground">[amount_from, amount_to)</span>.
-                    Leave the last <span className="font-medium text-foreground">amount to</span>{" "}
-                    empty for the open-ended bracket.
+                    Cada tramo incluye el importe inicial y excluye el importe final.{" "}
+                    <span className="font-medium text-foreground">
+                      El límite inicial está incluido y el final no.
+                    </span>
+                    Deja el último{" "}
+                    <span className="font-medium text-foreground">límite superior</span> vacío para
+                    indicar un tramo sin límite.
                   </div>
 
                   <div className="space-y-3">
@@ -1058,9 +1090,9 @@ export function SettingsPayrollRulesSection() {
                       <div key={bracket.key} className="rounded-xl border p-3">
                         <div className="mb-3 flex items-center justify-between">
                           <div>
-                            <p className="font-medium">Bracket {index + 1}</p>
+                            <p className="font-medium">Tramo {index + 1}</p>
                             <p className="text-xs text-muted-foreground">
-                              The UI keeps range order sequential automatically.
+                              Los tramos se ordenan automáticamente.
                             </p>
                           </div>
                           <Button
@@ -1075,8 +1107,8 @@ export function SettingsPayrollRulesSection() {
                         </div>
 
                         <div className="grid gap-3 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label htmlFor={`bracket-from-${bracket.key}`}>Amount from</Label>
+                          <AccessibleField className="space-y-2">
+                            <Label htmlFor={`bracket-from-${bracket.key}`}>Importe desde</Label>
                             <Input
                               id={`bracket-from-${bracket.key}`}
                               type="number"
@@ -1094,9 +1126,9 @@ export function SettingsPayrollRulesSection() {
                                 }))
                               }
                             />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`bracket-to-${bracket.key}`}>Amount to</Label>
+                          </AccessibleField>
+                          <AccessibleField className="space-y-2">
+                            <Label htmlFor={`bracket-to-${bracket.key}`}>Importe hasta</Label>
                             <Input
                               id={`bracket-to-${bracket.key}`}
                               type="number"
@@ -1114,15 +1146,17 @@ export function SettingsPayrollRulesSection() {
                                 }))
                               }
                               placeholder={
-                                index === incomeTaxForm.brackets.length - 1 ? "Open ended" : ""
+                                index === incomeTaxForm.brackets.length - 1
+                                  ? "Sin límite superior"
+                                  : ""
                               }
                             />
-                          </div>
+                          </AccessibleField>
                         </div>
 
                         <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-                          <div className="space-y-2">
-                            <Label htmlFor={`bracket-rate-${bracket.key}`}>Tax rate</Label>
+                          <AccessibleField className="space-y-2">
+                            <Label htmlFor={`bracket-rate-${bracket.key}`}>Tasa de renta</Label>
                             <Input
                               id={`bracket-rate-${bracket.key}`}
                               type="number"
@@ -1142,16 +1176,17 @@ export function SettingsPayrollRulesSection() {
                               }
                               disabled={bracket.isExempt}
                             />
-                          </div>
+                          </AccessibleField>
                           <div className="flex items-end">
                             <div className="flex items-center gap-3 rounded-lg border px-3 py-2">
                               <div>
-                                <p className="font-medium">Exempt</p>
+                                <p className="font-medium">Exento</p>
                                 <p className="text-xs text-muted-foreground">
-                                  For the tax-free range.
+                                  Para el tramo exento.
                                 </p>
                               </div>
                               <Switch
+                                aria-label={"Tramo exento " + (index + 1)}
                                 checked={bracket.isExempt}
                                 onCheckedChange={(checked) =>
                                   setIncomeTaxForm((current) => ({
@@ -1177,21 +1212,25 @@ export function SettingsPayrollRulesSection() {
 
                   <Button type="button" variant="outline" onClick={handleAddBracket}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Add Bracket
+                    Añadir tramo
                   </Button>
 
-                  {editorError ? <p className="text-sm text-destructive">{editorError}</p> : null}
+                  {editorError ? (
+                    <AccessibleFieldError className="text-sm text-destructive">
+                      {editorError}
+                    </AccessibleFieldError>
+                  ) : null}
 
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={resetEditor}>
-                      Cancel
+                      Cancelar
                     </Button>
                     <Button
                       type="button"
                       onClick={() => void handleSaveIncomeTaxRule()}
                       disabled={savingEditor}
                     >
-                      {editor.mode === "edit" ? "Save Rule" : "Create Rule"}
+                      {editor.mode === "edit" ? "Guardar regla" : "Crear regla"}
                     </Button>
                   </div>
                 </>
@@ -1201,16 +1240,16 @@ export function SettingsPayrollRulesSection() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Net Salary Simulator</CardTitle>
+              <CardTitle>Calculadora de salario neto</CardTitle>
               <CardDescription>
-                Resolve the active rules for a date and preview CCSS, gross-salary tax base, income
-                tax, and net salary.
+                Consulta las reglas vigentes para una fecha y revisa CCSS, impuesto sobre la renta y
+                salario neto.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="payroll-simulator-gross">Gross salary (CRC)</Label>
+                <AccessibleField className="space-y-2">
+                  <Label htmlFor="payroll-simulator-gross">Salario bruto (CRC)</Label>
                   <Input
                     id="payroll-simulator-gross"
                     type="number"
@@ -1224,9 +1263,9 @@ export function SettingsPayrollRulesSection() {
                       }))
                     }
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="payroll-simulator-date">Period date</Label>
+                </AccessibleField>
+                <AccessibleField className="space-y-2">
+                  <Label htmlFor="payroll-simulator-date">Fecha del período</Label>
                   <Input
                     id="payroll-simulator-date"
                     type="date"
@@ -1238,24 +1277,25 @@ export function SettingsPayrollRulesSection() {
                       }))
                     }
                   />
-                </div>
+                </AccessibleField>
               </div>
 
               <Button type="button" onClick={() => void handleSimulate()} disabled={simulating}>
                 <Calculator className="mr-2 h-4 w-4" />
-                Calculate Net Salary
+                Calcular salario neto
               </Button>
 
               {simulationError ? (
-                <p className="text-sm text-destructive">{simulationError}</p>
+                <AccessibleFieldError className="text-sm text-destructive">
+                  {simulationError}
+                </AccessibleFieldError>
               ) : null}
 
               {!simulation ? (
                 <Alert>
-                  <AlertTitle>No simulation yet</AlertTitle>
+                  <AlertTitle>Todavía no hay un cálculo</AlertTitle>
                   <AlertDescription>
-                    Run a calculation to preview the net salary breakdown and the rule versions
-                    used.
+                    Calcula el salario neto para ver el desglose y las reglas utilizadas.
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -1263,7 +1303,7 @@ export function SettingsPayrollRulesSection() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-xl border p-3">
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                        Net salary
+                        Salario neto
                       </p>
                       <p className="mt-2 text-xl font-semibold">
                         {formatCurrency(simulation.netSalary, "CRC")}
@@ -1271,7 +1311,7 @@ export function SettingsPayrollRulesSection() {
                     </div>
                     <div className="rounded-xl border p-3">
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                        Income tax
+                        Impuesto sobre la renta
                       </p>
                       <p className="mt-2 text-xl font-semibold">
                         {formatCurrency(simulation.incomeTaxAmount, "CRC")}
@@ -1281,51 +1321,51 @@ export function SettingsPayrollRulesSection() {
 
                   <div className="space-y-2 rounded-xl border p-3 text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Gross salary</span>
+                      <span className="text-muted-foreground">Salario bruto</span>
                       <span className="font-medium">
                         {formatCurrency(simulation.grossSalary, "CRC")}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">CCSS worker rate</span>
+                      <span className="text-muted-foreground">Tasa del trabajador · CCSS</span>
                       <span className="font-medium">
                         {formatPayrollRate(simulation.ccssWorkerRate)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">CCSS worker amount</span>
+                      <span className="text-muted-foreground">Aporte del trabajador · CCSS</span>
                       <span className="font-medium">
                         {formatCurrency(simulation.ccssWorkerAmount, "CRC")}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Income tax base (gross salary)</span>
+                      <span className="text-muted-foreground">Base de renta (salario bruto)</span>
                       <span className="font-medium">
                         {formatCurrency(simulation.taxableBase, "CRC")}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">CCSS rule set id</span>
+                      <span className="text-muted-foreground">Versión de la regla de CCSS</span>
                       <span className="font-medium">#{simulation.ccssRuleSetId}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Income tax rule set id</span>
+                      <span className="text-muted-foreground">Versión de la regla de renta</span>
                       <span className="font-medium">#{simulation.incomeTaxRuleSetId}</span>
                     </div>
                   </div>
 
                   <div className="rounded-xl border">
                     <div className="border-b px-3 py-2">
-                      <p className="text-sm font-medium">Tax breakdown</p>
+                      <p className="text-sm font-medium">Desglose de renta</p>
                     </div>
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Bracket</TableHead>
-                            <TableHead>Taxable amount</TableHead>
-                            <TableHead>Rate</TableHead>
-                            <TableHead className="text-right">Tax amount</TableHead>
+                            <TableHead>Tramo</TableHead>
+                            <TableHead>Importe gravable</TableHead>
+                            <TableHead>Tasa</TableHead>
+                            <TableHead className="text-right">Importe del impuesto</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1350,9 +1390,9 @@ export function SettingsPayrollRulesSection() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Rule Highlights</CardTitle>
+              <CardTitle>Reglas utilizadas</CardTitle>
               <CardDescription>
-                Quick context for the versions selected by the current date lookup.
+                Referencia de las versiones que corresponden a la fecha consultada.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
@@ -1370,7 +1410,7 @@ export function SettingsPayrollRulesSection() {
                   </div>
                 ) : (
                   <p className="text-muted-foreground">
-                    No active CCSS rule for the selected date.
+                    No hay una regla de CCSS vigente para esta fecha.
                   </p>
                 )}
               </div>
@@ -1378,7 +1418,7 @@ export function SettingsPayrollRulesSection() {
               <div className="rounded-xl border p-3">
                 <div className="mb-2 flex items-center gap-2">
                   <Landmark className="h-4 w-4 text-emerald-300" />
-                  <p className="font-medium">Income Tax</p>
+                  <p className="font-medium">Impuesto sobre la renta</p>
                 </div>
                 {activeIncomeTaxRule ? (
                   <div className="space-y-3">
@@ -1390,13 +1430,13 @@ export function SettingsPayrollRulesSection() {
                           className="flex items-center justify-between rounded-lg border px-3 py-2"
                         >
                           <div>
-                            <p className="font-medium">Bracket {bracket.rangeOrder}</p>
+                            <p className="font-medium">Tramo {bracket.rangeOrder}</p>
                             <p className="text-xs text-muted-foreground">
                               {formatIncomeTaxBracketRange(bracket)}
                             </p>
                           </div>
                           <Badge variant="outline">
-                            {bracket.isExempt ? "Exempt" : formatPayrollRate(bracket.taxRate)}
+                            {bracket.isExempt ? "Exento" : formatPayrollRate(bracket.taxRate)}
                           </Badge>
                         </div>
                       ))}
@@ -1404,7 +1444,7 @@ export function SettingsPayrollRulesSection() {
                   </div>
                 ) : (
                   <p className="text-muted-foreground">
-                    No active income tax rule for the selected date.
+                    No hay una regla de renta vigente para esta fecha.
                   </p>
                 )}
               </div>

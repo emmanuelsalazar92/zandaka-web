@@ -14,18 +14,18 @@ import {
 } from "@/components/ui/select"
 
 const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
 ]
 
 type BudgetMonthPickerProps = {
@@ -40,7 +40,7 @@ type BudgetMonthPickerProps = {
 export function BudgetMonthPicker({
   value,
   onChange,
-  emptyLabel = "Select month",
+  emptyLabel = "Elige el mes",
   allowClear = false,
   triggerId,
   triggerClassName,
@@ -91,7 +91,7 @@ export function BudgetMonthPicker({
       <PopoverContent className="w-[280px] p-3" align="start">
         <div className="space-y-3">
           <div className="space-y-1">
-            <p className="text-sm font-medium">Year</p>
+            <p className="text-sm font-medium">Año</p>
             <Select
               value={year || undefined}
               onValueChange={(nextYear) => {
@@ -99,8 +99,8 @@ export function BudgetMonthPicker({
                 applySelection(nextYear, month)
               }}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Select year" />
+              <SelectTrigger aria-label="Año del presupuesto">
+                <SelectValue placeholder="Elige el año" />
               </SelectTrigger>
               <SelectContent>
                 {years.map((option) => (
@@ -112,7 +112,7 @@ export function BudgetMonthPicker({
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-medium">Month</p>
+            <p className="text-sm font-medium">Mes</p>
             <Select
               value={month || undefined}
               onValueChange={(nextMonth) => {
@@ -120,8 +120,8 @@ export function BudgetMonthPicker({
                 applySelection(year, nextMonth)
               }}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Select month" />
+              <SelectTrigger aria-label="Mes del presupuesto">
+                <SelectValue placeholder="Elige el mes" />
               </SelectTrigger>
               <SelectContent>
                 {MONTH_NAMES.map((name, index) => {
@@ -145,7 +145,7 @@ export function BudgetMonthPicker({
                 onChange("")
               }}
             >
-              Clear month filter
+              Quitar filtro de mes
             </Button>
           ) : null}
         </div>

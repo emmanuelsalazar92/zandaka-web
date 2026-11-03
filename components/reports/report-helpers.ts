@@ -27,7 +27,7 @@ export const formatReportMonth = (value: string) => {
 
 export const formatSnapshotTimestamp = (value: string) => {
   const parsed = sqliteUtcToDate(value)
-  if (!parsed) return "Unavailable"
+  if (!parsed) return "No disponible"
 
   return new Intl.DateTimeFormat(REPORTS_LOCALE, {
     month: "short",

@@ -61,10 +61,10 @@ describe("ReconciliationDenominationTable", () => {
   it("renders denomination rows and updates subtotals and total in real time", () => {
     render(<Harness />)
 
-    fireEvent.change(screen.getByLabelText("Quantity for ₡2000"), {
+    fireEvent.change(screen.getByLabelText("Cantidad de ₡2000"), {
       target: { value: "2" },
     })
-    fireEvent.change(screen.getByLabelText("Quantity for ₡500"), {
+    fireEvent.change(screen.getByLabelText("Cantidad de ₡500"), {
       target: { value: "3" },
     })
 

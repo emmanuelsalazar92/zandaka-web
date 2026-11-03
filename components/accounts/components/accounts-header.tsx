@@ -43,9 +43,9 @@ export function AccountsHeader({
       <AccountFormDialog
         open={isCreateOpen}
         onOpenChange={onCreateOpenChange}
-        title="Create Account"
-        description="Add a new account to track your finances"
-        submitLabel={loading ? "Creating..." : "Create"}
+        title="Crear cuenta"
+        description="Añade una cuenta para organizar tu dinero"
+        submitLabel={loading ? "Creando…" : "Crear"}
         submitDisabled={createDisabled}
         onSubmit={onCreate}
         formData={formData}
@@ -56,9 +56,9 @@ export function AccountsHeader({
         mode="create"
         idPrefix="create-account"
         trigger={
-          <Button data-testid="add-account" aria-label="add-account">
+          <Button data-testid="add-account">
             <Plus className="mr-2 h-4 w-4" />
-            Add Account
+            Añadir cuenta
           </Button>
         }
       />

@@ -3,6 +3,7 @@
 import { Edit2, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react"
 import * as React from "react"
 
+import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -109,7 +110,7 @@ export function SettingsCashDenominationsSection({
       setDenominations(items)
     } catch (cause) {
       setDenominations([])
-      setError(messageOf(cause, "Failed to load cash denominations."))
+      setError(messageOf(cause, "No pudimos cargar las denominaciones. Vuelve a intentar."))
     } finally {
       setLoading(false)
     }
@@ -153,22 +154,22 @@ export function SettingsCashDenominationsSection({
     const currency = form.currency.trim().toUpperCase()
 
     if (!currency) {
-      setFormError("Currency is required.")
+      setFormError("Elige una moneda.")
       return
     }
     if (!Number.isFinite(value) || value <= 0) {
-      setFormError("Value must be greater than zero.")
+      setFormError("El valor debe ser mayor que cero.")
       return
     }
     try {
       assertMoney(value, currency)
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Invalid amount")
+      setFormError(error instanceof Error ? error.message : "Revisa el importe")
       return
     }
 
     if (!Number.isInteger(sortOrder) || sortOrder < 0) {
-      setFormError("Sort order must be a non-negative integer.")
+      setFormError("El orden debe ser un entero igual o mayor que cero.")
       return
     }
 
@@ -188,13 +189,13 @@ export function SettingsCashDenominationsSection({
       if (editingDenominationId !== null) {
         await updateCashDenomination(editingDenominationId, payload)
         toast({
-          title: "Denomination updated",
+          title: "Denominación actualizada",
           description: `Updated ${payload.label || formatCurrency(value, currency)}.`,
         })
       } else {
         await createCashDenomination(payload)
         toast({
-          title: "Denomination created",
+          title: "Denominación creada",
           description: `Added ${payload.label || formatCurrency(value, currency)}.`,
         })
       }
@@ -204,7 +205,12 @@ export function SettingsCashDenominationsSection({
       setFormOpen(false)
       resetForm(currency)
     } catch (cause) {
-      setFormError(messageOf(cause, "Failed to save denomination."))
+      setFormError(
+        messageOf(
+          cause,
+          "No pudimos guardar la denominación. Revisa los datos y vuelve a intentar.",
+        ),
+      )
     } finally {
       setBusy(false)
     }
@@ -215,14 +221,14 @@ export function SettingsCashDenominationsSection({
       setBusy(true)
       await deactivateCashDenomination(denomination.id)
       toast({
-        title: "Denomination deactivated",
-        description: `${denomination.label || formatCurrency(denomination.value, denomination.currency)} is now inactive.`,
+        title: "Denominación desactivada",
+        description: `${denomination.label || formatCurrency(denomination.value, denomination.currency)} está inactiva.`,
       })
       await loadDenominations(selectedCurrency)
     } catch (cause) {
       toast({
-        title: "Deactivation failed",
-        description: messageOf(cause, "Failed to deactivate denomination."),
+        title: "No se completó la desactivación",
+        description: messageOf(cause, "No pudimos desactivar la denominación. Vuelve a intentar."),
         variant: "destructive",
       })
     } finally {
@@ -242,14 +248,14 @@ export function SettingsCashDenominationsSection({
         isActive: true,
       })
       toast({
-        title: "Denomination reactivated",
+        title: "Denominación reactivada",
         description: `${denomination.label || formatCurrency(denomination.value, denomination.currency)} is active again.`,
       })
       await loadDenominations(selectedCurrency)
     } catch (cause) {
       toast({
-        title: "Reactivation failed",
-        description: messageOf(cause, "Failed to reactivate denomination."),
+        title: "No se completó la reactivación",
+        description: messageOf(cause, "No pudimos reactivar la denominación. Vuelve a intentar."),
         variant: "destructive",
       })
     } finally {
@@ -262,17 +268,20 @@ export function SettingsCashDenominationsSection({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <div>
-            <CardTitle>Cash Denominations</CardTitle>
+            <CardTitle>Denominaciones de efectivo</CardTitle>
             <CardDescription>
-              Maintain the denomination catalog used to reconcile CASH accounts by currency.
+              Configura billetes y monedas para conciliar tus cuentas de efectivo.
             </CardDescription>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="min-w-[140px]">
               <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Currency" />
+                <SelectTrigger
+                  className="w-full"
+                  aria-label="Moneda del catálogo de denominaciones"
+                >
+                  <SelectValue placeholder="Moneda" />
                 </SelectTrigger>
                 <SelectContent>
                   {currencies.map((currency) => (
@@ -290,11 +299,11 @@ export function SettingsCashDenominationsSection({
               onClick={() => void loadDenominations(selectedCurrency)}
             >
               <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
+              Actualizar
             </Button>
             <Button type="button" onClick={openCreateForm}>
               <Plus className="mr-2 h-4 w-4" />
-              New
+              Nueva
             </Button>
           </div>
         </CardHeader>
@@ -302,18 +311,18 @@ export function SettingsCashDenominationsSection({
         <CardContent className="space-y-4">
           {error && (
             <Alert>
-              <AlertTitle>Unable to load denominations</AlertTitle>
+              <AlertTitle>No pudimos cargar las denominaciones</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading denominations...</p>
+            <p className="text-sm text-muted-foreground">Cargando denominaciones…</p>
           ) : denominations.length === 0 ? (
             <Alert>
-              <AlertTitle>No denominations configured</AlertTitle>
+              <AlertTitle>No hay denominaciones configuradas</AlertTitle>
               <AlertDescription>
-                Add the denomination catalog for {selectedCurrency} to enable cash counting.
+                Añade las denominaciones de {selectedCurrency} para habilitar el conteo de efectivo.
               </AlertDescription>
             </Alert>
           ) : (
@@ -321,11 +330,11 @@ export function SettingsCashDenominationsSection({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Label</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Order</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Etiqueta</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Orden</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -344,13 +353,13 @@ export function SettingsCashDenominationsSection({
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {denomination.type === "BILL" ? "Bill" : "Coin"}
+                          {denomination.type === "BILL" ? "Billete" : "Moneda"}
                         </Badge>
                       </TableCell>
                       <TableCell>{denomination.sortOrder}</TableCell>
                       <TableCell>
                         <Badge variant={denomination.isActive ? "secondary" : "outline"}>
-                          {denomination.isActive ? "Active" : "Inactive"}
+                          {denomination.isActive ? "Activo" : "Inactivo"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -398,25 +407,24 @@ export function SettingsCashDenominationsSection({
       <Card>
         <CardHeader>
           <CardTitle>
-            {editingDenominationId !== null ? "Edit Denomination" : "New Denomination"}
+            {editingDenominationId !== null ? "Editar denominación" : "Nueva denominación"}
           </CardTitle>
           <CardDescription>
-            Configure value, type, order, and active state without hardcoding denominations in the
-            UI.
+            Configura el valor, tipo, orden y estado de cada denominación.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {!formOpen ? (
             <Alert>
-              <AlertTitle>Form hidden</AlertTitle>
+              <AlertTitle>Formulario oculto</AlertTitle>
               <AlertDescription>
-                Choose a currency and create a denomination, or edit an existing row.
+                Elige una moneda y crea una denominación, o edita una existente.
               </AlertDescription>
             </Alert>
           ) : (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="cash-denomination-currency">Currency</Label>
+              <AccessibleField className="space-y-2">
+                <Label htmlFor="cash-denomination-currency">Moneda</Label>
                 <Input
                   id="cash-denomination-currency"
                   value={form.currency}
@@ -429,11 +437,11 @@ export function SettingsCashDenominationsSection({
                   placeholder="CRC"
                   maxLength={10}
                 />
-              </div>
+              </AccessibleField>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="cash-denomination-value">Value</Label>
+                <AccessibleField className="space-y-2">
+                  <Label htmlFor="cash-denomination-value">Valor</Label>
                   <Input
                     id="cash-denomination-value"
                     type="number"
@@ -448,10 +456,10 @@ export function SettingsCashDenominationsSection({
                     }
                     placeholder="500"
                   />
-                </div>
+                </AccessibleField>
 
-                <div className="space-y-2">
-                  <Label htmlFor="cash-denomination-type">Type</Label>
+                <AccessibleField className="space-y-2">
+                  <Label htmlFor="cash-denomination-type">Tipo</Label>
                   <Select
                     value={form.type}
                     onValueChange={(value) =>
@@ -462,18 +470,18 @@ export function SettingsCashDenominationsSection({
                     }
                   >
                     <SelectTrigger id="cash-denomination-type" className="w-full">
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue placeholder="Elige el tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="BILL">Bill</SelectItem>
-                      <SelectItem value="COIN">Coin</SelectItem>
+                      <SelectItem value="BILL">Billete</SelectItem>
+                      <SelectItem value="COIN">Moneda</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </AccessibleField>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="cash-denomination-label">Label</Label>
+              <AccessibleField className="space-y-2">
+                <Label htmlFor="cash-denomination-label">Etiqueta</Label>
                 <Input
                   id="cash-denomination-label"
                   value={form.label}
@@ -485,11 +493,11 @@ export function SettingsCashDenominationsSection({
                   }
                   placeholder="₡500"
                 />
-              </div>
+              </AccessibleField>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="cash-denomination-order">Sort Order</Label>
+                <AccessibleField className="space-y-2">
+                  <Label htmlFor="cash-denomination-order">Orden</Label>
                   <Input
                     id="cash-denomination-order"
                     type="number"
@@ -503,16 +511,17 @@ export function SettingsCashDenominationsSection({
                       }))
                     }
                   />
-                </div>
+                </AccessibleField>
 
                 <div className="flex items-center justify-between rounded-lg border px-3 py-2">
                   <div>
-                    <p className="font-medium">Active</p>
+                    <p className="font-medium">Activo</p>
                     <p className="text-sm text-muted-foreground">
-                      Inactive denominations remain available in history.
+                      Las denominaciones inactivas se conservan en el historial.
                     </p>
                   </div>
                   <Switch
+                    aria-label="Denominación activa"
                     checked={form.isActive}
                     onCheckedChange={(checked) =>
                       setForm((current) => ({
@@ -524,7 +533,11 @@ export function SettingsCashDenominationsSection({
                 </div>
               </div>
 
-              {formError && <p className="text-sm text-destructive">{formError}</p>}
+              {formError && (
+                <AccessibleFieldError className="text-sm text-destructive">
+                  {formError}
+                </AccessibleFieldError>
+              )}
 
               <div className="flex justify-end gap-2">
                 <Button
@@ -535,10 +548,10 @@ export function SettingsCashDenominationsSection({
                     resetForm(selectedCurrency, nextSortOrder)
                   }}
                 >
-                  Cancel
+                  Cancelar
                 </Button>
                 <Button type="button" onClick={() => void saveDenomination()} disabled={busy}>
-                  {editingDenominationId !== null ? "Save Denomination" : "Create Denomination"}
+                  {editingDenominationId !== null ? "Guardar denominación" : "Crear denominación"}
                 </Button>
               </div>
             </>

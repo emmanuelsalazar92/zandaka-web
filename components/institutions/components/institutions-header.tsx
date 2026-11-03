@@ -25,24 +25,24 @@ export function InstitutionsHeader({
   return (
     <div className="flex items-center justify-between">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Institutions</h2>
-        <p className="text-muted-foreground">Manage your financial institutions</p>
+        <h2 className="text-2xl font-bold tracking-tight">Instituciones</h2>
+        <p className="text-muted-foreground">Administra tus instituciones financieras</p>
       </div>
       <InstitutionFormDialog
         open={isCreateOpen}
         onOpenChange={onCreateOpenChange}
-        title="Create Institution"
-        description="Add a new financial institution to your budget"
-        submitLabel="Create"
+        title="Crear institución"
+        description="Añade una institución financiera para organizar tus cuentas"
+        submitLabel="Crear"
         submitDisabled={createDisabled}
         onSubmit={onCreate}
         formData={formData}
         onFormDataChange={onFormDataChange}
         idPrefix="create-institution"
         trigger={
-          <Button data-testid="add-institution" aria-label="add-institution">
+          <Button data-testid="add-institution">
             <Plus className="mr-2 h-4 w-4" />
-            Add Institution
+            Añadir institución
           </Button>
         }
       />

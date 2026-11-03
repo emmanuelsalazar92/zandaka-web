@@ -1,3 +1,4 @@
+import { formatCurrency } from "@/lib/currency-formatter"
 import { cn } from "@/lib/utils"
 
 interface BalanceBadgeProps {
@@ -14,18 +15,10 @@ interface BalanceBadgeProps {
 export function BalanceBadge({ amount, currency, className, showSign = true }: BalanceBadgeProps) {
   const isPositive = amount >= 0
 
-  const formatCurrency = (amt: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-    }).format(Math.abs(amt))
-  }
-
   return (
     <span className={cn("font-semibold", isPositive ? "text-success" : "text-error", className)}>
       {showSign && amount > 0 ? "+" : ""}
-      {formatCurrency(amount)}
+      {formatCurrency(amount, currency)}
     </span>
   )
 }

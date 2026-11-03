@@ -35,10 +35,10 @@ describe("BudgetSummaryCard", () => {
       />,
     )
 
-    expect(screen.getByText("4. Results Summary")).toBeInTheDocument()
-    expect(screen.getByText("Using payroll rules: CR 2026")).toBeInTheDocument()
-    expect(screen.getByText("Net Salary Preview")).toBeInTheDocument()
-    expect(screen.getByText("Final Budget Income")).toBeInTheDocument()
+    expect(screen.getByText("4. Resumen de resultados")).toBeInTheDocument()
+    expect(screen.getByText("Reglas de nómina utilizadas: CR 2026")).toBeInTheDocument()
+    expect(screen.getByText("Salario neto estimado")).toBeInTheDocument()
+    expect(screen.getByText("Ingreso final del presupuesto")).toBeInTheDocument()
     expect(screen.getByText(matchesText(formatCurrency(1295595, "CRC")))).toBeInTheDocument()
     expect(screen.getByText(matchesText(formatCurrency(1095595, "CRC")))).toBeInTheDocument()
   })

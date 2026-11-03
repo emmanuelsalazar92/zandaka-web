@@ -22,3 +22,17 @@ export function formatIsoDateOnly(date: string) {
   const [, year, month, day] = match
   return `${day}/${month}/${year}`
 }
+
+/** Stored SQLite timestamps are UTC; a calendar date remains a calendar date. */
+export function formatAccountingTimestamp(value: string | null | undefined): string {
+  if (!value) return "No disponible"
+  if (ISO_DATE_ONLY_PATTERN.test(value)) return formatIsoDateOnly(value)
+  const normalized = value.replace(" ", "T")
+  const date = new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(normalized) ? normalized : normalized + "Z")
+  if (Number.isNaN(date.getTime())) return "Fecha no disponible"
+  return new Intl.DateTimeFormat("es-CR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: ACCOUNTING_TIME_ZONE,
+  }).format(date)
+}

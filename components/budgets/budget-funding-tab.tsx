@@ -254,7 +254,9 @@ export function BudgetFundingTab({
       initializeFundingState(nextOptions, nextPlan)
     } catch (fundingError) {
       const message =
-        fundingError instanceof Error ? fundingError.message : "Funding data could not be loaded."
+        fundingError instanceof Error
+          ? fundingError.message
+          : "No pudimos cargar la asignación a sobres. Vuelve a intentar."
       setLoadError(message)
       setFundingOptions(null)
       setFundingPlan(null)
@@ -306,8 +308,8 @@ export function BudgetFundingTab({
   const readiness = React.useMemo(() => {
     if (budget.status === "draft") {
       return {
-        label: "Incomplete funding plan",
-        description: "Finalize this budget before setting up funding.",
+        label: "Asignación incompleta",
+        description: "Finaliza el presupuesto antes de asignarlo a sobres.",
         className:
           "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100",
       }
@@ -315,9 +317,8 @@ export function BudgetFundingTab({
 
     if (budget.status === "funded") {
       return {
-        label: "Already funded",
-        description:
-          "Funding has already been executed. Saved selections are shown in read-only mode.",
+        label: "Ya se asignó a sobres",
+        description: "La asignación ya se ejecutó. Puedes consultar las selecciones guardadas.",
         className:
           "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100",
       }
@@ -325,8 +326,8 @@ export function BudgetFundingTab({
 
     if (!hasSelectableAccounts) {
       return {
-        label: "Incomplete funding plan",
-        description: "No active source account is available for this budget currency.",
+        label: "Asignación incompleta",
+        description: "No hay una cuenta de origen activa en la moneda del presupuesto.",
         className:
           "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100",
       }
@@ -334,8 +335,8 @@ export function BudgetFundingTab({
 
     if (!sourceAccountId) {
       return {
-        label: "Incomplete funding plan",
-        description: "Select a source account to continue.",
+        label: "Asignación incompleta",
+        description: "Elige una cuenta de origen para continuar.",
         className:
           "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100",
       }
@@ -343,8 +344,8 @@ export function BudgetFundingTab({
 
     if (lineCount === 0) {
       return {
-        label: "Incomplete funding plan",
-        description: "This budget does not contain any lines to fund.",
+        label: "Asignación incompleta",
+        description: "Este presupuesto no tiene categorías para asignar.",
         className:
           "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100",
       }
@@ -352,8 +353,8 @@ export function BudgetFundingTab({
 
     if (unassignedCount > 0) {
       return {
-        label: "Incomplete funding plan",
-        description: `${unassignedCount} line${unassignedCount === 1 ? "" : "s"} still need a destination envelope.`,
+        label: "Asignación incompleta",
+        description: `${unassignedCount} categoría${unassignedCount === 1 ? "" : "s"} aún necesitan un sobre de destino.`,
         className:
           "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100",
       }
@@ -361,16 +362,16 @@ export function BudgetFundingTab({
 
     if (hasUnsavedChanges) {
       return {
-        label: "Incomplete funding plan",
-        description: "Save the current funding plan before executing funding.",
+        label: "Asignación incompleta",
+        description: "Guarda la asignación antes de ejecutarla.",
         className:
           "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100",
       }
     }
 
     return {
-      label: "Ready to fund",
-      description: "All lines are assigned and the saved funding plan can be executed.",
+      label: "Listo para asignar",
+      description: "Todas las categorías tienen destino. Puedes ejecutar la asignación guardada.",
       className:
         "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100",
     }
@@ -431,25 +432,27 @@ export function BudgetFundingTab({
       await loadFundingWorkspace()
       setFeedback({
         tone: "success",
-        title: "Funding plan saved",
-        description: "The saved funding plan is ready for execution once you confirm funding.",
+        title: "Asignación guardada",
+        description: "La asignación guardada está lista para ejecutarse cuando la confirmes.",
       })
       toast({
-        title: "Funding plan saved",
-        description: "Selections were saved successfully.",
+        title: "Asignación guardada",
+        description: "Las selecciones se guardaron correctamente.",
       })
     } catch (saveError) {
       const details = saveError instanceof BudgetApiError ? saveError.details : []
       const message =
-        saveError instanceof Error ? saveError.message : "Funding plan could not be saved."
+        saveError instanceof Error
+          ? saveError.message
+          : "No pudimos guardar la asignación. Vuelve a intentar."
       setFeedback({
         tone: "error",
-        title: "Save failed",
+        title: "No se guardaron los cambios",
         description: message,
         details,
       })
       toast({
-        title: "Save failed",
+        title: "No se guardaron los cambios",
         description: message,
         variant: "destructive",
       })
@@ -468,24 +471,27 @@ export function BudgetFundingTab({
       await onRefreshBudget()
       setFeedback({
         tone: "success",
-        title: "Budget funded successfully",
-        description: "Funding executed and this budget is now read-only.",
+        title: "Presupuesto asignado correctamente",
+        description: "La asignación se ejecutó y el presupuesto quedó cerrado.",
       })
       toast({
-        title: "Budget funded",
-        description: "Funding executed successfully.",
+        title: "Presupuesto asignado",
+        description: "La asignación se ejecutó correctamente.",
       })
     } catch (fundError) {
       const details = fundError instanceof BudgetApiError ? fundError.details : []
-      const message = fundError instanceof Error ? fundError.message : "Budget funding failed."
+      const message =
+        fundError instanceof Error
+          ? fundError.message
+          : "No pudimos asignar el presupuesto. Vuelve a intentar."
       setFeedback({
         tone: "error",
-        title: "Funding failed",
+        title: "No se completó la asignación",
         description: message,
         details,
       })
       toast({
-        title: "Funding failed",
+        title: "No se completó la asignación",
         description: message,
         variant: "destructive",
       })
@@ -525,9 +531,9 @@ export function BudgetFundingTab({
       <Card>
         <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-1">
-            <CardTitle>Funding</CardTitle>
+            <CardTitle>Asignación a sobres</CardTitle>
             <CardDescription>
-              Assign this finalized budget to real envelopes before executing funding.
+              Elige los sobres de destino para este presupuesto finalizado.
             </CardDescription>
           </div>
           <BudgetStatusBadge status={budget.status} />
@@ -541,10 +547,10 @@ export function BudgetFundingTab({
               </div>
               <Badge variant="outline" className="w-fit border-current/20 bg-background/50">
                 {budget.status === "funded"
-                  ? "Already funded"
+                  ? "Ya se asignó a sobres"
                   : lineCount > 0 && unassignedCount === 0 && !hasUnsavedChanges && sourceAccountId
-                    ? "Ready to fund"
-                    : "Needs attention"}
+                    ? "Listo para asignar"
+                    : "Requiere revisión"}
               </Badge>
             </div>
           </div>
@@ -554,30 +560,30 @@ export function BudgetFundingTab({
           {loadError ? (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Funding data unavailable</AlertTitle>
+              <AlertTitle>Asignación no disponible</AlertTitle>
               <AlertDescription>
                 <p>{loadError}</p>
                 <Button variant="outline" size="sm" className="mt-2" onClick={loadFundingWorkspace}>
-                  Retry
+                  Volver a intentar
                 </Button>
               </AlertDescription>
             </Alert>
           ) : null}
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <FundingMetric label="Budget Month" value={budget.month} />
-            <FundingMetric label="Currency" value={budget.currency} />
-            <FundingMetric label="Lines" value={String(lineCount)} />
-            <FundingMetric label="Assigned" value={String(assignedCount)} />
-            <FundingMetric label="Unassigned" value={String(unassignedCount)} />
+            <FundingMetric label="Mes del presupuesto" value={budget.month} />
+            <FundingMetric label="Moneda" value={budget.currency} />
+            <FundingMetric label="Categorías" value={String(lineCount)} />
+            <FundingMetric label="Asignadas" value={String(assignedCount)} />
+            <FundingMetric label="Sin asignar" value={String(unassignedCount)} />
           </div>
 
           {budget.status === "draft" ? (
             <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
               <Lock className="h-4 w-4" />
-              <AlertTitle>Funding is locked</AlertTitle>
+              <AlertTitle>La asignación está bloqueada</AlertTitle>
               <AlertDescription>
-                Finalize this budget before setting up source accounts and destination envelopes.
+                Finaliza el presupuesto antes de elegir cuentas de origen y sobres de destino.
               </AlertDescription>
             </Alert>
           ) : null}
@@ -588,38 +594,41 @@ export function BudgetFundingTab({
         <>
           <Card>
             <CardHeader>
-              <CardTitle>Source Account</CardTitle>
+              <CardTitle>Cuenta de origen</CardTitle>
               <CardDescription>
-                Funding uses a single source account that matches the budget currency.
+                La asignación utiliza una cuenta de origen en la moneda del presupuesto.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {isReadOnly ? (
                 <div className="rounded-lg border bg-muted/30 p-4">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Saved source account
+                    Cuenta de origen guardada
                   </p>
                   <p className="mt-1 font-medium">
-                    {fundingPlan?.sourceAccountName ?? "No source account saved"}
+                    {fundingPlan?.sourceAccountName ?? "No hay cuenta de origen guardada"}
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">{budget.currency}</p>
                 </div>
               ) : (
                 <FieldGroup>
                   <Field>
-                    <FieldLabel>Source Account</FieldLabel>
+                    <FieldLabel>Cuenta de origen</FieldLabel>
                     <FieldContent>
                       <Select
                         value={sourceAccountId || undefined}
                         onValueChange={handleSourceAccountChange}
                         disabled={!hasSelectableAccounts}
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger
+                          className="w-full"
+                          aria-label="Cuenta de origen del presupuesto"
+                        >
                           <SelectValue
                             placeholder={
                               hasSelectableAccounts
-                                ? "Select source account"
-                                : "No source accounts available"
+                                ? "Elige una cuenta de origen"
+                                : "No hay cuentas de origen disponibles"
                             }
                           />
                         </SelectTrigger>
@@ -632,7 +641,7 @@ export function BudgetFundingTab({
                         </SelectContent>
                       </Select>
                       <FieldDescription>
-                        Only accounts returned by the backend are available for this budget.
+                        Se muestran las cuentas disponibles en la moneda del presupuesto.
                       </FieldDescription>
                     </FieldContent>
                   </Field>
@@ -642,10 +651,9 @@ export function BudgetFundingTab({
               {!hasSelectableAccounts && canEdit ? (
                 <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
                   <CreditCard className="h-4 w-4" />
-                  <AlertTitle>No valid source accounts</AlertTitle>
+                  <AlertTitle>No hay cuentas de origen válidas</AlertTitle>
                   <AlertDescription>
-                    No active account is currently available for this budget currency. Funding
-                    cannot continue until the backend returns a valid source account.
+                    Activa o crea una cuenta en la moneda del presupuesto para continuar.
                   </AlertDescription>
                 </Alert>
               ) : null}
@@ -654,9 +662,9 @@ export function BudgetFundingTab({
 
           <Card>
             <CardHeader>
-              <CardTitle>Funding Assignments</CardTitle>
+              <CardTitle>Asignación del presupuesto</CardTitle>
               <CardDescription>
-                Map each budget line to a valid destination envelope before funding this budget.
+                Elige un sobre de destino para cada categoría antes de ejecutar la asignación.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 p-0">
@@ -667,9 +675,9 @@ export function BudgetFundingTab({
                       <EmptyMedia variant="icon">
                         <AlertCircle className="h-5 w-5" />
                       </EmptyMedia>
-                      <EmptyTitle>No lines available for funding</EmptyTitle>
+                      <EmptyTitle>No hay categorías para asignar</EmptyTitle>
                       <EmptyDescription>
-                        Planning lines must exist before this budget can be funded.
+                        Añade categorías a la planificación antes de asignar el presupuesto.
                       </EmptyDescription>
                     </EmptyHeader>
                   </Empty>
@@ -680,10 +688,10 @@ export function BudgetFundingTab({
                     <Table className="table-fixed">
                       <TableHeader>
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
-                          <TableHead className="w-[34%] px-6">Category</TableHead>
-                          <TableHead className="w-[16%]">Planned Amount</TableHead>
-                          <TableHead className="w-[34%]">Destination Envelope</TableHead>
-                          <TableHead className="w-[16%] px-6">Status</TableHead>
+                          <TableHead className="w-[34%] px-6">Categoría</TableHead>
+                          <TableHead className="w-[16%]">Importe planificado</TableHead>
+                          <TableHead className="w-[34%]">Sobre de destino</TableHead>
+                          <TableHead className="w-[16%] px-6">Estado</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -711,7 +719,8 @@ export function BudgetFundingTab({
                                 <div className="space-y-1">
                                   <p className="font-medium">{line.categoryName}</p>
                                   <p className="text-xs text-muted-foreground">
-                                    {planningLine?.parentCategoryName ?? "Budget line"}
+                                    {planningLine?.parentCategoryName ??
+                                      "Categoría del presupuesto"}
                                   </p>
                                 </div>
                               </TableCell>
@@ -727,7 +736,7 @@ export function BudgetFundingTab({
                                             savedPlanLine.accountName,
                                             line.categoryName,
                                           )
-                                        : "Not assigned"}
+                                        : "Sin asignar"}
                                     </p>
                                     {savedPlanLine?.accountCurrency ? (
                                       <p className="text-xs text-muted-foreground">
@@ -743,14 +752,17 @@ export function BudgetFundingTab({
                                     }
                                     disabled={!sourceAccountId || availableEnvelopes.length === 0}
                                   >
-                                    <SelectTrigger className="w-full">
+                                    <SelectTrigger
+                                      className="w-full"
+                                      aria-label={"Sobre de destino: " + line.categoryName}
+                                    >
                                       <SelectValue
                                         placeholder={
                                           !sourceAccountId
-                                            ? "Select source account first"
+                                            ? "Elige primero una cuenta de origen"
                                             : availableEnvelopes.length === 0
-                                              ? "No matching envelope"
-                                              : "Select destination envelope"
+                                              ? "No hay un sobre compatible"
+                                              : "Elige un sobre de destino"
                                         }
                                       />
                                     </SelectTrigger>
@@ -777,7 +789,7 @@ export function BudgetFundingTab({
                                       : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200",
                                   )}
                                 >
-                                  {isAssigned ? "Assigned" : "Missing"}
+                                  {isAssigned ? "Asignadas" : "Pendiente"}
                                 </Badge>
                               </TableCell>
                             </TableRow>
@@ -814,7 +826,7 @@ export function BudgetFundingTab({
                             <div>
                               <p className="font-medium">{line.categoryName}</p>
                               <p className="text-sm text-muted-foreground">
-                                {planningLine?.parentCategoryName ?? "Budget line"}
+                                {planningLine?.parentCategoryName ?? "Categoría del presupuesto"}
                               </p>
                             </div>
                             <Badge
@@ -825,13 +837,13 @@ export function BudgetFundingTab({
                                   : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200",
                               )}
                             >
-                              {isAssigned ? "Assigned" : "Missing"}
+                              {isAssigned ? "Asignadas" : "Pendiente"}
                             </Badge>
                           </div>
                           <div className="mt-4 space-y-3">
                             <div>
                               <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                Planned Amount
+                                Importe planificado
                               </p>
                               <p className="mt-1 font-medium">
                                 {formatCurrency(line.amount, budget.currency)}
@@ -839,13 +851,13 @@ export function BudgetFundingTab({
                             </div>
                             <div>
                               <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                Destination Envelope
+                                Sobre de destino
                               </p>
                               {isReadOnly ? (
                                 <p className="mt-1 font-medium">
                                   {savedPlanLine?.isAssigned
                                     ? getEnvelopeLabel(savedPlanLine.accountName, line.categoryName)
-                                    : "Not assigned"}
+                                    : "Sin asignar"}
                                 </p>
                               ) : (
                                 <Select
@@ -855,14 +867,17 @@ export function BudgetFundingTab({
                                   }
                                   disabled={!sourceAccountId || availableEnvelopes.length === 0}
                                 >
-                                  <SelectTrigger className="mt-1 w-full">
+                                  <SelectTrigger
+                                    className="mt-1 w-full"
+                                    aria-label={"Sobre de destino: " + line.categoryName}
+                                  >
                                     <SelectValue
                                       placeholder={
                                         !sourceAccountId
-                                          ? "Select source account first"
+                                          ? "Elige primero una cuenta de origen"
                                           : availableEnvelopes.length === 0
-                                            ? "No matching envelope"
-                                            : "Select destination envelope"
+                                            ? "No hay un sobre compatible"
+                                            : "Elige un sobre de destino"
                                       }
                                     />
                                   </SelectTrigger>
@@ -895,20 +910,19 @@ export function BudgetFundingTab({
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="space-y-1 text-sm text-muted-foreground">
                   <p>
-                    {assignedCount} of {lineCount} lines assigned.
+                    {assignedCount} de {lineCount} categorías asignadas.
                   </p>
                   {!sourceAccountId ? (
-                    <p>Select a source account to unlock destination envelopes.</p>
+                    <p>Elige una cuenta de origen para ver los sobres de destino.</p>
                   ) : null}
                   {unassignedCount > 0 ? (
                     <p>
-                      Save requires a source account and an envelope assignment for every budget
-                      line.
+                      Elige una cuenta de origen y un sobre para cada categoría antes de guardar.
                     </p>
                   ) : hasUnsavedChanges ? (
-                    <p>Save the current funding plan before executing funding.</p>
+                    <p>Guarda la asignación antes de ejecutarla.</p>
                   ) : (
-                    <p>The saved funding plan is ready to execute.</p>
+                    <p>La asignación guardada está lista para ejecutarse.</p>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -918,7 +932,7 @@ export function BudgetFundingTab({
                     ) : (
                       <Save className="mr-2 h-4 w-4" />
                     )}
-                    Save Funding Plan
+                    Guardar asignación
                   </Button>
                   <Button onClick={handleFundBudget} disabled={fundDisabled}>
                     {isFunding ? (
@@ -926,7 +940,7 @@ export function BudgetFundingTab({
                     ) : (
                       <SendHorizontal className="mr-2 h-4 w-4" />
                     )}
-                    Fund Budget
+                    Asignar presupuesto
                   </Button>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { AlertCircle, ArrowDownLeft, ArrowRight, ArrowUpRight, Plus, Upload } fr
 import Link from "next/link"
 import * as React from "react"
 
+import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,6 +20,7 @@ import {
 } from "@/lib/dashboard-api"
 import { consolidatedDashboardBalance } from "@/lib/dashboard-summary"
 import { formatIsoDateOnly, getAccountingDate } from "@/lib/date-only"
+import { exchangeRateInfo } from "@/lib/exchange-rate-info"
 import { cn } from "@/lib/utils"
 
 function SpendingByMonth({
@@ -62,7 +64,7 @@ function SpendingByMonth({
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <CardTitle>En qué se fue tu dinero</CardTitle>
-          <div className="space-y-1">
+          <AccessibleField className="space-y-1">
             <Label htmlFor="dashboard-month" className="text-xs text-muted-foreground">
               Mes de los gastos
             </Label>
@@ -79,16 +81,16 @@ function SpendingByMonth({
                 setMonth(event.target.value)
               }}
             />
-          </div>
+          </AccessibleField>
         </div>
       </CardHeader>
       <CardContent aria-live="polite" aria-busy={pending || loading}>
         {loading || pending ? (
           <Skeleton className="h-40 w-full" />
         ) : error || (month === currentMonth && !dashboard?.monthlyExpensesAvailable) ? (
-          <p role="alert" className="text-sm text-error">
+          <AccessibleFieldError role="alert" className="text-sm text-error">
             No pudimos cargar este período. Elige otro mes para volver a consultar.
-          </p>
+          </AccessibleFieldError>
         ) : values.length === 0 ? (
           <div className="space-y-3 py-6">
             <p className="font-medium">Este mes empieza con una página en blanco.</p>
@@ -149,6 +151,7 @@ export function DashboardContent() {
   const negatives = dashboard?.negativeEnvelopes ?? []
   const inconsistencies = dashboard?.inconsistencies ?? []
   const rate = dashboard?.exchangeRate
+  const rateInfo = exchangeRateInfo(rate ?? null)
   const recent = dashboard?.recentTransactions ?? []
   const refreshSummary = () => {
     setLoading(true)
@@ -223,7 +226,7 @@ export function DashboardContent() {
           <p>
             {rate
               ? "Última cotización disponible: " +
-                rate.fecha +
+                rateInfo.date +
                 ". Compra " +
                 formatCurrency(rate.compra, "CRC") +
                 " · venta " +
@@ -231,7 +234,14 @@ export function DashboardContent() {
                 " por 1 USD."
               : "Cotización no disponible."}
           </p>
-          {rate ? <p>Conversión con tasa de {currency === "CRC" ? "compra" : "venta"}.</p> : null}
+          {rate ? (
+            <p>
+              {rateInfo.ageLabel}. Fuente: {rateInfo.source}.{" "}
+              {rateInfo.usable
+                ? `Conversión con tasa de ${currency === "CRC" ? "compra" : "venta"}.`
+                : "No se utiliza para consolidar."}
+            </p>
+          ) : null}
         </div>
       </section>
 
@@ -342,7 +352,7 @@ export function DashboardContent() {
                           {formatIsoDateOnly(transaction.date)}
                         </p>
                       </div>
-                      <p
+                      <AccessibleFieldError
                         className={cn(
                           "text-sm font-semibold tabular-nums",
                           transaction.amount < 0 && "text-error",
@@ -351,7 +361,7 @@ export function DashboardContent() {
                         {accountCurrency
                           ? formatSignedCurrency(transaction.amount, accountCurrency)
                           : "Varias monedas"}
-                      </p>
+                      </AccessibleFieldError>
                     </Link>
                   )
                 })}

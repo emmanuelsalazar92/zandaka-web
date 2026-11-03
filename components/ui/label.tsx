@@ -3,9 +3,11 @@
 import * as LabelPrimitive from "@radix-ui/react-label"
 import * as React from "react"
 
+import { useFieldLabel } from "@/components/ui/accessible-field"
 import { cn } from "@/lib/utils"
 
 function Label({ className, ...props }: React.ComponentProps<typeof LabelPrimitive.Root>) {
+  const fieldId = useFieldLabel()
   return (
     <LabelPrimitive.Root
       data-slot="label"
@@ -14,6 +16,7 @@ function Label({ className, ...props }: React.ComponentProps<typeof LabelPrimiti
         className,
       )}
       {...props}
+      htmlFor={props.htmlFor ?? fieldId}
     />
   )
 }

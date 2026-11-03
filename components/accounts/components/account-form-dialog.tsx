@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import type { AccountFormData, InstitutionUi } from "@/components/accounts/types/accounts.types"
+import { AccessibleField } from "@/components/ui/accessible-field"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -61,22 +62,22 @@ export function AccountFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent data-testid="account-form" aria-label="account-form">
+      <DialogContent data-testid="account-form">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-institution`}>Institution</Label>
+            <Label htmlFor={`${idPrefix}-institution`}>Institución</Label>
             {isCreateMode ? (
               <>
                 {loading ? (
                   <div className="py-6 text-center text-muted-foreground">
-                    Loading institutions...
+                    Cargando instituciones…
                   </div>
                 ) : null}
-                {error ? <div className="py-6 text-center text-red-500">{error}</div> : null}
+                {error ? <div className="py-6 text-center text-error">{error}</div> : null}
                 {!loading && !error ? (
                   <Select
                     value={formData.institutionId}
@@ -87,9 +88,9 @@ export function AccountFormDialog({
                     <SelectTrigger
                       id={`${idPrefix}-institution`}
                       data-testid="select-institution"
-                      aria-label="select-institution"
+                      aria-label="Institución"
                     >
-                      <SelectValue placeholder="Select institution" />
+                      <SelectValue placeholder="Elige una institución" />
                     </SelectTrigger>
                     <SelectContent>
                       {institutions.map((inst) => (
@@ -105,27 +106,27 @@ export function AccountFormDialog({
               <Input
                 id={`${idPrefix}-institution`}
                 data-testid="select-institution"
-                aria-label="select-institution"
+                aria-label="Institución"
                 value={formData.institutionId}
                 disabled
               />
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-name`}>Account Name</Label>
+          <AccessibleField className="space-y-2">
+            <Label htmlFor={`${idPrefix}-name`}>Nombre de la cuenta</Label>
             <Input
               id={`${idPrefix}-name`}
-              placeholder="e.g., Main Checking"
+              placeholder="Por ejemplo, Cuenta principal"
               data-testid="account-name"
-              aria-label="account-name"
+              aria-label="Nombre de la cuenta"
               value={formData.name}
               onChange={(e) => onFormDataChange({ ...formData, name: e.target.value })}
             />
-          </div>
+          </AccessibleField>
 
           <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-currency`}>Currency (immutable)</Label>
+            <Label htmlFor={`${idPrefix}-currency`}>Moneda (no se puede cambiar)</Label>
             {isCreateMode ? (
               <Select
                 value={formData.currency}
@@ -134,20 +135,20 @@ export function AccountFormDialog({
                 <SelectTrigger
                   id={`${idPrefix}-currency`}
                   data-testid="select-currency"
-                  aria-label="select-currency"
+                  aria-label="Moneda"
                 >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CRC">CRC (Costa Rican Colon)</SelectItem>
-                  <SelectItem value="USD">USD (US Dollar)</SelectItem>
+                  <SelectItem value="CRC">CRC · Colón costarricense</SelectItem>
+                  <SelectItem value="USD">USD · Dólar estadounidense</SelectItem>
                 </SelectContent>
               </Select>
             ) : (
               <Input
                 id={`${idPrefix}-currency`}
                 data-testid="select-currency"
-                aria-label="select-currency"
+                aria-label="Moneda"
                 value={formData.currency}
                 disabled
               />
@@ -156,14 +157,9 @@ export function AccountFormDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            Cancelar
           </Button>
-          <Button
-            onClick={onSubmit}
-            data-testid="submit-create-account"
-            aria-label="submit-create-account"
-            disabled={submitDisabled}
-          >
+          <Button onClick={onSubmit} data-testid="submit-create-account" disabled={submitDisabled}>
             {submitLabel}
           </Button>
         </DialogFooter>

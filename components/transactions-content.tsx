@@ -16,6 +16,7 @@ import * as React from "react"
 
 import { EmptyState } from "@/components/empty-state"
 import { TransactionTimeline, TransactionTimelineSkeleton } from "@/components/transaction-timeline"
+import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -41,6 +42,7 @@ import {
 } from "@/components/ui/select"
 import { getAccountingDate } from "@/lib/date-only"
 import { sumMoney } from "@/lib/money"
+import { readPublicError } from "@/lib/public-error"
 import {
   applyTypeSign,
   normalizeAmountInput,
@@ -166,12 +168,12 @@ export function TransactionsContent() {
           line.account_name ??
           line.accountName ??
           accounts.find((account) => account.id === accountId)?.name ??
-          (accountId ? `Account ${accountId}` : "Unknown account")
+          (accountId ? `Cuenta ${accountId}` : "Cuenta sin identificar")
         const envelopeName =
           line.category_name ??
           line.categoryName ??
           envelopesByAccount[accountId.toString()]?.find((env) => env.id === envelopeId)?.name ??
-          (envelopeId ? `Envelope ${envelopeId}` : "Unknown envelope")
+          (envelopeId ? `Sobre ${envelopeId}` : "Sobre sin identificar")
 
         return {
           accountId,
@@ -209,7 +211,7 @@ export function TransactionsContent() {
         const res = await fetch(`${API_BASE_URL}/accounts`, {
           headers: { Accept: "application/json" },
         })
-        if (!res.ok) throw new Error("Failed to load accounts")
+        if (!res.ok) throw new Error("No pudimos cargar las cuentas. Vuelve a intentar.")
         const data = (await res.json()) as {
           id: number
           name: string
@@ -229,7 +231,8 @@ export function TransactionsContent() {
           setIsCreateOpen(true)
         }
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to load accounts"
+        const message =
+          e instanceof Error ? e.message : "No pudimos cargar las cuentas. Vuelve a intentar."
         setAccountsError(message)
       } finally {
         setAccountsLoading(false)
@@ -251,7 +254,7 @@ export function TransactionsContent() {
           `${API_BASE_URL}/reports/envelope-balances?accountId=${accountId}`,
           { headers: { Accept: "application/json" } },
         )
-        if (!res.ok) throw new Error("Failed to load envelopes")
+        if (!res.ok) throw new Error("No pudimos cargar los sobres. Vuelve a intentar.")
         const data = (await res.json()) as {
           envelopeId: number
           categoryId: number
@@ -266,7 +269,8 @@ export function TransactionsContent() {
           })),
         }))
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to load envelopes"
+        const message =
+          e instanceof Error ? e.message : "No pudimos cargar los sobres. Vuelve a intentar."
         setEnvelopesError((prev) => ({ ...prev, [accountId]: message }))
       } finally {
         setEnvelopesLoading((prev) => ({ ...prev, [accountId]: false }))
@@ -330,13 +334,14 @@ export function TransactionsContent() {
         const res = await fetch(`${API_BASE_URL}/transactions?${params.toString()}`, {
           headers: { Accept: "application/json" },
         })
-        if (!res.ok) throw new Error("Failed to load transactions")
+        if (!res.ok) throw new Error("No pudimos cargar los movimientos. Vuelve a intentar.")
         const data = (await res.json()) as { data: ApiTransaction[]; meta: PaginationMeta }
 
         setTransactionsData(data.data)
         setTransactionsMeta(data.meta)
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to load transactions"
+        const message =
+          e instanceof Error ? e.message : "No pudimos cargar los movimientos. Vuelve a intentar."
         setTransactionsError(message)
       } finally {
         setTransactionsLoading(false)
@@ -435,7 +440,7 @@ export function TransactionsContent() {
       transactionAmount(line.amount, formData.type, lineCurrency(line))
       return null
     } catch {
-      return "Enter a valid non-zero amount using a decimal point and the currency's minor units."
+      return "Introduce un importe distinto de cero, con punto decimal y la precisión de la moneda."
     }
   })
 
@@ -498,8 +503,12 @@ export function TransactionsContent() {
         body: JSON.stringify(payload),
       })
       if (!res.ok) {
-        const message = await res.text()
-        throw new Error(message || "Failed to create transaction")
+        throw new Error(
+          await readPublicError(
+            res,
+            "No pudimos guardar el movimiento. Revisa los datos y vuelve a intentar.",
+          ),
+        )
       }
       const data = (await res.json()) as {
         transaction: ApiTransaction
@@ -521,7 +530,10 @@ export function TransactionsContent() {
       resetCreateForm()
       setIsCreateOpen(false)
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to create transaction"
+      const message =
+        e instanceof Error
+          ? e.message
+          : "No pudimos guardar el movimiento. Revisa los datos y vuelve a intentar."
       setCreateError(message)
     } finally {
       setCreateLoading(false)
@@ -597,8 +609,11 @@ export function TransactionsContent() {
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] sm:max-w-5xl xl:max-w-6xl">
               <DialogHeader>
-                <DialogTitle>Create Transaction</DialogTitle>
-                <DialogDescription>Record a new transaction with ledger lines</DialogDescription>
+                <DialogTitle>Nuevo movimiento</DialogTitle>
+                <DialogDescription>
+                  Registra un ingreso, gasto, transferencia o ajuste. Usa punto decimal y no
+                  incluyas separadores de miles; por ejemplo, 1234.56.
+                </DialogDescription>
               </DialogHeader>
               <div className="max-h-[70vh] space-y-4 overflow-y-auto py-4 pr-2">
                 {createError && (
@@ -608,17 +623,17 @@ export function TransactionsContent() {
                   </Alert>
                 )}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(180px,0.9fr)_minmax(160px,0.7fr)_minmax(0,1.4fr)]">
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
+                  <AccessibleField className="space-y-2">
+                    <Label htmlFor="date">Fecha</Label>
                     <Input
                       id="date"
                       type="date"
                       value={formData.date}
                       onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="type">Type</Label>
+                  </AccessibleField>
+                  <AccessibleField className="space-y-2">
+                    <Label htmlFor="type">Tipo</Label>
                     <Select
                       value={formData.type}
                       onValueChange={(value) =>
@@ -629,31 +644,31 @@ export function TransactionsContent() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="INCOME">Income</SelectItem>
-                        <SelectItem value="EXPENSE">Expense</SelectItem>
-                        <SelectItem value="TRANSFER">Transfer</SelectItem>
-                        <SelectItem value="ADJUSTMENT">Adjustment</SelectItem>
+                        <SelectItem value="INCOME">Ingreso</SelectItem>
+                        <SelectItem value="EXPENSE">Gasto</SelectItem>
+                        <SelectItem value="TRANSFER">Transferencia</SelectItem>
+                        <SelectItem value="ADJUSTMENT">Ajuste</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                  </AccessibleField>
+                  <AccessibleField className="space-y-2">
+                    <Label htmlFor="description">Descripción</Label>
                     <Input
                       id="description"
-                      placeholder="e.g., Grocery purchase"
+                      placeholder="Por ejemplo, Compra de alimentos"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
-                  </div>
+                  </AccessibleField>
                 </div>
 
                 {/* Lines Editor */}
                 <div className="space-y-3 border-t pt-4">
                   <div className="flex items-center justify-between">
-                    <Label className="font-semibold">Transaction Lines</Label>
+                    <Label className="font-semibold">Detalle por cuenta y sobre</Label>
                     <Button variant="outline" size="sm" onClick={handleAddLine}>
                       <Plus className="h-4 w-4 mr-1" />
-                      Add Line
+                      Añadir detalle
                     </Button>
                   </div>
 
@@ -661,7 +676,7 @@ export function TransactionsContent() {
                     <Alert className="border-warning/50 bg-warning/5">
                       <AlertCircle className="h-4 w-4 text-warning" />
                       <AlertDescription className="text-sm">
-                        Transfers must have exactly 2 lines that sum to 0
+                        Las transferencias requieren dos detalles con importes opuestos y suma cero
                       </AlertDescription>
                     </Alert>
                   )}
@@ -671,21 +686,21 @@ export function TransactionsContent() {
                       key={index}
                       className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(220px,0.8fr)_auto] md:items-end"
                     >
-                      <div className="min-w-0 space-y-1">
-                        <Label className="text-xs">Account</Label>
+                      <AccessibleField className="min-w-0 space-y-1">
+                        <Label className="text-xs">Cuenta</Label>
                         <Select
                           value={line.accountId}
                           onValueChange={(value) => handleLineChange(index, "accountId", value)}
                           disabled={accountsLoading || activeAccounts.length === 0}
                         >
-                          <SelectTrigger className="h-9 w-full" aria-label={`Account ${index + 1}`}>
+                          <SelectTrigger className="h-9 w-full" aria-label={`Cuenta ${index + 1}`}>
                             <SelectValue
                               placeholder={
                                 accountsLoading
-                                  ? "Loading accounts..."
+                                  ? "Cargando cuentas…"
                                   : activeAccounts.length === 0
-                                    ? "No active accounts"
-                                    : "Select Account"
+                                    ? "No hay cuentas activas"
+                                    : "Elige una cuenta"
                               }
                             />
                           </SelectTrigger>
@@ -698,27 +713,26 @@ export function TransactionsContent() {
                           </SelectContent>
                         </Select>
                         {accountsError && (
-                          <p className="text-xs text-error mt-1">{accountsError}</p>
+                          <AccessibleFieldError className="text-xs text-error mt-1">
+                            {accountsError}
+                          </AccessibleFieldError>
                         )}
-                      </div>
-                      <div className="min-w-0 space-y-1">
-                        <Label className="text-xs">Envelope</Label>
+                      </AccessibleField>
+                      <AccessibleField className="min-w-0 space-y-1">
+                        <Label className="text-xs">Sobre</Label>
                         <Select
                           value={line.envelopeId}
                           onValueChange={(value) => handleLineChange(index, "envelopeId", value)}
                           disabled={!line.accountId || envelopesLoading[line.accountId]}
                         >
-                          <SelectTrigger
-                            className="h-9 w-full"
-                            aria-label={`Envelope ${index + 1}`}
-                          >
+                          <SelectTrigger className="h-9 w-full" aria-label={`Sobre ${index + 1}`}>
                             <SelectValue
                               placeholder={
                                 !line.accountId
-                                  ? "Select account first"
+                                  ? "Elige primero una cuenta"
                                   : envelopesLoading[line.accountId]
-                                    ? "Loading envelopes..."
-                                    : "Select envelope"
+                                    ? "Cargando sobres…"
+                                    : "Elige un sobre"
                               }
                             />
                           </SelectTrigger>
@@ -731,12 +745,12 @@ export function TransactionsContent() {
                           </SelectContent>
                         </Select>
                         {line.accountId && envelopesError[line.accountId] && (
-                          <p className="text-xs text-error mt-1">
+                          <AccessibleFieldError className="text-xs text-error mt-1">
                             {envelopesError[line.accountId]}
-                          </p>
+                          </AccessibleFieldError>
                         )}
-                      </div>
-                      <div className="space-y-1">
+                      </AccessibleField>
+                      <AccessibleField className="space-y-1">
                         <Label className="text-xs" htmlFor={`transaction-amount-${index}`}>
                           Importe (
                           {accounts.find((account) => account.id.toString() === line.accountId)
@@ -758,14 +772,14 @@ export function TransactionsContent() {
                           className="h-9 text-right font-medium tabular-nums"
                         />
                         {lineErrors[index] && (
-                          <p
+                          <AccessibleFieldError
                             id={`transaction-amount-error-${index}`}
                             className="text-xs text-error"
                           >
                             {lineErrors[index]}
-                          </p>
+                          </AccessibleFieldError>
                         )}
-                      </div>
+                      </AccessibleField>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -797,10 +811,10 @@ export function TransactionsContent() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={handleCloseCreate}>
-                  Cancel
+                  Cancelar
                 </Button>
                 <Button onClick={handleCreate} disabled={!isFormValid || createLoading}>
-                  {createLoading ? "Creating..." : "Create Transaction"}
+                  {createLoading ? "Creando…" : "Nuevo movimiento"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -814,11 +828,11 @@ export function TransactionsContent() {
           <Card className="mb-4">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Filters</CardTitle>
+                <CardTitle className="text-base">Filtros</CardTitle>
                 {activeFilterCount > 0 && (
                   <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs">
                     <X className="mr-1 h-3 w-3" />
-                    Clear all
+                    Quitar todos
                   </Button>
                 )}
               </div>
@@ -826,7 +840,7 @@ export function TransactionsContent() {
             <CardContent className="space-y-4" onKeyDown={handleKeyDown}>
               {/* Row 1: Date Range and Keyword */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-1.5">
+                <AccessibleField className="space-y-1.5">
                   <Label htmlFor="filter-date-from" className="text-xs text-muted-foreground">
                     Desde
                   </Label>
@@ -837,8 +851,8 @@ export function TransactionsContent() {
                     onChange={(e) => setDraftFilters({ ...draftFilters, dateFrom: e.target.value })}
                     className="h-9"
                   />
-                </div>
-                <div className="space-y-1.5">
+                </AccessibleField>
+                <AccessibleField className="space-y-1.5">
                   <Label htmlFor="filter-date-to" className="text-xs text-muted-foreground">
                     Hasta
                   </Label>
@@ -849,15 +863,15 @@ export function TransactionsContent() {
                     onChange={(e) => setDraftFilters({ ...draftFilters, dateTo: e.target.value })}
                     className="h-9"
                   />
-                </div>
-                <div className="space-y-1.5 md:col-span-2">
+                </AccessibleField>
+                <AccessibleField className="space-y-1.5 md:col-span-2">
                   <Label htmlFor="filter-keyword" className="text-xs text-muted-foreground">
                     Descripción
                   </Label>
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search by description..."
+                      placeholder="Buscar por descripción…"
                       value={draftFilters.keyword}
                       id="filter-keyword"
                       onChange={(e) =>
@@ -866,12 +880,12 @@ export function TransactionsContent() {
                       className="h-9 pl-8"
                     />
                   </div>
-                </div>
+                </AccessibleField>
               </div>
 
               {/* Row 2: Type, Account, Envelope */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
+                <AccessibleField className="space-y-1.5">
                   <Label htmlFor="filter-type" className="text-xs text-muted-foreground">
                     Tipo
                   </Label>
@@ -883,15 +897,15 @@ export function TransactionsContent() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ALL">All Types</SelectItem>
-                      <SelectItem value="INCOME">Income</SelectItem>
-                      <SelectItem value="EXPENSE">Expense</SelectItem>
-                      <SelectItem value="TRANSFER">Transfer</SelectItem>
-                      <SelectItem value="ADJUSTMENT">Adjustment</SelectItem>
+                      <SelectItem value="ALL">Todos los tipos</SelectItem>
+                      <SelectItem value="INCOME">Ingreso</SelectItem>
+                      <SelectItem value="EXPENSE">Gasto</SelectItem>
+                      <SelectItem value="TRANSFER">Transferencia</SelectItem>
+                      <SelectItem value="ADJUSTMENT">Ajuste</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-1.5">
+                </AccessibleField>
+                <AccessibleField className="space-y-1.5">
                   <Label htmlFor="filter-account" className="text-xs text-muted-foreground">
                     Cuenta
                   </Label>
@@ -906,15 +920,15 @@ export function TransactionsContent() {
                       <SelectValue
                         placeholder={
                           accountsLoading
-                            ? "Loading accounts..."
+                            ? "Cargando cuentas…"
                             : activeAccounts.length === 0
-                              ? "No active accounts"
-                              : "Select account"
+                              ? "No hay cuentas activas"
+                              : "Elige una cuenta"
                         }
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ALL">All Accounts</SelectItem>
+                      <SelectItem value="ALL">Todas las cuentas</SelectItem>
                       {activeAccounts.map((acc) => (
                         <SelectItem key={acc.id} value={acc.id.toString()}>
                           {acc.name}
@@ -922,9 +936,13 @@ export function TransactionsContent() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {accountsError && <p className="text-xs text-error mt-1">{accountsError}</p>}
-                </div>
-                <div className="space-y-1.5">
+                  {accountsError && (
+                    <AccessibleFieldError className="text-xs text-error mt-1">
+                      {accountsError}
+                    </AccessibleFieldError>
+                  )}
+                </AccessibleField>
+                <AccessibleField className="space-y-1.5">
                   <Label htmlFor="filter-envelope" className="text-xs text-muted-foreground">
                     Sobre
                   </Label>
@@ -943,15 +961,15 @@ export function TransactionsContent() {
                       <SelectValue
                         placeholder={
                           draftFilters.accountId === "ALL" || draftFilters.accountId === ""
-                            ? "Select account first"
+                            ? "Elige primero una cuenta"
                             : envelopesLoading[draftFilters.accountId]
-                              ? "Loading envelopes..."
-                              : "Select envelope"
+                              ? "Cargando sobres…"
+                              : "Elige un sobre"
                         }
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ALL">All Envelopes</SelectItem>
+                      <SelectItem value="ALL">Todos los sobres</SelectItem>
                       {(envelopesByAccount[draftFilters.accountId] || []).map((env) => (
                         <SelectItem key={env.categoryId} value={env.categoryId.toString()}>
                           {env.name}
@@ -960,16 +978,16 @@ export function TransactionsContent() {
                     </SelectContent>
                   </Select>
                   {draftFilters.accountId !== "ALL" && envelopesError[draftFilters.accountId] && (
-                    <p className="text-xs text-error mt-1">
+                    <AccessibleFieldError className="text-xs text-error mt-1">
                       {envelopesError[draftFilters.accountId]}
-                    </p>
+                    </AccessibleFieldError>
                   )}
-                </div>
+                </AccessibleField>
               </div>
 
               {/* Row 3: Amount Range */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-1.5">
+                <AccessibleField className="space-y-1.5">
                   <Label htmlFor="filter-amount-min" className="text-xs text-muted-foreground">
                     Importe mínimo
                   </Label>
@@ -983,8 +1001,8 @@ export function TransactionsContent() {
                     }
                     className="h-9"
                   />
-                </div>
-                <div className="space-y-1.5">
+                </AccessibleField>
+                <AccessibleField className="space-y-1.5">
                   <Label htmlFor="filter-amount-max" className="text-xs text-muted-foreground">
                     Importe máximo
                   </Label>
@@ -998,11 +1016,11 @@ export function TransactionsContent() {
                     }
                     className="h-9"
                   />
-                </div>
+                </AccessibleField>
                 <div className="flex items-end md:col-span-2">
                   <Button onClick={applyFilters} className="h-9">
                     <Search className="mr-2 h-4 w-4" />
-                    Search
+                    Buscar
                   </Button>
                 </div>
               </div>
@@ -1015,24 +1033,24 @@ export function TransactionsContent() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Transactions</CardTitle>
+              <CardTitle>Movimientos</CardTitle>
               <CardDescription>
                 {transactionsMeta.totalItems === transactions.length
-                  ? `${transactionsMeta.totalItems} transaction(s)`
-                  : `${transactions.length} of ${transactionsMeta.totalItems} transaction(s)`}{" "}
-                grouped by posted date for faster scanning.
+                  ? `${transactionsMeta.totalItems} movimiento(s)`
+                  : `${transactions.length} of ${transactionsMeta.totalItems} movimiento(s)`}{" "}
+                agrupados por fecha del movimiento.
               </CardDescription>
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap gap-1">
                 {filters.dateFrom && (
                   <Badge variant="secondary" className="text-xs">
-                    From: {filters.dateFrom}
+                    Desde: {filters.dateFrom}
                   </Badge>
                 )}
                 {filters.dateTo && (
                   <Badge variant="secondary" className="text-xs">
-                    To: {filters.dateTo}
+                    Hasta: {filters.dateTo}
                   </Badge>
                 )}
                 {filters.keyword && (
@@ -1069,7 +1087,7 @@ export function TransactionsContent() {
             </Alert>
           )}
           {transactionsLoading && timelineGroups.length > 0 ? (
-            <p className="text-sm text-muted-foreground">Refreshing activity timeline...</p>
+            <p className="text-sm text-muted-foreground">Actualizando movimientos…</p>
           ) : null}
 
           {transactionsLoading && timelineGroups.length === 0 ? (
@@ -1077,9 +1095,9 @@ export function TransactionsContent() {
           ) : transactionsMeta.totalItems === 0 && transactionsError ? (
             <EmptyState
               icon={AlertCircle}
-              title="Unable to load transactions"
+              title="No pudimos cargar los movimientos"
               description={transactionsError}
-              actionLabel="Retry"
+              actionLabel="Volver a intentar"
               onAction={retryTransactions}
             />
           ) : transactionsMeta.totalItems === 0 ? (
@@ -1087,15 +1105,15 @@ export function TransactionsContent() {
               icon={Search}
               title={
                 activeFilterCount > 0
-                  ? "No transactions match these filters"
-                  : "No transactions yet"
+                  ? "Ningún movimiento coincide con los filtros"
+                  : "Todavía no hay movimientos"
               }
               description={
                 activeFilterCount > 0
-                  ? "Try widening the date range, removing filters, or searching with a different keyword."
-                  : "Record income, expenses, or transfers to start building your financial activity timeline."
+                  ? "Amplía el período, quita filtros o busca otra descripción."
+                  : "Registra un ingreso, gasto o transferencia para comenzar."
               }
-              actionLabel={activeFilterCount > 0 ? "Clear filters" : undefined}
+              actionLabel={activeFilterCount > 0 ? "Quitar filtros" : undefined}
               onAction={activeFilterCount > 0 ? clearFilters : undefined}
             />
           ) : (
@@ -1106,7 +1124,7 @@ export function TransactionsContent() {
           {transactionsMeta.totalItems > 0 && (
             <div className="mt-4 flex flex-col gap-4 border-t pt-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Show</span>
+                <span>Mostrar</span>
                 <Select
                   value={itemsPerPage.toString()}
                   onValueChange={(value) => setItemsPerPage(Number.parseInt(value))}
@@ -1122,12 +1140,12 @@ export function TransactionsContent() {
                     ))}
                   </SelectContent>
                 </Select>
-                <span>per page</span>
+                <span>por página</span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="text-muted-foreground">
-                  {startIndex}-{endIndex} of {transactionsMeta.totalItems}
+                  {startIndex}-{endIndex} de {transactionsMeta.totalItems}
                 </span>
                 <div className="flex items-center gap-1">
                   <Button
@@ -1152,7 +1170,7 @@ export function TransactionsContent() {
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <span className="px-2 text-muted-foreground">
-                    Page {currentPage} of {totalPages}
+                    Página {currentPage} de {totalPages}
                   </span>
                   <Button
                     variant="outline"
@@ -1184,10 +1202,10 @@ export function TransactionsContent() {
           {transactionsMeta.totalItems === 0 && !transactionsLoading && (
             <div className="text-center py-8 text-muted-foreground">
               <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No transactions found matching your filters</p>
+              <p>No encontramos movimientos con estos filtros</p>
               {activeFilterCount > 0 && (
                 <Button variant="link" onClick={clearFilters} className="mt-2">
-                  Clear filters
+                  Quitar filtros
                 </Button>
               )}
             </div>

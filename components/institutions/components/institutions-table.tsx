@@ -33,22 +33,22 @@ export function InstitutionsTable({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>All Institutions</CardTitle>
-        <CardDescription>View and manage your financial institutions</CardDescription>
+        <CardTitle>Todas las instituciones</CardTitle>
+        <CardDescription>Consulta y administra tus instituciones financieras</CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="py-6 text-center text-muted-foreground">Loading institutions...</div>
+          <div className="py-6 text-center text-muted-foreground">Cargando instituciones…</div>
         ) : null}
-        {error ? <div className="py-6 text-center text-red-500">{error}</div> : null}
+        {error ? <div className="py-6 text-center text-error">{error}</div> : null}
         {!loading && !error ? (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -56,7 +56,7 @@ export function InstitutionsTable({
                 const disableDeactivate =
                   institution.status === "Active" && institution.activeAccountsCount > 0
                 const deactivateTitle = disableDeactivate
-                  ? "Deactivate all active accounts before deactivating this institution"
+                  ? "Desactiva las cuentas activas antes de desactivar esta institución"
                   : undefined
 
                 return (
@@ -69,7 +69,7 @@ export function InstitutionsTable({
                     </TableCell>
                     <TableCell>
                       <Badge variant={institution.status === "Active" ? "default" : "secondary"}>
-                        {institution.status}
+                        {institution.status === "Active" ? "Activo" : "Inactivo"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -78,7 +78,7 @@ export function InstitutionsTable({
                           variant="ghost"
                           size="sm"
                           data-testid={"Edit-" + institution.id}
-                          aria-label={"Edit-" + institution.id}
+                          aria-label={"Editar institución " + institution.name}
                           onClick={() => onEdit(institution)}
                         >
                           <Edit2 className="h-4 w-4" />
@@ -87,7 +87,11 @@ export function InstitutionsTable({
                           variant="ghost"
                           size="sm"
                           data-testid={"Deactivate-" + institution.id}
-                          aria-label={"Deactivate-" + institution.id}
+                          aria-label={
+                            (institution.status === "Active" ? "Desactivar" : "Activar") +
+                            " institución " +
+                            institution.name
+                          }
                           disabled={disableDeactivate}
                           title={deactivateTitle}
                           onClick={() => onDeactivate(institution.id)}

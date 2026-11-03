@@ -45,7 +45,7 @@ export function DataTableActions({
           {onEdit && (
             <DropdownMenuItem onClick={onEdit}>
               <Edit2 className="h-4 w-4 mr-2" />
-              Edit
+              Editar
             </DropdownMenuItem>
           )}
           {customActions?.map((action) => (
@@ -56,7 +56,7 @@ export function DataTableActions({
           {onDelete && (
             <DropdownMenuItem onClick={onDelete} className="text-destructive">
               <Trash2 className="h-4 w-4 mr-2" />
-              Delete
+              Eliminar
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>

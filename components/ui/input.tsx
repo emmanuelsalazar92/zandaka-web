@@ -1,8 +1,12 @@
+"use client"
+
 import * as React from "react"
 
+import { useFieldControl } from "@/components/ui/accessible-field"
 import { cn } from "@/lib/utils"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  const fieldProps = useFieldControl(props)
   return (
     <input
       type={type}
@@ -14,6 +18,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         className,
       )}
       {...props}
+      {...fieldProps}
     />
   )
 }

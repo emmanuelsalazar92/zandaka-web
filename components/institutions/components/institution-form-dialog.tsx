@@ -4,6 +4,7 @@ import type {
   InstitutionFormData,
   InstitutionType,
 } from "@/components/institutions/types/institutions.types"
+import { AccessibleField } from "@/components/ui/accessible-field"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -56,25 +57,25 @@ export function InstitutionFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent data-testid="institution-form" aria-label="institution-form">
+      <DialogContent data-testid="institution-form">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-name`}>Institution Name</Label>
+          <AccessibleField className="space-y-2">
+            <Label htmlFor={`${idPrefix}-name`}>Nombre de la institución</Label>
             <Input
               id={`${idPrefix}-name`}
               data-testid="institution-name"
-              aria-label="institution-name"
-              placeholder="e.g., Banco Nacional"
+              aria-label="Nombre de la institución"
+              placeholder="Por ejemplo, Banco Nacional"
               value={formData.name}
               onChange={(e) => onFormDataChange({ ...formData, name: e.target.value })}
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-type`}>Type</Label>
+          </AccessibleField>
+          <AccessibleField className="space-y-2">
+            <Label htmlFor={`${idPrefix}-type`}>Tipo</Label>
             <Select
               value={formData.type}
               onValueChange={(value) =>
@@ -84,33 +85,32 @@ export function InstitutionFormDialog({
               <SelectTrigger
                 id={`${idPrefix}-type`}
                 data-testid="institution-type"
-                aria-label="institution-type"
+                aria-label="Tipo de institución"
               >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {INSTITUTION_TYPES.map((type) => (
                   <SelectItem key={type} value={type}>
-                    {type === "BANK" ? "Bank" : type === "CASH" ? "Cash" : "Virtual"}
+                    {type === "BANK" ? "Banco" : type === "CASH" ? "Efectivo" : "Virtual"}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </AccessibleField>
         </div>
         <DialogFooter>
           <Button
             variant="outline"
             data-testid="Cancel Create Institution"
-            aria-label="Cancel Create Institution"
+            aria-label="Cancelar creación de institución"
             onClick={() => onOpenChange(false)}
           >
-            Cancel
+            Cancelar
           </Button>
           <Button
             onClick={onSubmit}
             data-testid="submit-create-institution"
-            aria-label="submit-create-institution"
             disabled={submitDisabled}
           >
             {submitLabel}

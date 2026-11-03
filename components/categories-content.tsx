@@ -3,6 +3,7 @@
 import { Plus, Edit2, XCircle, ChevronDown, ChevronRight } from "lucide-react"
 import * as React from "react"
 
+import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { readPublicError } from "@/lib/public-error"
 
 type Category = {
   id: number
@@ -135,19 +137,9 @@ export function CategoriesContent() {
         })
 
         if (!response.ok) {
-          const contentType = response.headers.get("content-type") || ""
-          let message = "No se pudo cargar categorías. Intenta más tarde."
-          if (contentType.includes("application/json")) {
-            try {
-              const errorResponse = await response.json()
-              message =
-                errorResponse?.error?.message ||
-                errorResponse?.message ||
-                errorResponse?.error ||
-                message
-            } catch {}
-          }
-          throw new Error(message)
+          throw new Error(
+            await readPublicError(response, "No se pudo cargar categorías. Intenta más tarde."),
+          )
         }
 
         const data = await response.json()
@@ -199,8 +191,12 @@ export function CategoriesContent() {
       })
 
       if (!response.ok) {
-        const message = await response.text()
-        throw new Error(message || "Failed to create category.")
+        throw new Error(
+          await readPublicError(
+            response,
+            "No pudimos crear la categoría. Revisa los datos y vuelve a intentar.",
+          ),
+        )
       }
 
       const data = await response.json()
@@ -223,7 +219,9 @@ export function CategoriesContent() {
       resetForm()
     } catch (error) {
       const message =
-        error instanceof Error && error.message ? error.message : "Failed to create category."
+        error instanceof Error && error.message
+          ? error.message
+          : "No pudimos crear la categoría. Revisa los datos y vuelve a intentar."
       setCreateError(message)
     } finally {
       setIsSaving(false)
@@ -239,7 +237,7 @@ export function CategoriesContent() {
     const isAttemptingToBeChild = editCategory.parent === null && formData.parent !== null
 
     if (hasActiveChildren && isAttemptingToBeChild) {
-      setEditError("Parent categories with active subcategories cannot be moved.")
+      setEditError("No puedes mover una categoría principal con subcategorías activas.")
       return
     }
 
@@ -260,8 +258,9 @@ export function CategoriesContent() {
       })
 
       if (!response.ok) {
-        const message = await response.text()
-        throw new Error(message || "Failed to update category.")
+        throw new Error(
+          await readPublicError(response, "No pudimos guardar la categoría. Vuelve a intentar."),
+        )
       }
 
       await loadCategories()
@@ -269,7 +268,9 @@ export function CategoriesContent() {
       resetForm()
     } catch (error) {
       const message =
-        error instanceof Error && error.message ? error.message : "Failed to update category."
+        error instanceof Error && error.message
+          ? error.message
+          : "No pudimos guardar la categoría. Vuelve a intentar."
       setEditError(message)
     } finally {
       setIsEditing(false)
@@ -288,22 +289,21 @@ export function CategoriesContent() {
       })
 
       if (!response.ok) {
-        let message = "Failed to deactivate category."
-        try {
-          const errorResponse = await response.json()
-          message = errorResponse?.error?.message || errorResponse?.message || message
-        } catch {}
-        if (response.status === 409) {
-          message = message || "Category has active subcategories."
-        }
-        throw new Error(message)
+        throw new Error(
+          await readPublicError(
+            response,
+            "No pudimos desactivar la categoría. Revisa sus subcategorías.",
+          ),
+        )
       }
 
       await loadCategories()
       setDeactivateId(null)
     } catch (error) {
       const message =
-        error instanceof Error && error.message ? error.message : "Failed to deactivate category."
+        error instanceof Error && error.message
+          ? error.message
+          : "No pudimos desactivar la categoría. Revisa sus subcategorías."
       setDeactivateError(message)
     } finally {
       setIsDeactivating(false)
@@ -324,10 +324,8 @@ export function CategoriesContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Categories</h2>
-          <p className="text-muted-foreground">
-            Manage your budget categories (parent/child structure)
-          </p>
+          <h2 className="text-2xl font-bold tracking-tight">Categorías</h2>
+          <p className="text-muted-foreground">Organiza categorías principales y subcategorías</p>
         </div>
         <Dialog
           open={isCreateOpen}
@@ -342,28 +340,28 @@ export function CategoriesContent() {
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Add Category
+              Añadir categoría
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Category</DialogTitle>
+              <DialogTitle>Crear categoría</DialogTitle>
               <DialogDescription>
-                Add a new category. Subcategories are used for envelopes.
+                Añade una categoría. Las subcategorías se vinculan a los sobres.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Category Name</Label>
+              <AccessibleField className="space-y-2">
+                <Label htmlFor="name">Nombre de la categoría</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Groceries"
+                  placeholder="Por ejemplo, Alimentación"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="parent">Parent Category (Optional)</Label>
+              </AccessibleField>
+              <AccessibleField className="space-y-2">
+                <Label htmlFor="parent">Categoría principal (opcional)</Label>
                 <Select
                   value={formData.parent === null ? NO_PARENT_VALUE : formData.parent?.toString()}
                   onValueChange={(value) =>
@@ -373,11 +371,11 @@ export function CategoriesContent() {
                     })
                   }
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="None (top-level)" />
+                  <SelectTrigger id="parent">
+                    <SelectValue placeholder="Ninguna (categoría principal)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NO_PARENT_VALUE}>None (top-level)</SelectItem>
+                    <SelectItem value={NO_PARENT_VALUE}>Ninguna (categoría principal)</SelectItem>
                     {parentCategories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id.toString()}>
                         {cat.name}
@@ -385,8 +383,12 @@ export function CategoriesContent() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              {createError && <p className="text-sm text-destructive">{createError}</p>}
+              </AccessibleField>
+              {createError && (
+                <AccessibleFieldError className="text-sm text-destructive">
+                  {createError}
+                </AccessibleFieldError>
+              )}
             </div>
             <DialogFooter>
               <Button
@@ -397,10 +399,10 @@ export function CategoriesContent() {
                   setCreateError(null)
                 }}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button onClick={handleCreate} disabled={!formData.name || isSaving}>
-                {isSaving ? "Creating..." : "Create"}
+                {isSaving ? "Creando…" : "Crear"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -410,28 +412,28 @@ export function CategoriesContent() {
       {isLoading ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground">Loading categories...</p>
+            <p className="text-muted-foreground">Cargando categorías…</p>
           </CardContent>
         </Card>
       ) : categories.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <p className="text-muted-foreground mb-4">
-              {loadError ? loadError : "No categories yet"}
+              {loadError ? loadError : "Todavía no hay categorías"}
             </p>
             <Button onClick={() => setIsCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Your First Category
+              Añadir mi primera categoría
             </Button>
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Category Tree</CardTitle>
+            <CardTitle>Árbol de categorías</CardTitle>
             <CardDescription>
-              Organize categories with parent/child relationships. Subcategories are used for
-              envelopes.
+              Organiza categorías principales y subcategorías. Estas últimas se vinculan a los
+              sobres.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -450,6 +452,8 @@ export function CategoriesContent() {
                         {children.length > 0 && (
                           <button
                             onClick={() => toggleExpand(parent.id)}
+                            aria-label={(isExpanded ? "Contraer " : "Expandir ") + parent.name}
+                            aria-expanded={isExpanded}
                             className="text-muted-foreground hover:text-foreground"
                           >
                             {isExpanded ? (
@@ -462,7 +466,7 @@ export function CategoriesContent() {
                         {children.length === 0 && <div className="w-4" />}
                         <span className="font-medium">{parent.name}</span>
                         <Badge variant="secondary" className="ml-auto text-xs">
-                          Parent
+                          Principal
                         </Badge>
                       </div>
                       <div className="flex gap-2">
@@ -470,6 +474,7 @@ export function CategoriesContent() {
                           variant="ghost"
                           size="sm"
                           onClick={() => openEdit(parent)}
+                          aria-label={"Editar categoría " + parent.name}
                           className="h-8 w-8 p-0"
                         >
                           <Edit2 className="h-4 w-4" />
@@ -483,6 +488,7 @@ export function CategoriesContent() {
                               setDeactivateError(null)
                             }}
                             className="h-8 w-8 p-0"
+                            aria-label={"Desactivar categoría " + parent.name}
                           >
                             <XCircle className="h-4 w-4" />
                           </Button>
@@ -501,7 +507,7 @@ export function CategoriesContent() {
                               <div className="w-4" />
                               <span className="text-sm">{child.name}</span>
                               <Badge variant="outline" className="ml-auto text-xs">
-                                {child.active ? "Active" : "Inactive"}
+                                {child.active ? "Activo" : "Inactivo"}
                               </Badge>
                             </div>
                             <div className="flex gap-2">
@@ -509,6 +515,7 @@ export function CategoriesContent() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => openEdit(child)}
+                                aria-label={"Editar categoría " + child.name}
                                 className="h-8 w-8 p-0"
                               >
                                 <Edit2 className="h-4 w-4" />
@@ -521,6 +528,7 @@ export function CategoriesContent() {
                                   setDeactivateError(null)
                                 }}
                                 className="h-8 w-8 p-0"
+                                aria-label={"Desactivar categoría " + child.name}
                               >
                                 <XCircle className="h-4 w-4" />
                               </Button>
@@ -550,20 +558,20 @@ export function CategoriesContent() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Category</DialogTitle>
-            <DialogDescription>Update category details</DialogDescription>
+            <DialogTitle>Editar categoría</DialogTitle>
+            <DialogDescription>Actualiza los datos de la categoría</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Category Name</Label>
+            <AccessibleField className="space-y-2">
+              <Label htmlFor="edit-name">Nombre de la categoría</Label>
               <Input
                 id="edit-name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-parent">Parent Category</Label>
+            </AccessibleField>
+            <AccessibleField className="space-y-2">
+              <Label htmlFor="edit-parent">Categoría principal</Label>
               <Select
                 disabled={
                   Boolean(editCategory) &&
@@ -579,11 +587,11 @@ export function CategoriesContent() {
                   })
                 }
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="None (top-level)" />
+                <SelectTrigger id="edit-parent">
+                  <SelectValue placeholder="Ninguna (categoría principal)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_PARENT_VALUE}>None (top-level)</SelectItem>
+                  <SelectItem value={NO_PARENT_VALUE}>Ninguna (categoría principal)</SelectItem>
                   {parentCategories
                     .filter((c) => c.id !== editCategory?.id)
                     .map((cat) => (
@@ -597,11 +605,15 @@ export function CategoriesContent() {
                 (editCategory?.hasActiveChildren ||
                   getChildren(editCategory?.id ?? 0).some((child) => child.active)) && (
                   <p className="text-xs text-muted-foreground">
-                    Parent categories with active subcategories cannot be moved.
+                    No puedes mover una categoría principal con subcategorías activas.
                   </p>
                 )}
-            </div>
-            {editError && <p className="text-sm text-destructive">{editError}</p>}
+            </AccessibleField>
+            {editError && (
+              <AccessibleFieldError className="text-sm text-destructive">
+                {editError}
+              </AccessibleFieldError>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -612,10 +624,10 @@ export function CategoriesContent() {
                 setEditError(null)
               }}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button onClick={handleEdit} disabled={!formData.name || isEditing}>
-              {isEditing ? "Saving..." : "Save Changes"}
+              {isEditing ? "Guardando…" : "Guardar cambios"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -634,13 +646,13 @@ export function CategoriesContent() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {categories.find((c) => c.id === deactivateId)?.active ? "Deactivate" : "Activate"}{" "}
-              Category?
+              {categories.find((c) => c.id === deactivateId)?.active ? "Desactivar" : "Activar"}{" "}
+              categoría
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will{" "}
-              {categories.find((c) => c.id === deactivateId)?.active ? "deactivate" : "activate"}{" "}
-              the category.
+              Esta acción permitirá{" "}
+              {categories.find((c) => c.id === deactivateId)?.active ? "deactivate" : "activate"} la
+              categoría.
             </AlertDialogDescription>
             {deactivateError && (
               <AlertDialogDescription className="text-destructive">
@@ -649,7 +661,7 @@ export function CategoriesContent() {
             )}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault()
@@ -657,7 +669,7 @@ export function CategoriesContent() {
               }}
               disabled={isDeactivating}
             >
-              {isDeactivating ? "Confirming..." : "Confirm"}
+              {isDeactivating ? "Confirming..." : "Confirmar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

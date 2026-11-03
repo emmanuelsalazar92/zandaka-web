@@ -44,9 +44,9 @@ export function AccountsTable({
   return (
     <div className="space-y-6">
       {loading ? (
-        <div className="py-6 text-center text-muted-foreground">Loading accounts...</div>
+        <div className="py-6 text-center text-muted-foreground">Cargando cuentas…</div>
       ) : null}
-      {error ? <div className="py-6 text-center text-red-500">{error}</div> : null}
+      {error ? <div className="py-6 text-center text-error">{error}</div> : null}
       {!loading && !error
         ? Object.entries(groupedAccounts).map(([institution, instAccounts]) => (
             <Card key={institution}>
@@ -60,18 +60,18 @@ export function AccountsTable({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Account Name</TableHead>
-                      <TableHead>Currency</TableHead>
-                      <TableHead>Balance</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>Nombre de la cuenta</TableHead>
+                      <TableHead>Moneda</TableHead>
+                      <TableHead>Saldo</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {instAccounts.map((account) => {
                       const disableDeactivate = account.active && account.hasActiveEnvelopes
                       const deactivateTitle = disableDeactivate
-                        ? "Deactivate all active envelopes before deactivating this account"
+                        ? "Desactiva los sobres activos antes de desactivar esta cuenta"
                         : undefined
 
                       return (
@@ -92,7 +92,7 @@ export function AccountsTable({
                           </TableCell>
                           <TableCell>
                             <Badge variant={account.active ? "default" : "secondary"}>
-                              {account.active ? "Active" : "Inactive"}
+                              {account.active ? "Activo" : "Inactivo"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
@@ -100,7 +100,7 @@ export function AccountsTable({
                               <Button
                                 variant="ghost"
                                 data-testid={"Edit-" + account.id}
-                                aria-label={"Edit-" + account.id}
+                                aria-label={"Editar cuenta " + account.name}
                                 size="sm"
                                 onClick={() => onEdit(account)}
                               >
@@ -110,7 +110,11 @@ export function AccountsTable({
                                 variant="ghost"
                                 size="sm"
                                 data-testid={"Deactivate-" + account.id}
-                                aria-label={"Deactivate-" + account.id}
+                                aria-label={
+                                  (account.active ? "Desactivar" : "Activar") +
+                                  " cuenta " +
+                                  account.name
+                                }
                                 disabled={disableDeactivate}
                                 title={deactivateTitle}
                                 onClick={() => onDeactivate(account.id)}

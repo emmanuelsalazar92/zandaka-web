@@ -1,8 +1,9 @@
 import { currencyDigits } from "@/lib/money"
 export function formatCurrency(amount: number, currency: string): string {
-  return new Intl.NumberFormat(currency === "CRC" ? "es-CR" : "en-US", {
+  return new Intl.NumberFormat("es-CR", {
     style: "currency",
     currency: currency,
+    currencyDisplay: "code",
     minimumFractionDigits: currencyDigits(currency),
     maximumFractionDigits: currencyDigits(currency),
   }).format(amount)

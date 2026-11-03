@@ -1,3 +1,4 @@
+import { getAccountingDate } from "@/lib/date-only"
 import { sumMoney } from "@/lib/money"
 export type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER" | "ADJUSTMENT"
 
@@ -60,7 +61,7 @@ function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
-function formatDate(date: Date, locale = "en-US") {
+function formatDate(date: Date, locale = "es-CR") {
   return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "long",
@@ -80,36 +81,36 @@ export function formatTransactionGroupLabel(
   options?: { now?: Date; locale?: string },
 ) {
   const parsed = parseTransactionDate(value)
-  if (!parsed) return "Unknown date"
+  if (!parsed) return "Fecha sin identificar"
 
-  const today = startOfDay(options?.now ?? new Date())
+  const today = startOfDay(parseTransactionDate(getAccountingDate(options?.now ?? new Date()))!)
   const current = startOfDay(parsed)
   const diffInDays = Math.round((current.getTime() - today.getTime()) / DAY_IN_MS)
 
-  if (diffInDays === 0) return "Today"
-  if (diffInDays === -1) return "Yesterday"
+  if (diffInDays === 0) return "Hoy"
+  if (diffInDays === -1) return "Ayer"
 
   return formatDate(parsed, options?.locale)
 }
 
 export function formatTransactionFullDate(value: string, options?: { locale?: string }) {
   const parsed = parseTransactionDate(value)
-  if (!parsed) return "Unknown date"
+  if (!parsed) return "Fecha sin identificar"
   return formatDate(parsed, options?.locale)
 }
 
 export function getTransactionTypeMeta(type: TransactionType | string): TransactionTypeMeta {
   if (type === "INCOME") {
-    return { label: "Income", tone: "income", amountContextLabel: "Net inflow" }
+    return { label: "Ingreso", tone: "income", amountContextLabel: "Ingreso neto" }
   }
   if (type === "EXPENSE") {
-    return { label: "Expense", tone: "expense", amountContextLabel: "Net outflow" }
+    return { label: "Gasto", tone: "expense", amountContextLabel: "Gasto neto" }
   }
   if (type === "TRANSFER") {
-    return { label: "Transfer", tone: "transfer", amountContextLabel: "Transferred" }
+    return { label: "Transferencia", tone: "transfer", amountContextLabel: "Importe transferido" }
   }
 
-  return { label: "Adjustment", tone: "adjustment", amountContextLabel: "Net adjustment" }
+  return { label: "Ajuste", tone: "adjustment", amountContextLabel: "Ajuste neto" }
 }
 
 export function getTransactionNetAmount(transaction: TimelineTransaction) {

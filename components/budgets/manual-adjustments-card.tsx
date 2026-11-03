@@ -4,6 +4,7 @@ import { HandCoins } from "lucide-react"
 
 import { MoneyDisplay } from "@/components/budgets/money-display"
 import { ToggleRow } from "@/components/budgets/toggle-row"
+import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -39,15 +40,15 @@ export function ManualAdjustmentsCard({
     <Card className="border-border/70">
       <CardHeader>
         <div className="space-y-1">
-          <CardTitle>3. Manual Adjustments</CardTitle>
+          <CardTitle>3. Ajustes manuales</CardTitle>
           <CardDescription>
-            Add optional adjustments that do not come from payroll rules.
+            Añade ajustes opcionales que no dependen de las reglas de nómina.
           </CardDescription>
         </div>
         <CardAction>
           <Badge variant="outline" className="gap-1.5">
             <HandCoins className="h-3.5 w-3.5" />
-            Optional
+            Opcional
           </Badge>
         </CardAction>
       </CardHeader>
@@ -56,8 +57,8 @@ export function ManualAdjustmentsCard({
           id="budget-apply-exchange-loss"
           checked={fxEnabled}
           onCheckedChange={onFxToggle}
-          title="Exchange Rate Reserve"
-          description="Optional reserve if you expect currency conversion loss."
+          title="Reserva cambiaria"
+          description="Reserva opcional para diferencias de conversión de moneda."
           hint="This amount is fully manual and only applies when enabled."
           amount={
             <>
@@ -69,8 +70,8 @@ export function ManualAdjustmentsCard({
           }
         >
           {fxEnabled ? (
-            <div className="space-y-2">
-              <Label htmlFor="budget-exchange-loss">Reserve amount</Label>
+            <AccessibleField className="space-y-2">
+              <Label htmlFor="budget-exchange-loss">Importe de la reserva</Label>
               <Input
                 id="budget-exchange-loss"
                 type="number"
@@ -82,11 +83,11 @@ export function ManualAdjustmentsCard({
                 onChange={(event) => onFxAmountChange(event.target.value)}
               />
               {!isFxAmountValid ? (
-                <p className="text-sm text-destructive">
-                  Enter a reserve amount that is zero or greater.
-                </p>
+                <AccessibleFieldError className="text-sm text-destructive">
+                  Introduce una reserva igual o mayor que cero.
+                </AccessibleFieldError>
               ) : null}
-            </div>
+            </AccessibleField>
           ) : null}
         </ToggleRow>
       </CardContent>

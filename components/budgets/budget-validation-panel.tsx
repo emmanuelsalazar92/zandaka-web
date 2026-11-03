@@ -19,8 +19,8 @@ export function BudgetValidationPanel({ validation, currency }: BudgetValidation
     return (
       <Alert>
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Validation unavailable</AlertTitle>
-        <AlertDescription>Budget validation could not be loaded right now.</AlertDescription>
+        <AlertTitle>Validación no disponible</AlertTitle>
+        <AlertDescription>No pudimos consultar la validación. Vuelve a intentar.</AlertDescription>
       </Alert>
     )
   }
@@ -33,21 +33,23 @@ export function BudgetValidationPanel({ validation, currency }: BudgetValidation
         <AlertCircle className="h-4 w-4" />
       )}
       <AlertTitle>
-        {validation.isValid ? "Budget is ready to finalize" : "Budget needs attention"}
+        {validation.isValid
+          ? "El presupuesto está listo para finalizar"
+          : "El presupuesto necesita revisión"}
       </AlertTitle>
       <AlertDescription className="space-y-3">
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">
-            Distributed: {formatCurrency(validation.distributedAmount, currency)}
+            Distribuido: {formatCurrency(validation.distributedAmount, currency)}
           </Badge>
           <Badge variant="outline">
-            Distributed %: {formatPercentage(validation.distributedPercentage)}
+            % distribuido: {formatPercentage(validation.distributedPercentage)}
           </Badge>
           <Badge variant="outline">
-            Remaining: {formatCurrency(validation.remainingAmount, currency)}
+            Pendiente: {formatCurrency(validation.remainingAmount, currency)}
           </Badge>
           <Badge variant="outline">
-            Remaining %: {formatPercentage(validation.remainingPercentage)}
+            % pendiente: {formatPercentage(validation.remainingPercentage)}
           </Badge>
         </div>
         {!validation.isValid && validation.errors.length > 0 && (
