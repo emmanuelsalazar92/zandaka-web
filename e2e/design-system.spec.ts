@@ -6,7 +6,9 @@ import { installSyntheticAPI } from "./fixtures"
 for (const width of [360, 1440]) {
   for (const colorScheme of ["light", "dark"] as const) {
     for (const textScale of [100, 200]) {
-      for (const font of width === 360 && textScale === 200 ? ["system", "Arial"] : ["system"]) {
+      for (const font of width === 360 && textScale === 200
+        ? ["system", "Arial", "Verdana"]
+        : ["system"]) {
         test(`gallery ${width}px ${colorScheme} ${textScale}% ${font}: readable states and contained layout`, async ({
           page,
         }, info) => {
@@ -18,10 +20,10 @@ for (const width of [360, 1440]) {
           await page.evaluate((scale) => {
             document.documentElement.style.fontSize = `${scale}%`
           }, textScale)
-          if (font === "Arial")
-            await page.evaluate(() => {
-              document.body.style.fontFamily = "Arial, sans-serif"
-            })
+          if (font !== "system")
+            await page.evaluate((family) => {
+              document.body.style.fontFamily = `"${family}", sans-serif`
+            }, font)
           const overflow = await page.evaluate(() => ({
             width: document.documentElement.scrollWidth,
             viewport: window.innerWidth,
