@@ -14,6 +14,8 @@
 # Testing / Coverage
 # ======================
 /coverage
+/playwright-report/
+/test-results/
 
 # ======================
 # Next.js build output

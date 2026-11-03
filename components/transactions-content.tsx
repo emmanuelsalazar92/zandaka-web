@@ -540,18 +540,25 @@ export function TransactionsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+      <header
+        data-testid="transactions-header"
+        className="flex min-w-0 flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"
+      >
         <div className="min-w-0">
-          <h2 className="text-3xl font-semibold tracking-tight">Movimientos</h2>
+          <h2 className="break-words text-3xl font-semibold tracking-tight">Movimientos</h2>
           <p className="mt-1 text-muted-foreground">
             Cada ingreso, gasto y traslado, en un solo lugar.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div
+          role="group"
+          aria-label="Acciones de movimientos"
+          className="flex min-w-0 max-w-full flex-wrap items-center gap-2 lg:justify-end"
+        >
           <Button
             variant="outline"
             onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-            className="relative"
+            className="relative h-auto min-h-11 max-w-full whitespace-normal py-2"
           >
             <Filter className="mr-2 h-4 w-4" />
             Filtros
@@ -561,7 +568,11 @@ export function TransactionsContent() {
               </Badge>
             )}
           </Button>
-          <Button variant="outline" asChild>
+          <Button
+            variant="outline"
+            asChild
+            className="h-auto min-h-11 max-w-full whitespace-normal py-2"
+          >
             <Link href="/transactions/import">
               <Upload className="mr-2 h-4 w-4" />
               Importar
@@ -579,7 +590,7 @@ export function TransactionsContent() {
             }}
           >
             <DialogTrigger asChild>
-              <Button>
+              <Button className="h-auto min-h-11 max-w-full whitespace-normal py-2">
                 <Plus className="mr-2 h-4 w-4" />
                 Nuevo movimiento
               </Button>
@@ -795,7 +806,7 @@ export function TransactionsContent() {
             </DialogContent>
           </Dialog>
         </div>
-      </div>
+      </header>
 
       {/* Filters Panel */}
       <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>

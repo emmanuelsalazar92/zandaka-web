@@ -28,6 +28,6 @@ La primera entrega introduce GET /api/reports/:id/html, por lo que web y API se 
 
 ## Comprobaciones locales
 
-Ejecutar npm run format:check, npm run lint, npm run typecheck, npm run test:ci y npm run build. La prueba visual local puede apuntar a scripts/start-atlantico-preview.cjs de la API, que crea datos sintéticos y escucha solo en 127.0.0.1:3210. Arrancar Next con API_INTERNAL_URL=http://127.0.0.1:3210 y puerto 3211.
+Ejecutar npm run format:check, npm run lint, npm run typecheck, npm run test:ci y npm run build. Después del build, ejecutar npm run test:e2e con el navegador de Playwright instalado; esta suite arranca su propio servidor aislado y se explica en [ZA-78](za-78-layout.md). La prueba visual local adicional puede apuntar a scripts/start-atlantico-preview.cjs de la API, que crea datos sintéticos y escucha solo en 127.0.0.1:3210. Arrancar Next con API_INTERNAL_URL=http://127.0.0.1:3210 y puerto 3211.
 
 El cambio de UI no requiere migración de dinero ni modificación de snapshots. No ejecutar scripts de saneamiento histórico o migraciones como parte implícita de un despliegue visual.

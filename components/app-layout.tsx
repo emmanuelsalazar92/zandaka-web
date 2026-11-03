@@ -200,7 +200,10 @@ export function AppLayout({
   defaultSidebarOpen: boolean
 }) {
   return (
-    <SidebarProvider defaultOpen={defaultSidebarOpen}>
+    <SidebarProvider
+      defaultOpen={defaultSidebarOpen}
+      style={{ "--sidebar-width": "min(16rem, 50vw)" } as React.CSSProperties}
+    >
       <a
         href="#main-content"
         className="sr-only z-50 rounded-lg bg-card p-3 text-foreground focus:not-sr-only focus:absolute focus:left-4 focus:top-4"
@@ -208,7 +211,7 @@ export function AppLayout({
         Saltar al contenido
       </a>
       <AppSidebar />
-      <SidebarInset className="flex flex-col">
+      <SidebarInset className="flex min-w-0 flex-col">
         <AppHeader />
         <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 p-4 outline-none md:p-7">
           <div className="mx-auto w-full max-w-7xl">{children}</div>

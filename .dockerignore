@@ -2,5 +2,9 @@ node_modules
 .next
 .git
 coverage
+playwright-report
+test-results
+e2e
+playwright.config.ts
 .env*
 !.env.example
