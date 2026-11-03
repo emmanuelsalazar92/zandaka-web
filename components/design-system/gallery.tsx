@@ -233,13 +233,13 @@ export function DesignSystemGallery() {
             </p>
           </section>
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[
             ["bg-primary", "Cobalto", "Acción y orientación"],
             ["bg-brand-deep", "Profundidad", "Jerarquía y presentación"],
             ["bg-brand-turquoise", "Turquesa", "Acento, sin significado financiero"],
           ].map(([color, title, caption]) => (
-            <div key={title} className="flex items-center gap-3">
+            <div key={title} className="flex min-w-0 max-w-full items-center gap-3">
               <span aria-hidden="true" className={`size-10 shrink-0 rounded-lg ${color}`} />
               <div>
                 <p className="text-sm font-medium">{title}</p>
@@ -312,7 +312,7 @@ export function DesignSystemGallery() {
       >
         <form
           noValidate
-          className="grid gap-6 rounded-xl border bg-card p-5 shadow-surface sm:p-6 md:grid-cols-2"
+          className="grid grid-cols-1 gap-6 rounded-xl border bg-card p-5 shadow-surface sm:p-6 md:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault()
             setSubmitted(true)
@@ -368,15 +368,15 @@ export function DesignSystemGallery() {
             <Textarea placeholder="Añade contexto si lo necesitas" />
           </AccessibleField>
           <div className="flex flex-wrap gap-x-8 gap-y-5 md:col-span-2">
-            <AccessibleField className="flex items-center gap-3">
+            <AccessibleField className="flex min-w-0 max-w-full items-center gap-3">
               <Switch defaultChecked />
               <Label>Mostrar resumen</Label>
             </AccessibleField>
-            <AccessibleField className="flex items-center gap-3">
+            <AccessibleField className="flex min-w-0 max-w-full items-center gap-3">
               <Checkbox />
               <Label>Incluir nota</Label>
             </AccessibleField>
-            <AccessibleField className="flex items-center gap-3">
+            <AccessibleField className="flex min-w-0 max-w-full items-center gap-3">
               <Switch disabled />
               <Label>Opción no disponible</Label>
             </AccessibleField>
@@ -390,7 +390,7 @@ export function DesignSystemGallery() {
             )}
           </div>
         </form>
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <AccessibleField className="space-y-2">
             <Label>Selector vacío</Label>
             <SearchableSelect
@@ -487,7 +487,7 @@ export function DesignSystemGallery() {
         title="Siempre sabes qué sucede."
         description="El estado se comunica con texto e iconos, además del color. Los errores persistentes permanecen cerca de la tarea."
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Feedback title="Monedas originales">
             El total se muestra por moneda hasta contar con una cotización válida.
           </Feedback>
@@ -501,7 +501,7 @@ export function DesignSystemGallery() {
             Conservamos el resto de tu información. Vuelve a intentarlo.
           </Feedback>
         </div>
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div>
             <LoadingState>Cargando movimientos de ejemplo…</LoadingState>
             <p className="text-xs text-muted-foreground">
