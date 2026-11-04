@@ -137,6 +137,42 @@ export function getTransactionDisplayCurrency(transaction: TimelineTransaction) 
   return currencies[0]
 }
 
+/** Preview of returned lines only; currencies and transfer directions stay separate. */
+export function getTimelineAmounts(transaction: TimelineTransaction) {
+  if (
+    !transaction.lines.length ||
+    transaction.lines.some((line) => !line.accountCurrency || !Number.isFinite(line.amount))
+  )
+    return null
+  const groups = new Map<
+    string,
+    { currency: string; direction: "net" | "out" | "in"; amounts: number[] }
+  >()
+  for (const line of transaction.lines) {
+    const direction =
+      transaction.type === "TRANSFER"
+        ? line.amount < 0
+          ? "out"
+          : line.amount > 0
+            ? "in"
+            : "net"
+        : "net"
+    const key = `${line.accountCurrency}:${direction}`
+    const group = groups.get(key) ?? { currency: line.accountCurrency, direction, amounts: [] }
+    group.amounts.push(line.amount)
+    groups.set(key, group)
+  }
+  try {
+    return Array.from(groups.values(), ({ currency, direction, amounts }) => ({
+      currency,
+      direction,
+      amount: sumMoney(amounts),
+    }))
+  } catch {
+    return null
+  }
+}
+
 export function groupTransactionsForTimeline(
   transactions: TimelineTransaction[],
   options?: { now?: Date; locale?: string },

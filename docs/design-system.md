@@ -69,7 +69,7 @@ El contraste se comprueba con tokens y con DOM renderizado. Las fuentes del sist
 
 ## Entrega
 
-ZA-91 adopta los neutros aprobados de Marea mediante `--marea-*` y `.marea-surface`, de forma acotada al formulario de ingresos/gastos. ZA-88 los reutiliza en la [ficha completa de movimientos](transaction-detail.md), con resumen cobalto y líneas abiertas. La referencia comparte esos valores sin cambiar su apariencia. Ver [registro de movimientos](movement-entry.md) para búsquedas, recientes, validación y guardado.
+ZA-91 adopta los neutros aprobados de Marea mediante `--marea-*` y `.marea-surface`, de forma acotada al formulario de ingresos/gastos. ZA-88 los reutiliza en la [ficha completa de movimientos](transaction-detail.md), con resumen cobalto y líneas abiertas. ZA-106 los aplica al [historial de Movimientos](transaction-history.md), con filas abiertas, lectura móvil y densidad ajustable. La referencia comparte esos valores sin cambiar su apariencia. Ver [registro de movimientos](movement-entry.md) para búsquedas, recientes, validación y guardado.
 
 ZA-111 complementa estos componentes con [dos composiciones completas de Sobres](atlantico-composition.md), revisables en `/design-reference`. El propietario eligió Marea el 4 de noviembre de 2026. Sus roles se acotan a la referencia y se adoptarán por módulo siguiendo la guía, sin sustituir globalmente los tokens de esta entrega.
 

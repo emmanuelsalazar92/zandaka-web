@@ -1,6 +1,6 @@
 # Ficha completa de movimientos — ZA-88
 
-Cada tarjeta de Movimientos abre una ficha mediante toque, clic, Enter o Espacio. El botón cubre la tarjeta y tiene el nombre accesible «Ver detalle del movimiento N». La ficha consulta `GET /api/transactions/:id?userId=...` al abrir; no reutiliza el desglose abreviado del listado como si fuera completo. No hay precarga por tarjeta ni descarga de todo el historial.
+Cada fila o tarjeta de Movimientos abre una ficha mediante toque, clic, Enter o Espacio. El botón cubre la tarjeta y tiene el nombre accesible «Ver detalle del movimiento N». La ficha consulta `GET /api/transactions/:id?userId=...` al abrir; no reutiliza el desglose abreviado del listado como si fuera completo. No hay precarga por tarjeta ni descarga de todo el historial.
 
 ## Lectura y significado financiero
 

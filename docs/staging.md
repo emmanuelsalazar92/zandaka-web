@@ -1,5 +1,7 @@
 # Staging y entregas por bloques
 
+ZA-106 rediseña el [historial de Movimientos](transaction-history.md) solo en web. Reutiliza la API existente y la ficha de ZA-88; no añade endpoints ni requisitos de DB. Se conserva la compatibilidad web/API del bloque y la preparación independiente de ZA-90 cuando corresponda.
+
 ZA-88 incorpora la [ficha completa de movimientos](transaction-detail.md) y requiere una API del mismo bloque con `GET /api/transactions/:id?userId=...`. Promover el par web/API compatible. No añade cambios de esquema ni recálculos; la preparación de DB de ZA-90 sigue siendo independiente. Con una API anterior, la ficha indica que no está disponible y conserva el historial.
 
 **Entrada operativa: [Desplegar un bloque en testing](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/deploy-testing.md), en `zandaka-api/docs/deploy-testing.md` del workspace. Incluye la preparación de DB de ZA-90 que debe acompañar a las imágenes web/API.**

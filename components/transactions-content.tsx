@@ -1,30 +1,26 @@
 "use client"
 
-import {
-  Plus,
-  Trash2,
-  AlertCircle,
-  Search,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-  X,
-  Upload,
-} from "lucide-react"
+import { Plus, Trash2, AlertCircle, Search, Filter, X, Upload } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
 
 import { EmptyState } from "@/components/empty-state"
 import { PageHeader } from "@/components/page-header"
 import { TransactionTimeline, TransactionTimelineSkeleton } from "@/components/transaction-timeline"
+import {
+  AppliedHistoryFilters,
+  HistoryPagination,
+} from "@/components/transactions/history-controls"
+import historyStyles from "@/components/transactions/history.module.css"
 import { MovementComposer } from "@/components/transactions/movement-composer"
 import { TransactionDetailDialog } from "@/components/transactions/transaction-detail-dialog"
+import { useTransactionHistory } from "@/components/transactions/use-transaction-history"
 import { TransferComposer } from "@/components/transfers/transfer-composer"
 import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
 import {
   Dialog,
@@ -45,16 +41,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { getAccountingDate } from "@/lib/date-only"
+import { getAccountingDate, formatIsoDateOnly } from "@/lib/date-only"
 import { readPublicError } from "@/lib/public-error"
 import {
-  applyTypeSign,
   normalizeAmountInput,
   sanitizeAmountInput,
   transactionAmount,
 } from "@/lib/transaction-amount"
 import {
+  emptyHistoryFilters,
+  historyFilterError,
+  type HistoryFilters,
+} from "@/lib/transaction-history"
+import {
   groupTransactionsForTimeline,
+  getTransactionTypeMeta,
   type TimelineTransaction,
   type TransactionType,
 } from "@/lib/transaction-timeline"
@@ -67,59 +68,10 @@ interface TransactionLine {
   amount: string
 }
 
-interface ApiTransactionLine {
-  account_id?: number
-  envelope_id?: number
-  amount: number
-  accountId?: number
-  envelopeId?: number
-  accountName?: string
-  account_name?: string
-  accountCurrency?: string | null
-  account_currency?: string | null
-  categoryName?: string
-  category_name?: string
-}
-
-interface ApiTransaction {
-  id: number
-  user_id?: number
-  userId?: number
-  date: string
-  description: string
-  type: TransactionType
-  accountCurrency?: string | null
-  account_currency?: string | null
-  created_at?: string
-  createdAt?: string
-  lines: ApiTransactionLine[]
-}
-
-interface PaginationMeta {
-  page: number
-  pageSize: number
-  totalItems: number
-  totalPages: number
-  hasNextPage: boolean
-  hasPrevPage: boolean
-}
-
-const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
 const API_BASE_URL = "/api"
 export function TransactionsContent() {
   const [detailId, setDetailId] = React.useState<number | null>(null)
   const detailTrigger = React.useRef<HTMLButtonElement | null>(null)
-  const [transactionsData, setTransactionsData] = React.useState<ApiTransaction[]>([])
-  const [transactionsLoading, setTransactionsLoading] = React.useState(false)
-  const [transactionsError, setTransactionsError] = React.useState<string | null>(null)
-  const [transactionsMeta, setTransactionsMeta] = React.useState<PaginationMeta>({
-    page: 1,
-    pageSize: 10,
-    totalItems: 0,
-    totalPages: 0,
-    hasNextPage: false,
-    hasPrevPage: false,
-  })
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [hasPendingTransfer, setHasPendingTransfer] = React.useState(false)
   const [accountsReload, setAccountsReload] = React.useState(0)
@@ -153,16 +105,9 @@ export function TransactionsContent() {
   })
 
   // Filter state - draft (UI) and applied (actual filter)
-  const defaultFilters = {
-    dateFrom: "",
-    dateTo: "",
-    keyword: "",
-    type: "ALL",
-    accountId: "ALL",
-    envelopeId: "ALL",
-    amountMin: "",
-    amountMax: "",
-  }
+  const defaultFilters = emptyHistoryFilters
+  const [density, setDensity] = React.useState<"compact" | "comfortable">("compact")
+  const [filterError, setFilterError] = React.useState<ReturnType<typeof historyFilterError>>(null)
   const [draftFilters, setDraftFilters] = React.useState(defaultFilters)
   const [filters, setFilters] = React.useState(defaultFilters)
 
@@ -170,6 +115,15 @@ export function TransactionsContent() {
   const [currentPage, setCurrentPage] = React.useState(1)
   const [itemsPerPage, setItemsPerPage] = React.useState(10)
   const userId = 1
+  const {
+    data: transactionsData,
+    meta: transactionsMeta,
+    loading: transactionsLoading,
+    error: transactionsError,
+    announcement,
+    previousMeta,
+    previousCount,
+  } = useTransactionHistory(filters, currentPage, itemsPerPage, userId, transactionsReloadToken)
 
   const activeAccounts = React.useMemo(
     () => accounts.filter((account) => account.active),
@@ -199,10 +153,10 @@ export function TransactionsContent() {
             line.accountCurrency ??
             line.account_currency ??
             accounts.find((account) => account.id === accountId)?.currency ??
-            "CRC",
+            "",
           envelopeId,
           envelope: envelopeName,
-          amount: applyTypeSign(transaction.type, line.amount),
+          amount: line.amount,
         }
       })
 
@@ -263,9 +217,14 @@ export function TransactionsContent() {
   }, [accountsReload])
 
   const fetchEnvelopes = React.useCallback(
-    async (accountId: string) => {
+    async (accountId: string, retry = false) => {
       if (!accountId || accountId === "ALL") return
-      if (envelopesByAccount[accountId] || envelopesLoading[accountId]) return
+      if (
+        envelopesByAccount[accountId] ||
+        envelopesLoading[accountId] ||
+        (envelopesError[accountId] && !retry)
+      )
+        return
 
       setEnvelopesLoading((prev) => ({ ...prev, [accountId]: true }))
       setEnvelopesError((prev) => ({ ...prev, [accountId]: null }))
@@ -296,7 +255,7 @@ export function TransactionsContent() {
         setEnvelopesLoading((prev) => ({ ...prev, [accountId]: false }))
       }
     },
-    [envelopesByAccount, envelopesLoading],
+    [envelopesByAccount, envelopesLoading, envelopesError],
   )
 
   React.useEffect(() => {
@@ -331,59 +290,13 @@ export function TransactionsContent() {
   }, [draftFilters.accountId, fetchEnvelopes])
 
   React.useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        setTransactionsLoading(true)
-        setTransactionsError(null)
-
-        // Build query params to mirror the Transactions UI filters.
-        const params = new URLSearchParams()
-        params.set("userId", userId.toString())
-        if (filters.dateFrom) params.set("from", filters.dateFrom)
-        if (filters.dateTo) params.set("to", filters.dateTo)
-        if (filters.type !== "ALL") params.set("type", filters.type)
-        if (filters.accountId !== "ALL") params.set("accountId", filters.accountId)
-        if (filters.envelopeId !== "ALL") params.set("categoryId", filters.envelopeId)
-        if (filters.keyword) params.set("q", filters.keyword)
-        if (filters.amountMin) params.set("amountMin", filters.amountMin)
-        if (filters.amountMax) params.set("amountMax", filters.amountMax)
-        params.set("page", currentPage.toString())
-        params.set("pageSize", itemsPerPage.toString())
-        params.set("sortBy", "date")
-        params.set("sortDir", "desc")
-
-        const res = await fetch(`${API_BASE_URL}/transactions?${params.toString()}`, {
-          headers: { Accept: "application/json" },
-        })
-        if (!res.ok) throw new Error("No pudimos cargar los movimientos. Vuelve a intentar.")
-        const data = (await res.json()) as { data: ApiTransaction[]; meta: PaginationMeta }
-
-        setTransactionsData(data.data)
-        setTransactionsMeta(data.meta)
-      } catch (e) {
-        const message =
-          e instanceof Error ? e.message : "No pudimos cargar los movimientos. Vuelve a intentar."
-        setTransactionsError(message)
-      } finally {
-        setTransactionsLoading(false)
-      }
-    }
-
-    void fetchTransactions()
-  }, [filters, currentPage, itemsPerPage, transactionsReloadToken, userId])
-
-  // Pagination calculations
-  const totalPages = Math.max(transactionsMeta.totalPages || 0, 1)
-  const startIndex = transactionsMeta.totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1
-  const endIndex =
-    transactionsMeta.totalItems === 0
-      ? 0
-      : Math.min(startIndex + transactions.length - 1, transactionsMeta.totalItems)
-
-  // Reset to page 1 when filters change
-  React.useEffect(() => {
-    setCurrentPage(1)
-  }, [filters, itemsPerPage])
+    if (
+      !transactionsLoading &&
+      !transactionsError &&
+      currentPage > Math.max(transactionsMeta.totalPages, 1)
+    )
+      setCurrentPage(Math.max(transactionsMeta.totalPages, 1))
+  }, [transactionsLoading, transactionsError, currentPage, transactionsMeta.totalPages])
 
   // Count active filters
   const activeFilterCount = React.useMemo(() => {
@@ -400,21 +313,56 @@ export function TransactionsContent() {
   }, [filters])
 
   const applyFilters = () => {
+    const error = historyFilterError(draftFilters)
+    setFilterError(error)
+    if (error) {
+      document
+        .getElementById(error.field === "dateFrom" ? "filter-date-from" : "filter-amount-min")
+        ?.focus()
+      return
+    }
     setFilters({ ...draftFilters })
     setCurrentPage(1)
   }
 
   const clearFilters = () => {
+    setFilterError(null)
     setDraftFilters(defaultFilters)
     setFilters(defaultFilters)
     setCurrentPage(1)
   }
 
-  // Handle Enter key to apply filters
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      applyFilters()
+  const appliedFilters = Object.entries(filters).flatMap(([key, value]) => {
+    if (!value || value === "ALL") return []
+    const label =
+      key === "dateFrom"
+        ? "Desde: " + formatIsoDateOnly(value)
+        : key === "dateTo"
+          ? "Hasta: " + formatIsoDateOnly(value)
+          : key === "type"
+            ? "Tipo: " + getTransactionTypeMeta(value).label
+            : key === "accountId"
+              ? "Cuenta: " +
+                (accounts.find((account) => String(account.id) === value)?.name ?? "#" + value)
+              : key === "envelopeId"
+                ? "Sobre: " +
+                  (envelopesByAccount[filters.accountId]?.find(
+                    (envelope) => String(envelope.categoryId) === value,
+                  )?.name ?? "#" + value)
+                : key === "keyword"
+                  ? '"' + value + '"'
+                  : (key === "amountMin" ? "Mínimo: " : "Máximo: ") + value
+    return [{ key, label }]
+  })
+  const removeFilter = (key: string) => {
+    const reset = {
+      [key]: emptyHistoryFilters[key as keyof HistoryFilters],
+      ...(key === "accountId" ? { envelopeId: "ALL" } : {}),
     }
+    setFilters((current) => ({ ...current, ...reset }))
+    setDraftFilters((current) => ({ ...current, ...reset }))
+    setCurrentPage(1)
+    setFilterError(null)
   }
 
   const handleAddLine = () => {
@@ -514,22 +462,11 @@ export function TransactionsContent() {
           ),
         )
       }
-      const data = (await res.json()) as {
-        transaction: ApiTransaction
-        lines: ApiTransactionLine[]
-      }
-      const created: ApiTransaction = {
-        ...data.transaction,
-        lines: data.lines,
-      }
-      setTransactionsData((prev) => [created, ...prev])
-      setTransactionsMeta((prev) => {
-        const totalItems = prev.totalItems + 1
-        return {
-          ...prev,
-          totalItems,
-          totalPages: Math.max(1, Math.ceil(totalItems / itemsPerPage)),
-        }
+      await res.json()
+      setTransactionsReloadToken((current) => current + 1)
+      setMovementNotice({
+        title: "Ajuste registrado",
+        description: "La lista conserva tus filtros actuales.",
       })
       resetCreateForm()
       setIsCreateOpen(false)
@@ -555,7 +492,7 @@ export function TransactionsContent() {
   }, [])
 
   return (
-    <div className="space-y-6">
+    <div className="marea-surface min-w-0 space-y-6 rounded-2xl bg-background p-3 sm:p-5 [overflow-wrap:anywhere]">
       <PageHeader
         title={<>Movimientos</>}
         description={<>Cada ingreso, gasto y traslado, en un solo lugar.</>}
@@ -565,6 +502,9 @@ export function TransactionsContent() {
         <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 lg:justify-end">
           <Button
             variant="outline"
+            aria-label="Filtros"
+            aria-expanded={isFiltersOpen}
+            aria-controls="history-filters"
             onClick={() => setIsFiltersOpen(!isFiltersOpen)}
             className="relative h-auto min-h-11 max-w-full whitespace-normal py-2"
           >
@@ -828,9 +768,18 @@ export function TransactionsContent() {
                               </SelectContent>
                             </Select>
                             {line.accountId && envelopesError[line.accountId] && (
-                              <AccessibleFieldError className="text-xs text-error mt-1">
-                                {envelopesError[line.accountId]}
-                              </AccessibleFieldError>
+                              <>
+                                <AccessibleFieldError className="text-xs text-error mt-1">
+                                  {envelopesError[line.accountId]}
+                                </AccessibleFieldError>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => void fetchEnvelopes(line.accountId, true)}
+                                >
+                                  Volver a cargar sobres del detalle {index + 1}
+                                </Button>
+                              </>
                             )}
                           </AccessibleField>
                           <AccessibleField className="space-y-1">
@@ -920,10 +869,10 @@ export function TransactionsContent() {
       )}
       {/* Filters Panel */}
       <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-        <CollapsibleContent>
+        <CollapsibleContent id="history-filters">
           <Card className="mb-4">
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                 <CardTitle className="text-base">Filtros</CardTitle>
                 {activeFilterCount > 0 && (
                   <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs">
@@ -933,262 +882,326 @@ export function TransactionsContent() {
                 )}
               </div>
             </CardHeader>
-            <CardContent className="space-y-4" onKeyDown={handleKeyDown}>
-              {/* Row 1: Date Range and Keyword */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <AccessibleField className="space-y-1.5">
-                  <Label htmlFor="filter-date-from" className="text-xs text-muted-foreground">
-                    Desde
-                  </Label>
-                  <Input
-                    type="date"
-                    value={draftFilters.dateFrom}
-                    id="filter-date-from"
-                    onChange={(e) => setDraftFilters({ ...draftFilters, dateFrom: e.target.value })}
-                    className="h-9"
-                  />
-                </AccessibleField>
-                <AccessibleField className="space-y-1.5">
-                  <Label htmlFor="filter-date-to" className="text-xs text-muted-foreground">
-                    Hasta
-                  </Label>
-                  <Input
-                    type="date"
-                    value={draftFilters.dateTo}
-                    id="filter-date-to"
-                    onChange={(e) => setDraftFilters({ ...draftFilters, dateTo: e.target.value })}
-                    className="h-9"
-                  />
-                </AccessibleField>
-                <AccessibleField className="space-y-1.5 md:col-span-2">
-                  <Label htmlFor="filter-keyword" className="text-xs text-muted-foreground">
-                    Descripción
-                  </Label>
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <CardContent className={cn("@container", historyStyles.filters)}>
+              <form
+                className="space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  applyFilters()
+                }}
+              >
+                <p className="text-sm text-muted-foreground">
+                  {Object.keys(defaultFilters).some(
+                    (key) =>
+                      draftFilters[key as keyof HistoryFilters] !==
+                      filters[key as keyof HistoryFilters],
+                  )
+                    ? "Cambios sin aplicar. El historial conserva los filtros anteriores hasta pulsar Buscar."
+                    : "Elige los filtros y pulsa Buscar para aplicarlos."}
+                </p>
+                {/* Row 1: Date Range and Keyword */}
+                <div className="grid grid-cols-1 @min-[44rem]:grid-cols-2 gap-4">
+                  <AccessibleField className="space-y-1.5">
+                    <Label htmlFor="filter-date-from" className="text-xs text-muted-foreground">
+                      Desde
+                    </Label>
                     <Input
-                      placeholder="Buscar por descripción…"
-                      value={draftFilters.keyword}
-                      id="filter-keyword"
-                      onChange={(e) =>
-                        setDraftFilters({ ...draftFilters, keyword: e.target.value })
+                      type="date"
+                      value={draftFilters.dateFrom}
+                      id="filter-date-from"
+                      aria-invalid={filterError?.field === "dateFrom" || undefined}
+                      aria-describedby={
+                        filterError?.field === "dateFrom" ? "history-filter-error" : undefined
                       }
-                      className="h-9 pl-8"
+                      onChange={(e) =>
+                        setDraftFilters({ ...draftFilters, dateFrom: e.target.value })
+                      }
+                      className="h-9"
                     />
-                  </div>
-                </AccessibleField>
-              </div>
-
-              {/* Row 2: Type, Account, Envelope */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <AccessibleField className="space-y-1.5">
-                  <Label htmlFor="filter-type" className="text-xs text-muted-foreground">
-                    Tipo
-                  </Label>
-                  <Select
-                    value={draftFilters.type}
-                    onValueChange={(value) => setDraftFilters({ ...draftFilters, type: value })}
-                  >
-                    <SelectTrigger id="filter-type" aria-label="Tipo" className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">Todos los tipos</SelectItem>
-                      <SelectItem value="INCOME">Ingreso</SelectItem>
-                      <SelectItem value="EXPENSE">Gasto</SelectItem>
-                      <SelectItem value="TRANSFER">Transferencia</SelectItem>
-                      <SelectItem value="ADJUSTMENT">Ajuste</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </AccessibleField>
-                <AccessibleField className="space-y-1.5">
-                  <Label htmlFor="filter-account" className="text-xs text-muted-foreground">
-                    Cuenta
-                  </Label>
-                  <Select
-                    value={draftFilters.accountId}
-                    onValueChange={(value) =>
-                      setDraftFilters({ ...draftFilters, accountId: value, envelopeId: "ALL" })
-                    }
-                    disabled={accountsLoading || activeAccounts.length === 0}
-                  >
-                    <SelectTrigger id="filter-account" aria-label="Cuenta" className="h-9">
-                      <SelectValue
-                        placeholder={
-                          accountsLoading
-                            ? "Cargando cuentas…"
-                            : activeAccounts.length === 0
-                              ? "No hay cuentas activas"
-                              : "Elige una cuenta"
+                  </AccessibleField>
+                  <AccessibleField className="space-y-1.5">
+                    <Label htmlFor="filter-date-to" className="text-xs text-muted-foreground">
+                      Hasta
+                    </Label>
+                    <Input
+                      type="date"
+                      value={draftFilters.dateTo}
+                      id="filter-date-to"
+                      onChange={(e) => setDraftFilters({ ...draftFilters, dateTo: e.target.value })}
+                      className="h-9"
+                    />
+                  </AccessibleField>
+                  <AccessibleField className="space-y-1.5 @min-[44rem]:col-span-2">
+                    <Label htmlFor="filter-keyword" className="text-xs text-muted-foreground">
+                      Descripción
+                    </Label>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar por descripción…"
+                        value={draftFilters.keyword}
+                        id="filter-keyword"
+                        onChange={(e) =>
+                          setDraftFilters({ ...draftFilters, keyword: e.target.value })
                         }
+                        className="h-9 pl-8"
                       />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">Todas las cuentas</SelectItem>
-                      {activeAccounts.map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id.toString()}>
-                          {acc.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {accountsError && (
-                    <AccessibleFieldError className="text-xs text-error mt-1">
-                      {accountsError}
-                    </AccessibleFieldError>
-                  )}
-                </AccessibleField>
-                <AccessibleField className="space-y-1.5">
-                  <Label htmlFor="filter-envelope" className="text-xs text-muted-foreground">
-                    Sobre
-                  </Label>
-                  <Select
-                    value={draftFilters.envelopeId}
-                    onValueChange={(value) =>
-                      setDraftFilters({ ...draftFilters, envelopeId: value })
-                    }
-                    disabled={
-                      draftFilters.accountId === "ALL" ||
-                      draftFilters.accountId === "" ||
-                      envelopesLoading[draftFilters.accountId]
-                    }
-                  >
-                    <SelectTrigger id="filter-envelope" aria-label="Sobre" className="h-9">
-                      <SelectValue
-                        placeholder={
-                          draftFilters.accountId === "ALL" || draftFilters.accountId === ""
-                            ? "Elige primero una cuenta"
-                            : envelopesLoading[draftFilters.accountId]
-                              ? "Cargando sobres…"
-                              : "Elige un sobre"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">Todos los sobres</SelectItem>
-                      {(envelopesByAccount[draftFilters.accountId] || []).map((env) => (
-                        <SelectItem key={env.categoryId} value={env.categoryId.toString()}>
-                          {env.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {draftFilters.accountId !== "ALL" && envelopesError[draftFilters.accountId] && (
-                    <AccessibleFieldError className="text-xs text-error mt-1">
-                      {envelopesError[draftFilters.accountId]}
-                    </AccessibleFieldError>
-                  )}
-                </AccessibleField>
-              </div>
-
-              {/* Row 3: Amount Range */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <AccessibleField className="space-y-1.5">
-                  <Label htmlFor="filter-amount-min" className="text-xs text-muted-foreground">
-                    Importe mínimo
-                  </Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={draftFilters.amountMin}
-                    id="filter-amount-min"
-                    onChange={(e) =>
-                      setDraftFilters({ ...draftFilters, amountMin: e.target.value })
-                    }
-                    className="h-9"
-                  />
-                </AccessibleField>
-                <AccessibleField className="space-y-1.5">
-                  <Label htmlFor="filter-amount-max" className="text-xs text-muted-foreground">
-                    Importe máximo
-                  </Label>
-                  <Input
-                    type="number"
-                    placeholder="999999"
-                    value={draftFilters.amountMax}
-                    id="filter-amount-max"
-                    onChange={(e) =>
-                      setDraftFilters({ ...draftFilters, amountMax: e.target.value })
-                    }
-                    className="h-9"
-                  />
-                </AccessibleField>
-                <div className="flex items-end md:col-span-2">
-                  <Button onClick={applyFilters} className="h-9">
-                    <Search className="mr-2 h-4 w-4" />
-                    Buscar
-                  </Button>
+                    </div>
+                  </AccessibleField>
                 </div>
-              </div>
+
+                {/* Row 2: Type, Account, Envelope */}
+                <div className="grid grid-cols-1 @min-[44rem]:grid-cols-2 gap-4">
+                  <AccessibleField className="space-y-1.5">
+                    <Label htmlFor="filter-type" className="text-xs text-muted-foreground">
+                      Tipo
+                    </Label>
+                    <Select
+                      value={draftFilters.type}
+                      onValueChange={(value) => setDraftFilters({ ...draftFilters, type: value })}
+                    >
+                      <SelectTrigger id="filter-type" aria-label="Tipo" className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">Todos los tipos</SelectItem>
+                        <SelectItem value="INCOME">Ingreso</SelectItem>
+                        <SelectItem value="EXPENSE">Gasto</SelectItem>
+                        <SelectItem value="TRANSFER">Transferencia</SelectItem>
+                        <SelectItem value="ADJUSTMENT">Ajuste</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </AccessibleField>
+                  <AccessibleField className="space-y-1.5">
+                    <Label htmlFor="filter-account" className="text-xs text-muted-foreground">
+                      Cuenta
+                    </Label>
+                    <Select
+                      value={draftFilters.accountId}
+                      onValueChange={(value) =>
+                        setDraftFilters({ ...draftFilters, accountId: value, envelopeId: "ALL" })
+                      }
+                      disabled={accountsLoading || activeAccounts.length === 0}
+                    >
+                      <SelectTrigger id="filter-account" aria-label="Cuenta" className="h-9">
+                        <SelectValue
+                          placeholder={
+                            accountsLoading
+                              ? "Cargando cuentas…"
+                              : activeAccounts.length === 0
+                                ? "No hay cuentas activas"
+                                : "Elige una cuenta"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">Todas las cuentas</SelectItem>
+                        {activeAccounts.map((acc) => (
+                          <SelectItem key={acc.id} value={acc.id.toString()}>
+                            {acc.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {accountsError && (
+                      <>
+                        <AccessibleFieldError className="text-xs text-error mt-1">
+                          {accountsError}
+                        </AccessibleFieldError>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={accountsLoading}
+                          onClick={() => setAccountsReload((value) => value + 1)}
+                        >
+                          Volver a cargar cuentas
+                        </Button>
+                      </>
+                    )}
+                  </AccessibleField>
+                  <AccessibleField className="space-y-1.5">
+                    <Label htmlFor="filter-envelope" className="text-xs text-muted-foreground">
+                      Sobre
+                    </Label>
+                    <Select
+                      value={draftFilters.envelopeId}
+                      onValueChange={(value) =>
+                        setDraftFilters({ ...draftFilters, envelopeId: value })
+                      }
+                      disabled={
+                        draftFilters.accountId === "ALL" ||
+                        draftFilters.accountId === "" ||
+                        envelopesLoading[draftFilters.accountId]
+                      }
+                    >
+                      <SelectTrigger id="filter-envelope" aria-label="Sobre" className="h-9">
+                        <SelectValue
+                          placeholder={
+                            draftFilters.accountId === "ALL" || draftFilters.accountId === ""
+                              ? "Elige primero una cuenta"
+                              : envelopesLoading[draftFilters.accountId]
+                                ? "Cargando sobres…"
+                                : "Elige un sobre"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">Todos los sobres</SelectItem>
+                        {(envelopesByAccount[draftFilters.accountId] || []).map((env) => (
+                          <SelectItem key={env.categoryId} value={env.categoryId.toString()}>
+                            {env.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {draftFilters.accountId !== "ALL" && envelopesError[draftFilters.accountId] && (
+                      <>
+                        <AccessibleFieldError className="text-xs text-error mt-1">
+                          {envelopesError[draftFilters.accountId]}
+                        </AccessibleFieldError>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={envelopesLoading[draftFilters.accountId]}
+                          onClick={() => void fetchEnvelopes(draftFilters.accountId, true)}
+                        >
+                          Volver a cargar sobres
+                        </Button>
+                      </>
+                    )}
+                  </AccessibleField>
+                </div>
+
+                {/* Row 3: Amount Range */}
+                <div className="grid grid-cols-1 @min-[44rem]:grid-cols-2 gap-4">
+                  <AccessibleField className="space-y-1.5">
+                    <Label htmlFor="filter-amount-min" className="text-xs text-muted-foreground">
+                      Importe mínimo
+                    </Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      step="any"
+                      value={draftFilters.amountMin}
+                      id="filter-amount-min"
+                      aria-invalid={filterError?.field === "amountMin" || undefined}
+                      aria-describedby={
+                        filterError?.field === "amountMin" ? "history-filter-error" : undefined
+                      }
+                      onChange={(e) =>
+                        setDraftFilters({ ...draftFilters, amountMin: e.target.value })
+                      }
+                      className="h-9"
+                    />
+                  </AccessibleField>
+                  <AccessibleField className="space-y-1.5">
+                    <Label htmlFor="filter-amount-max" className="text-xs text-muted-foreground">
+                      Importe máximo
+                    </Label>
+                    <Input
+                      type="number"
+                      placeholder="999999"
+                      step="any"
+                      value={draftFilters.amountMax}
+                      id="filter-amount-max"
+                      onChange={(e) =>
+                        setDraftFilters({ ...draftFilters, amountMax: e.target.value })
+                      }
+                      className="h-9"
+                    />
+                  </AccessibleField>
+                  <div className="flex items-end @min-[44rem]:col-span-2">
+                    <Button type="submit">
+                      <Search className="mr-2 h-4 w-4" />
+                      Buscar
+                    </Button>
+                  </div>
+                </div>
+                {filterError && (
+                  <Feedback id="history-filter-error" tone="error" title="Revisa los filtros">
+                    {filterError.message}
+                  </Feedback>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Los importes filtran el total neto con signo: los gastos son negativos y los
+                  traslados suelen sumar cero. No se convierten monedas.
+                </p>
+              </form>
             </CardContent>
           </Card>
         </CollapsibleContent>
       </Collapsible>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Movimientos</CardTitle>
-              <CardDescription>
-                {transactionsMeta.totalItems === transactions.length
-                  ? `${transactionsMeta.totalItems} movimiento(s)`
-                  : `${transactions.length} of ${transactionsMeta.totalItems} movimiento(s)`}{" "}
-                agrupados por fecha del movimiento.
-              </CardDescription>
-            </div>
-            {activeFilterCount > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {filters.dateFrom && (
-                  <Badge variant="secondary" className="text-xs">
-                    Desde: {filters.dateFrom}
-                  </Badge>
-                )}
-                {filters.dateTo && (
-                  <Badge variant="secondary" className="text-xs">
-                    Hasta: {filters.dateTo}
-                  </Badge>
-                )}
-                {filters.keyword && (
-                  <Badge variant="secondary" className="text-xs">
-                    &quot;{filters.keyword}&quot;
-                  </Badge>
-                )}
-                {filters.type !== "ALL" && (
-                  <Badge variant="secondary" className="text-xs">
-                    {filters.type}
-                  </Badge>
-                )}
-                {filters.accountId !== "ALL" && (
-                  <Badge variant="secondary" className="text-xs">
-                    {accounts.find((a) => a.id.toString() === filters.accountId)?.name}
-                  </Badge>
-                )}
-                {filters.envelopeId !== "ALL" && (
-                  <Badge variant="secondary" className="text-xs">
-                    {envelopesByAccount[filters.accountId]?.find(
-                      (env) => env.categoryId.toString() === filters.envelopeId,
-                    )?.name || filters.envelopeId}
-                  </Badge>
-                )}
-              </div>
-            )}
+      <section aria-label="Contexto del historial" className="atlantic-hero min-w-0 p-5 sm:p-6">
+        <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p className="hero-caption text-sm">
+              {activeFilterCount ? "Vista filtrada" : "Tu actividad"}
+            </p>
+            <p className="mt-2 text-4xl font-semibold tabular-nums [overflow-wrap:anywhere]">
+              {transactionsLoading
+                ? "Buscando…"
+                : transactionsError
+                  ? "Sin confirmar"
+                  : transactionsMeta.totalItems.toLocaleString("es-CR")}
+            </p>
+            <p className="hero-caption mt-1 text-sm">Movimientos encontrados</p>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {transactionsError && transactionsMeta.totalItems > 0 && (
-            <Alert className="mb-4 border-error/50 bg-error/5">
-              <AlertCircle className="h-4 w-4 text-error" />
-              <AlertDescription className="text-sm">{transactionsError}</AlertDescription>
-            </Alert>
-          )}
-          {transactionsLoading && timelineGroups.length > 0 ? (
-            <p className="text-sm text-muted-foreground">Actualizando movimientos…</p>
-          ) : null}
-
-          {transactionsLoading && timelineGroups.length === 0 ? (
+          <p className="hero-caption max-w-sm text-sm leading-relaxed">
+            Cada importe conserva su moneda. Consulta la ficha para ver todas las líneas del
+            movimiento.
+          </p>
+        </div>
+      </section>
+      <AppliedHistoryFilters
+        filters={appliedFilters}
+        onRemove={removeFilter}
+        onClear={clearFilters}
+      />
+      <section aria-labelledby="history-title" className="min-w-0 space-y-4">
+        <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h2 id="history-title" className="text-xl font-semibold">
+              Historial
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Más recientes primero · agrupados por fecha contable.
+            </p>
+          </div>
+          <div
+            role="group"
+            aria-label="Densidad del historial"
+            className="flex min-w-0 flex-wrap gap-1 rounded-lg border p-1"
+          >
+            <Button
+              variant={density === "compact" ? "secondary" : "ghost"}
+              aria-pressed={density === "compact"}
+              onClick={() => setDensity("compact")}
+            >
+              Compacta
+            </Button>
+            <Button
+              variant={density === "comfortable" ? "secondary" : "ghost"}
+              aria-pressed={density === "comfortable"}
+              onClick={() => setDensity("comfortable")}
+            >
+              Cómoda
+            </Button>
+          </div>
+        </div>
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-testid="history-status"
+          className="text-sm text-muted-foreground"
+        >
+          {announcement}
+        </p>
+        <div aria-busy={transactionsLoading} aria-label="Resultados del historial">
+          {transactionsLoading ? (
             <TransactionTimelineSkeleton />
-          ) : transactionsMeta.totalItems === 0 && transactionsError ? (
+          ) : transactionsError ? (
             <EmptyState
               icon={AlertCircle}
               title="No pudimos cargar los movimientos"
@@ -1196,134 +1209,57 @@ export function TransactionsContent() {
               actionLabel="Volver a intentar"
               onAction={retryTransactions}
             />
-          ) : transactionsMeta.totalItems === 0 ? (
+          ) : transactions.length === 0 ? (
             <EmptyState
               icon={Search}
               title={
-                activeFilterCount > 0
+                activeFilterCount
                   ? "Ningún movimiento coincide con los filtros"
                   : "Todavía no hay movimientos"
               }
               description={
-                activeFilterCount > 0
+                activeFilterCount
                   ? "Amplía el período, quita filtros o busca otra descripción."
                   : "Registra un ingreso, gasto o transferencia para comenzar."
               }
-              actionLabel={activeFilterCount > 0 ? "Quitar filtros" : undefined}
-              onAction={activeFilterCount > 0 ? clearFilters : undefined}
+              actionLabel={activeFilterCount ? "Quitar filtros" : "Registrar primer movimiento"}
+              onAction={activeFilterCount ? clearFilters : () => setIsCreateOpen(true)}
             />
           ) : (
             <TransactionTimeline
               groups={timelineGroups}
+              density={density}
               onOpen={(id, trigger) => {
                 detailTrigger.current = trigger
                 setDetailId(id)
               }}
             />
           )}
-
-          {detailId !== null && (
-            <TransactionDetailDialog
-              key={detailId}
-              transactionId={detailId}
-              userId={userId}
-              returnFocus={detailTrigger}
-              onClose={() => setDetailId(null)}
+        </div>
+        {detailId !== null && (
+          <TransactionDetailDialog
+            key={detailId}
+            transactionId={detailId}
+            userId={userId}
+            returnFocus={detailTrigger}
+            onClose={() => setDetailId(null)}
+          />
+        )}
+        {!transactionsError &&
+          (transactionsLoading ? previousMeta.totalItems : transactionsMeta.totalItems) > 0 && (
+            <HistoryPagination
+              meta={transactionsLoading ? previousMeta : transactionsMeta}
+              count={transactionsLoading ? previousCount : transactions.length}
+              pageSize={itemsPerPage}
+              busy={transactionsLoading}
+              onPage={setCurrentPage}
+              onPageSize={(size) => {
+                setCurrentPage(1)
+                setItemsPerPage(size)
+              }}
             />
           )}
-
-          {/* Pagination */}
-          {transactionsMeta.totalItems > 0 && (
-            <div className="mt-4 flex flex-col gap-4 border-t pt-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Mostrar</span>
-                <Select
-                  value={itemsPerPage.toString()}
-                  onValueChange={(value) => setItemsPerPage(Number.parseInt(value))}
-                >
-                  <SelectTrigger aria-label="Movimientos por página" className="h-8 w-[70px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                      <SelectItem key={option} value={option.toString()}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <span>por página</span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-muted-foreground">
-                  {startIndex}-{endIndex} de {transactionsMeta.totalItems}
-                </span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(1)}
-                    aria-label="Primera página"
-                    disabled={currentPage === 1}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    <ChevronLeft className="h-4 w-4 -ml-2" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    aria-label="Página anterior"
-                    disabled={currentPage === 1}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="px-2 text-muted-foreground">
-                    Página {currentPage} de {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    aria-label="Página siguiente"
-                    disabled={currentPage === totalPages}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(totalPages)}
-                    aria-label="Última página"
-                    disabled={currentPage === totalPages}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                    <ChevronRight className="h-4 w-4 -ml-2" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Empty state */}
-          {transactionsMeta.totalItems === 0 && !transactionsLoading && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No encontramos movimientos con estos filtros</p>
-              {activeFilterCount > 0 && (
-                <Button variant="link" onClick={clearFilters} className="mt-2">
-                  Quitar filtros
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      </section>
     </div>
   )
 }
