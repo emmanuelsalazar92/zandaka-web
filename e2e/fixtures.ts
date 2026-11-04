@@ -146,28 +146,37 @@ export async function installSyntheticAPI(
     else if (path === "/settings/cash-denominations" || path === "/payroll-rules/history")
       json = { items: [] }
     else if (path === "/payroll-rules/active") json = null
-    else if (path === "/reconciliations")
-      json = [
-        {
-          id: 1,
-          account_id: 1,
-          accountId: 1,
-          date: "2026-11-03",
-          reconciliation_date: "2026-11-03",
-          status: "OPEN",
-          count_method: "MANUAL_TOTAL",
-          counted_total: 9900,
-          expected_total: 10000,
-          difference: -100,
-          currency: "CRC",
-        },
-      ]
-    else if (path.startsWith("/reconciliations/"))
-      json = {
+    else if (/^\/accounts\/\d+\/reconciliations\/active$/.test(path))
+      return route.fulfill({ status: 404, json: { error: { code: "NOT_FOUND" } } })
+    else if (path === "/reconciliations" || path === "/reconciliations/1") {
+      const record = {
+        id: 1,
+        accountId: 1,
+        date: "2026-11-03",
+        status: "BALANCED",
+        countMethod: "MANUAL_TOTAL",
+        countedTotal: 9900,
         expectedTotal: 10000,
-        expected_total: 10000,
+        difference: -100,
         currency: "CRC",
-        count_method: "MANUAL_TOTAL",
+        isActive: 0,
+        note: null,
+        createdAt: "2026-11-03 18:00:00",
+        closedAt: "2026-11-03 19:00:00",
+      }
+      json = path === "/reconciliations" ? [record] : record
+    } else if (/^\/reconciliations\/accounts\/\d+\/expected-total$/.test(path))
+      json = {
+        accountId: Number(path.split("/")[3]),
+        date: url.searchParams.get("date"),
+        currency: "CRC",
+        expectedTotal: 10000,
+      }
+    else if (/^\/reconciliations\/accounts\/\d+\/denominations$/.test(path))
+      json = {
+        accountId: Number(path.split("/")[3]),
+        currency: "CRC",
+        countMethod: "DENOMINATION_COUNT",
         denominations: [],
       }
     else throw new Error(`Unmocked read in synthetic UI: ${path}`)

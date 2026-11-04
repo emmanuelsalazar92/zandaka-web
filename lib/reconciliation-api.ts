@@ -2,12 +2,11 @@ import { decimalNumber } from "@/lib/money"
 import { publicErrorMessage } from "@/lib/public-error"
 import type { CashDenomination, CashDenominationType } from "@/lib/settings-api"
 
-const API_BASE_URL = "/api"
-
 type RequestOptions = {
   method?: string
   query?: Record<string, string | number | undefined | null>
   body?: unknown
+  signal?: AbortSignal
 }
 
 type ApiErrorPayload = {
@@ -20,69 +19,6 @@ type ApiErrorPayload = {
   }
 }
 
-type ApiAccount = {
-  id: number
-  name: string
-  currency?: string | null
-  is_active?: number | boolean
-  active?: boolean
-  type?: string | null
-}
-
-type ApiReconciliationLine = {
-  id?: unknown
-  reconciliationId?: unknown
-  reconciliation_id?: unknown
-  denominationId?: unknown
-  denomination_id?: unknown
-  denominationValue?: unknown
-  denomination_value?: unknown
-  denominationType?: unknown
-  denomination_type?: unknown
-  denominationLabel?: unknown
-  denomination_label?: unknown
-  quantity?: unknown
-  lineTotal?: unknown
-  line_total?: unknown
-  sortOrder?: unknown
-  sort_order?: unknown
-  createdAt?: unknown
-  created_at?: unknown
-  updatedAt?: unknown
-  updated_at?: unknown
-}
-
-type ApiReconciliation = {
-  id: number
-  accountId?: unknown
-  account_id?: unknown
-  currency?: unknown
-  date?: unknown
-  countMethod?: unknown
-  count_method?: unknown
-  expectedTotal?: unknown
-  expected_total?: unknown
-  countedTotal?: unknown
-  counted_total?: unknown
-  realBalance?: unknown
-  real_balance?: unknown
-  calculatedBalance?: unknown
-  calculated_balance?: unknown
-  difference?: unknown
-  status?: unknown
-  isActive?: unknown
-  is_active?: unknown
-  note?: unknown
-  notes?: unknown
-  createdAt?: unknown
-  created_at?: unknown
-  updatedAt?: unknown
-  updated_at?: unknown
-  closedAt?: unknown
-  closed_at?: unknown
-  lines?: unknown
-}
-
 export type ReconciliationCountMethod = "MANUAL_TOTAL" | "DENOMINATION_COUNT"
 export type ReconciliationStatus = "OPEN" | "BALANCED" | "IGNORED"
 
@@ -91,6 +27,7 @@ export type ReconciliationAccount = {
   name: string
   currency: string
   active: boolean
+  institution: string | null
   type: string | null
 }
 
@@ -163,205 +100,226 @@ export class ReconciliationApiError extends Error {
   }
 }
 
-const toNumber = (value: unknown, fallback = 0) => {
-  if (typeof value === "number" && Number.isFinite(value)) return decimalNumber(value)
-  if (typeof value === "string" && value.trim() !== "") {
-    return decimalNumber(value.trim())
-  }
-  return fallback
+const invalid = () =>
+  new Error("No pudimos verificar los datos de conciliación. Vuelve a consultar.")
+const object = (raw: unknown): Record<string, unknown> => {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw invalid()
+  return raw as Record<string, unknown>
+}
+const text = (value: unknown) => {
+  if (typeof value !== "string") throw invalid()
+  return value
+}
+const optionalText = (value: unknown) =>
+  value === undefined || value === null ? null : text(value)
+const number = (value: unknown) => {
+  if ((typeof value !== "number" && typeof value !== "string") || value === "") throw invalid()
+  return decimalNumber(value as number | string)
+}
+const identifier = (value: unknown) => {
+  const result = number(value)
+  if (!Number.isSafeInteger(result) || result <= 0) throw invalid()
+  return result
+}
+const quantity = (value: unknown) => {
+  const result = number(value)
+  if (!Number.isSafeInteger(result) || result < 0) throw invalid()
+  return result
+}
+const active = (value: unknown) => {
+  if (![0, 1, true, false].includes(value as number | boolean)) throw invalid()
+  return value === true || value === 1
+}
+const method = (value: unknown): ReconciliationCountMethod => {
+  if (value !== "MANUAL_TOTAL" && value !== "DENOMINATION_COUNT") throw invalid()
+  return value
+}
+const status = (value: unknown): ReconciliationStatus => {
+  if (value !== "OPEN" && value !== "BALANCED" && value !== "IGNORED") throw invalid()
+  return value
+}
+const denominationType = (value: unknown): CashDenominationType => {
+  if (value !== "BILL" && value !== "COIN") throw invalid()
+  return value
+}
+const array = (value: unknown) => {
+  if (!Array.isArray(value)) throw invalid()
+  return value as unknown[]
+}
+const unique = <T extends { id: number }>(items: T[]) => {
+  if (new Set(items.map((item) => item.id)).size !== items.length) throw invalid()
+  return items
 }
 
-const toNullableNumber = (value: unknown) => {
-  if (value === null || value === undefined || value === "") return null
-  const parsed = toNumber(value, Number.NaN)
-  return Number.isNaN(parsed) ? null : parsed
-}
-
-const toStringValue = (value: unknown, fallback = "") =>
-  typeof value === "string" ? value : fallback
-
-const toBoolean = (value: unknown) => {
-  if (typeof value === "boolean") return value
-  if (typeof value === "number") return value === 1
-  if (typeof value === "string") return value === "1" || value === "true"
-  return false
-}
-
-const buildUrl = (path: string, query?: RequestOptions["query"]) => {
+async function request(path: string, options: RequestOptions = {}): Promise<unknown> {
   const params = new URLSearchParams()
-
-  Object.entries(query ?? {}).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") return
-    params.set(key, String(value))
-  })
-
-  const queryString = params.toString()
-  return `${API_BASE_URL}${path}${queryString ? `?${queryString}` : ""}`
-}
-
-const getErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
-  publicErrorMessage(payload, fallback)
-
-async function request<T>(path: string, options?: RequestOptions): Promise<T> {
-  const response = await fetch(buildUrl(path, options?.query), {
-    method: options?.method ?? "GET",
-    headers: {
-      Accept: "application/json",
-      ...(options?.body ? { "Content-Type": "application/json" } : {}),
-    },
-    body: options?.body ? JSON.stringify(options.body) : undefined,
-  })
-
-  const contentType = response.headers.get("content-type") || ""
-  const payload = contentType.includes("application/json")
-    ? ((await response.json().catch(() => null)) as T | ApiErrorPayload | null)
-    : null
-
-  if (!response.ok) {
-    const errorPayload = payload as ApiErrorPayload | null
-    throw new ReconciliationApiError({
-      status: response.status,
-      code:
-        errorPayload && typeof errorPayload === "object" && errorPayload.error?.code
-          ? String(errorPayload.error.code)
-          : null,
-      message: getErrorMessage(
-        errorPayload,
-        "No pudimos completar la consulta. Vuelve a intentar.",
-      ),
+  for (const [key, value] of Object.entries(options.query ?? {}))
+    if (value !== undefined && value !== null) params.set(key, String(value))
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+  options.signal?.addEventListener("abort", abort, { once: true })
+  if (options.signal?.aborted) controller.abort()
+  const timeout = setTimeout(abort, options.method === "POST" ? 30_000 : 15_000)
+  try {
+    const response = await fetch(`/api${path}${params.size ? `?${params}` : ""}`, {
+      method: options.method ?? "GET",
+      signal: controller.signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: options.body ? JSON.stringify(options.body) : undefined,
     })
-  }
-
-  return payload as T
-}
-
-const mapCashDenomination = (raw: unknown): CashDenomination => {
-  const item = raw as Record<string, unknown>
-  return {
-    id: toNumber(item.id),
-    userId: toNumber(item.userId ?? item.user_id),
-    currency: toStringValue(item.currency).toUpperCase(),
-    value: toNumber(item.value),
-    type: toStringValue(item.type, "COIN") as CashDenominationType,
-    label: (() => {
-      const value = toStringValue(item.label)
-      return value || null
-    })(),
-    sortOrder: toNumber(item.sortOrder ?? item.sort_order),
-    isActive: toBoolean(item.isActive ?? item.is_active),
-    createdAt: toStringValue(item.createdAt ?? item.created_at),
-    updatedAt: toStringValue(item.updatedAt ?? item.updated_at),
+    const payload: unknown = await response.json().catch(() => null)
+    if (!response.ok) {
+      const error = payload && typeof payload === "object" ? (payload as ApiErrorPayload) : null
+      throw new ReconciliationApiError({
+        status: response.status,
+        code: typeof error?.error?.code === "string" ? error.error.code : null,
+        message: publicErrorMessage(
+          payload,
+          "No pudimos completar la consulta. Vuelve a intentar.",
+        ),
+      })
+    }
+    return payload
+  } finally {
+    clearTimeout(timeout)
+    options.signal?.removeEventListener("abort", abort)
   }
 }
 
-const mapReconciliationLine = (raw: unknown): ReconciliationLine => {
-  const item = raw as ApiReconciliationLine
+function mapLine(raw: unknown): ReconciliationLine {
+  const item = object(raw)
   return {
-    id: toNumber(item.id),
-    reconciliationId: toNumber(item.reconciliationId ?? item.reconciliation_id),
-    denominationId: toNullableNumber(item.denominationId ?? item.denomination_id),
-    denominationValue: toNumber(item.denominationValue ?? item.denomination_value),
-    denominationType: toStringValue(
-      item.denominationType ?? item.denomination_type,
-      "COIN",
-    ) as CashDenominationType,
-    denominationLabel: (() => {
-      const value = toStringValue(item.denominationLabel ?? item.denomination_label)
-      return value || null
-    })(),
-    quantity: toNumber(item.quantity),
-    lineTotal: toNumber(item.lineTotal ?? item.line_total),
-    sortOrder: toNumber(item.sortOrder ?? item.sort_order),
-    createdAt: toStringValue(item.createdAt ?? item.created_at) || null,
-    updatedAt: toStringValue(item.updatedAt ?? item.updated_at) || null,
+    id: identifier(item.id),
+    reconciliationId: identifier(item.reconciliationId ?? item.reconciliation_id),
+    denominationId:
+      item.denominationId === null || item.denomination_id === null
+        ? null
+        : identifier(item.denominationId ?? item.denomination_id),
+    denominationValue: number(item.denominationValue ?? item.denomination_value),
+    denominationType: denominationType(item.denominationType ?? item.denomination_type),
+    denominationLabel: optionalText(item.denominationLabel ?? item.denomination_label),
+    quantity: quantity(item.quantity),
+    lineTotal: number(item.lineTotal ?? item.line_total),
+    sortOrder: quantity(item.sortOrder ?? item.sort_order ?? 0),
+    createdAt: optionalText(item.createdAt ?? item.created_at),
+    updatedAt: optionalText(item.updatedAt ?? item.updated_at),
   }
 }
 
-const mapReconciliation = (raw: unknown): ReconciliationRecord => {
-  const item = raw as ApiReconciliation
-  const countedTotal = toNumber(
-    item.countedTotal ?? item.counted_total ?? item.realBalance ?? item.real_balance,
-  )
-  const expectedTotal = toNumber(
-    item.expectedTotal ?? item.expected_total ?? item.calculatedBalance ?? item.calculated_balance,
-  )
-  const noteValue = (() => {
-    const value = toStringValue(item.notes ?? item.note)
-    return value || null
-  })()
-
-  return {
-    id: toNumber(item.id),
-    accountId: toNumber(item.accountId ?? item.account_id),
-    currency: toStringValue(item.currency, "CRC").toUpperCase(),
-    date: toStringValue(item.date),
-    countMethod: toStringValue(
-      item.countMethod ?? item.count_method,
-      "MANUAL_TOTAL",
-    ) as ReconciliationCountMethod,
+export function parseReconciliation(raw: unknown): ReconciliationRecord {
+  const item = object(raw),
+    expectedTotal = number(
+      item.expectedTotal ??
+        item.expected_total ??
+        item.calculatedBalance ??
+        item.calculated_balance,
+    ),
+    countedTotal = number(
+      item.countedTotal ?? item.counted_total ?? item.realBalance ?? item.real_balance,
+    )
+  const note = optionalText(item.notes ?? item.note)
+  const record: ReconciliationRecord = {
+    id: identifier(item.id),
+    accountId: identifier(item.accountId ?? item.account_id),
+    currency: text(item.currency).toUpperCase(),
+    date: text(item.date),
+    countMethod: method(item.countMethod ?? item.count_method),
     expectedTotal,
     countedTotal,
     realBalance: countedTotal,
     calculatedBalance: expectedTotal,
-    difference: toNumber(item.difference),
-    status: toStringValue(item.status, "OPEN") as ReconciliationStatus,
-    isActive: toNumber(item.isActive ?? item.is_active),
-    note: noteValue,
-    notes: noteValue,
-    createdAt: toStringValue(item.createdAt ?? item.created_at) || null,
-    updatedAt: toStringValue(item.updatedAt ?? item.updated_at) || null,
-    closedAt: toStringValue(item.closedAt ?? item.closed_at) || null,
-    lines: Array.isArray(item.lines) ? item.lines.map(mapReconciliationLine) : [],
+    difference: number(item.difference),
+    status: status(item.status),
+    isActive: active(item.isActive ?? item.is_active) ? 1 : 0,
+    note,
+    notes: note,
+    createdAt: optionalText(item.createdAt ?? item.created_at),
+    updatedAt: optionalText(item.updatedAt ?? item.updated_at),
+    closedAt: optionalText(item.closedAt ?? item.closed_at),
+    lines: item.lines === undefined ? [] : unique(array(item.lines).map(mapLine)),
+  }
+  const cut = new Date(record.date + "T12:00:00Z")
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(record.date) ||
+    Number.isNaN(cut.getTime()) ||
+    cut.toISOString().slice(0, 10) !== record.date
+  )
+    throw invalid()
+  if (record.lines.some((line) => line.reconciliationId !== record.id)) throw invalid()
+  return record
+}
+
+export async function fetchReconciliationAccounts(
+  signal?: AbortSignal,
+): Promise<ReconciliationAccount[]> {
+  let data: unknown
+  try {
+    data = await request("/accounts", { signal })
+  } catch (error) {
+    if (
+      error instanceof ReconciliationApiError &&
+      error.status === 404 &&
+      error.code === "NOT_FOUND"
+    )
+      return []
+    throw error
+  }
+  return unique(
+    array(data).map((raw) => {
+      const item = object(raw)
+      return {
+        id: identifier(item.id),
+        name: text(item.name),
+        currency: text(item.currency).toUpperCase(),
+        active: active(item.is_active ?? item.active),
+        type: optionalText(item.type),
+        institution: optionalText(item.institution ?? item.institution_name),
+      }
+    }),
+  )
+}
+export async function fetchReconciliations(accountId: number, signal?: AbortSignal) {
+  const data = await request("/reconciliations", {
+    query: { account_id: accountId, limit: 50, offset: 0 },
+    signal,
+  })
+  const records = unique(array(data).map(parseReconciliation))
+  if (records.some((item) => item.accountId !== accountId)) throw invalid()
+  return records.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
+}
+export async function fetchReconciliation(id: number, signal?: AbortSignal) {
+  const record = parseReconciliation(await request(`/reconciliations/${id}`, { signal }))
+  if (record.id !== id) throw invalid()
+  return record
+}
+export async function fetchActiveReconciliation(accountId: number, signal?: AbortSignal) {
+  try {
+    const record = parseReconciliation(
+      await request(`/accounts/${accountId}/reconciliations/active`, { signal }),
+    )
+    if (record.accountId !== accountId || record.isActive !== 1) throw invalid()
+    return record
+  } catch (error) {
+    if (
+      error instanceof ReconciliationApiError &&
+      error.status === 404 &&
+      error.code === "NOT_FOUND"
+    )
+      return null
+    throw error
   }
 }
-
-export async function fetchReconciliationAccounts() {
-  const data = await request<unknown[]>(`/accounts`)
-
-  return Array.isArray(data)
-    ? data.map((item) => {
-        const row = item as ApiAccount
-        return {
-          id: toNumber(row.id),
-          name: toStringValue(row.name),
-          currency: toStringValue(row.currency, "CRC").toUpperCase(),
-          active: toBoolean(row.is_active ?? row.active),
-          type: (() => {
-            const value = toStringValue(row.type)
-            return value || null
-          })(),
-        } satisfies ReconciliationAccount
-      })
-    : []
-}
-
-export async function fetchReconciliations(accountId: number) {
-  const data = await request<unknown[]>(`/reconciliations`, {
-    query: { account_id: accountId, limit: 50, offset: 0 },
-  })
-
-  return Array.isArray(data)
-    ? data
-        .map(mapReconciliation)
-        .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())
-    : []
-}
-
-export async function fetchReconciliation(id: number) {
-  const data = await request<unknown>(`/reconciliations/${id}`)
-  return mapReconciliation(data)
-}
-
 export async function createReconciliation(input: {
   accountId: number
   date: string
   countMethod: ReconciliationCountMethod
   countedTotal?: number
   note?: string
-  lines?: Array<{
-    denominationId: number
-    quantity: number
-  }>
+  lines?: Array<{ denominationId: number; quantity: number }>
 }) {
   const body =
     input.countMethod === "DENOMINATION_COUNT"
@@ -379,56 +337,70 @@ export async function createReconciliation(input: {
           realBalance: input.countedTotal,
           note: input.note?.trim() || undefined,
         }
-
-  const data = await request<unknown>(`/reconciliations`, {
-    method: "POST",
-    body,
-  })
-
-  return mapReconciliation(data)
+  const record = parseReconciliation(await request("/reconciliations", { method: "POST", body }))
+  if (
+    record.accountId !== input.accountId ||
+    record.date !== input.date ||
+    record.countMethod !== input.countMethod
+  )
+    throw invalid()
+  return record
 }
-
-export async function ignoreReconciliation(reconciliationId: number) {
-  const data = await request<unknown>(`/reconciliations/${reconciliationId}/ignore`, {
-    method: "POST",
-  })
-
-  return mapReconciliation(data)
+export async function ignoreReconciliation(id: number) {
+  const record = parseReconciliation(
+    await request(`/reconciliations/${id}/ignore`, { method: "POST" }),
+  )
+  if (record.id !== id || record.isActive !== 0 || record.status !== "IGNORED") throw invalid()
+  return record
 }
-
-export async function fetchCashDenominationsForAccount(accountId: number) {
-  const data = await request<{
-    accountId?: unknown
-    currency?: unknown
-    countMethod?: unknown
-    denominations?: unknown[]
-  }>(`/reconciliations/accounts/${accountId}/denominations`)
-
-  return {
-    accountId: toNumber(data.accountId),
-    currency: toStringValue(data.currency, "CRC").toUpperCase(),
-    countMethod: "DENOMINATION_COUNT",
-    denominations: Array.isArray(data.denominations)
-      ? data.denominations.map(mapCashDenomination)
-      : [],
-  } satisfies AccountCashDenominations
+export async function fetchExpectedTotalForAccount(
+  accountId: number,
+  date: string,
+  signal?: AbortSignal,
+): Promise<ReconciliationExpectedTotal> {
+  const item = object(
+    await request(`/reconciliations/accounts/${accountId}/expected-total`, {
+      query: { date },
+      signal,
+    }),
+  )
+  const result = {
+    accountId: identifier(item.accountId),
+    currency: text(item.currency).toUpperCase(),
+    date: text(item.date),
+    expectedTotal: number(item.expectedTotal ?? item.expected_total),
+  }
+  if (result.accountId !== accountId || result.date !== date) throw invalid()
+  return result
 }
-
-export async function fetchExpectedTotalForAccount(accountId: number, date: string) {
-  const data = await request<{
-    accountId?: unknown
-    currency?: unknown
-    date?: unknown
-    expectedTotal?: unknown
-    expected_total?: unknown
-  }>(`/reconciliations/accounts/${accountId}/expected-total`, {
-    query: { date },
-  })
-
-  return {
-    accountId: toNumber(data.accountId),
-    currency: toStringValue(data.currency, "CRC").toUpperCase(),
-    date: toStringValue(data.date, date),
-    expectedTotal: toNumber(data.expectedTotal ?? data.expected_total),
-  } satisfies ReconciliationExpectedTotal
+export async function fetchCashDenominationsForAccount(
+  accountId: number,
+  signal?: AbortSignal,
+): Promise<AccountCashDenominations> {
+  const item = object(
+    await request(`/reconciliations/accounts/${accountId}/denominations`, { signal }),
+  )
+  const currency = text(item.currency).toUpperCase()
+  if (identifier(item.accountId) !== accountId || item.countMethod !== "DENOMINATION_COUNT")
+    throw invalid()
+  const denominations = unique(
+    array(item.denominations).map((raw) => {
+      const row = object(raw)
+      return {
+        id: identifier(row.id),
+        userId: identifier(row.userId ?? row.user_id),
+        currency: text(row.currency).toUpperCase(),
+        value: number(row.value),
+        type: denominationType(row.type),
+        label: optionalText(row.label),
+        sortOrder: quantity(row.sortOrder ?? row.sort_order ?? 0),
+        isActive: active(row.isActive ?? row.is_active),
+        createdAt: optionalText(row.createdAt ?? row.created_at) ?? "",
+        updatedAt: optionalText(row.updatedAt ?? row.updated_at) ?? "",
+      } satisfies CashDenomination
+    }),
+  )
+  if (denominations.some((row) => row.currency !== currency || row.value <= 0 || !row.isActive))
+    throw invalid()
+  return { accountId, currency, countMethod: "DENOMINATION_COUNT", denominations }
 }

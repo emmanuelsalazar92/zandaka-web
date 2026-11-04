@@ -1,5 +1,7 @@
 # Staging y entregas por bloques
 
+ZA-94 rediseña [Conciliación](reconciliation-review.md) solo en web y añade el enlace a Movimientos filtrado por cuenta/corte. Reutiliza los contratos existentes de creación, lectura, estado activo, previsualización, denominaciones e ignorar. Sin nuevos endpoints ni cambios de DB; conserva los cierres automáticos y las restricciones del backend. La preparación de ZA-90 sigue siendo independiente.
+
 ZA-106 rediseña el [historial de Movimientos](transaction-history.md) solo en web. Reutiliza la API existente y la ficha de ZA-88; no añade endpoints ni requisitos de DB. Se conserva la compatibilidad web/API del bloque y la preparación independiente de ZA-90 cuando corresponda.
 
 ZA-88 incorpora la [ficha completa de movimientos](transaction-detail.md) y requiere una API del mismo bloque con `GET /api/transactions/:id?userId=...`. Promover el par web/API compatible. No añade cambios de esquema ni recálculos; la preparación de DB de ZA-90 sigue siendo independiente. Con una API anterior, la ficha indica que no está disponible y conserva el historial.

@@ -12,6 +12,23 @@ export const emptyHistoryFilters = {
 }
 export type HistoryFilters = typeof emptyHistoryFilters
 export const historyPageSizes = [10, 25, 50, 100]
+
+/** Explicit navigation from a reconciliation: account and inclusive cutoff only. */
+export function reconciliationHistoryFilters(params: URLSearchParams): HistoryFilters | null {
+  if (params.get("source") !== "reconciliation") return null
+  const account = params.get("accountId") ?? "",
+    to = params.get("to") ?? ""
+  const cutoff = new Date(to + "T12:00:00Z")
+  if (
+    !/^[1-9]\d*$/.test(account) ||
+    !Number.isSafeInteger(Number(account)) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(to) ||
+    Number.isNaN(cutoff.getTime()) ||
+    cutoff.toISOString().slice(0, 10) !== to
+  )
+    return null
+  return { ...emptyHistoryFilters, accountId: account, dateTo: to }
+}
 const id = z.number().int().positive().safe()
 const optionalName = z.string().nullable().optional()
 const line = z.object({

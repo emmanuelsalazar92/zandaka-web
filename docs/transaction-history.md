@@ -14,6 +14,8 @@ Los signos históricos no se normalizan según el tipo al leer. Los importes vis
 
 ## Filtros y paginación
 
+ZA-94 puede abrir esta pantalla desde Conciliación con cuenta y Hasta inclusivo. Se valida el ID/fecha y el origen explícito del enlace, se aplican los filtros y se muestra su contexto. No se inventa una fecha Desde ni se registra ningún ajuste. El usuario puede ampliar o quitar los filtros.
+
 El panel conserva un borrador independiente. Buscar aplica los campos y vuelve a página 1. Los filtros aplicados permanecen visibles fuera del panel, con nombres en español, limpieza individual y «Quitar filtros». Quitar Cuenta elimina también Sobre para no conservar una combinación incompatible. Abrir/cerrar la ficha no altera filtros, densidad, página, tamaño o posición del historial.
 
 Desde/Hasta e importes mínimo/máximo se validan antes de solicitar resultados; el mensaje se asocia al campo y el foco permite corregirlo. Se mantiene el contrato del backend: `categoryId` identifica el filtro por categoría/sobre y los importes filtran el total neto con signo, sin conversión. Los gastos son negativos y una transferencia suele tener neto cero; la UI no cambia ese significado ni recalcula los filtros por importe mostrado.

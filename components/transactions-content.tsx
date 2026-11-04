@@ -50,6 +50,7 @@ import {
 } from "@/lib/transaction-amount"
 import {
   emptyHistoryFilters,
+  reconciliationHistoryFilters,
   historyFilterError,
   type HistoryFilters,
 } from "@/lib/transaction-history"
@@ -110,6 +111,15 @@ export function TransactionsContent() {
   const [filterError, setFilterError] = React.useState<ReturnType<typeof historyFilterError>>(null)
   const [draftFilters, setDraftFilters] = React.useState(defaultFilters)
   const [filters, setFilters] = React.useState(defaultFilters)
+  const [fromReconciliation, setFromReconciliation] = React.useState(false)
+  React.useEffect(() => {
+    const initial = reconciliationHistoryFilters(new URLSearchParams(window.location.search))
+    if (initial) {
+      setDraftFilters(initial)
+      setFilters(initial)
+      setFromReconciliation(true)
+    }
+  }, [])
 
   // Pagination state
   const [currentPage, setCurrentPage] = React.useState(1)
@@ -1158,6 +1168,12 @@ export function TransactionsContent() {
         onRemove={removeFilter}
         onClear={clearFilters}
       />
+      {fromReconciliation && (
+        <Feedback role="note" title="Movimientos hasta el corte">
+          Aplicamos la cuenta y la fecha de corte solicitadas desde Conciliación. Puedes ampliar el
+          período con los filtros; esta consulta no crea ajustes.
+        </Feedback>
+      )}
       <section aria-labelledby="history-title" className="min-w-0 space-y-4">
         <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">

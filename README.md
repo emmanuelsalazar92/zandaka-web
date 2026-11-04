@@ -87,4 +87,6 @@ La ficha completa de movimientos, sus líneas históricas y el retorno accesible
 
 El historial adaptable, la densidad, los filtros aplicados y la paginación accesible se documentan en [ZA-106](docs/transaction-history.md).
 
+La revisión guiada de conciliaciones, conteo de efectivo, cierres históricos e investigación de diferencias se documentan en [ZA-94](docs/reconciliation-review.md).
+
 Las dos composiciones completas de Sobres y sus pautas de aplicación se revisan en `/design-reference`: [Marea y Faro — ZA-111](docs/atlantico-composition.md). El propietario eligió Marea como referencia; su adopción en las pantallas financieras continúa en los tickets de cada módulo.

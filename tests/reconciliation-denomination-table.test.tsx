@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import * as React from "react"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 
 import { ReconciliationDenominationTable } from "@/components/reconciliation-denomination-table"
 import { formatCurrency } from "@/lib/currency-formatter"
@@ -32,6 +32,7 @@ const denominations: CashDenomination[] = [
     updatedAt: "",
   },
 ]
+afterEach(cleanup)
 
 function Harness({ items = denominations }: { items?: CashDenomination[] }) {
   const [quantities, setQuantities] = React.useState<Record<number, string>>({})
@@ -79,5 +80,16 @@ describe("ReconciliationDenominationTable", () => {
     expect(normalize(screen.getByTestId("denomination-counted-total").textContent ?? "")).toBe(
       normalize(formatCurrency(5500, "CRC")),
     )
+  })
+  it("preserves invalid quantities, names their error and does not silently count a different amount", () => {
+    render(<Harness />)
+    const input = screen.getByLabelText("Cantidad de ₡2000")
+    fireEvent.change(input, { target: { value: "-2" } })
+    expect(input).toHaveValue("-2")
+    expect(input).toHaveAttribute("aria-invalid", "true")
+    expect(screen.getByTestId("denomination-counted-total")).toHaveTextContent("Por confirmar")
+    fireEvent.change(input, { target: { value: "1.5" } })
+    expect(input).toHaveValue("1.5")
+    expect(screen.getByText("Usa una cantidad entera de cero o más.")).toBeInTheDocument()
   })
 })

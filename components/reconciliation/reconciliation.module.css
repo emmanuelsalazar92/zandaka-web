@@ -1,0 +1,83 @@
+.scope {
+  overflow-wrap: anywhere;
+}
+.scope [data-slot="dialog-title"] {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.comparison {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+.comparison > div {
+  min-width: 0;
+}
+.amount {
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.list {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+.entryHead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  min-width: 0;
+}
+.cashList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+.cashRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  padding-block: 1rem;
+  min-width: 0;
+}
+.cashRow > * {
+  min-width: 0;
+}
+@container (min-width:40rem) {
+  .comparison {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cashRow {
+    grid-template-columns: minmax(0, 1.4fr) minmax(7rem, 0.7fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .entry {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) auto;
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+  }
+}
