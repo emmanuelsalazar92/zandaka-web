@@ -67,7 +67,7 @@ function AppSidebar() {
         <div className="flex h-12 items-center gap-2 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center">
             <Image
-              src="/favicon.ico"
+              src="/brand/zandaka-mark.svg"
               alt="Zandaka"
               width={32}
               height={32}
@@ -75,7 +75,12 @@ function AppSidebar() {
             />
           </div>
           <div className="group-data-[collapsible=icon]:hidden">
-            <span className="text-xl font-semibold tracking-tight text-foreground">Zandaka</span>
+            <span
+              aria-hidden="true"
+              className="text-xl font-semibold tracking-[-0.035em] text-foreground"
+            >
+              Zandaka
+            </span>
             <p className="text-xs text-muted-foreground">Tu dinero, con claridad.</p>
           </div>
         </div>

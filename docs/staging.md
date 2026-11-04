@@ -1,5 +1,7 @@
 # Staging y entregas por bloques
 
+La actualización de [marca Atlántico](brand.md) unifica sidebar, favicon, icono de inicio y logo de PDF/HTML. La API recibe solo el asset y documentación, sin cambios de contrato o DB. Promover ambas imágenes para ver la identidad uniforme; respetar `ZANDAKA_LOGO_PATH` y la prioridad de imágenes personalizadas del entorno. No requiere migraciones; la preparación de ZA-90 sigue siendo independiente. Publicar las imágenes no despliega testing.
+
 ZA-94 rediseña [Conciliación](reconciliation-review.md) solo en web y añade el enlace a Movimientos filtrado por cuenta/corte. Reutiliza los contratos existentes de creación, lectura, estado activo, previsualización, denominaciones e ignorar. Sin nuevos endpoints ni cambios de DB; conserva los cierres automáticos y las restricciones del backend. La preparación de ZA-90 sigue siendo independiente.
 
 ZA-106 rediseña el [historial de Movimientos](transaction-history.md) solo en web. Reutiliza la API existente y la ficha de ZA-88; no añade endpoints ni requisitos de DB. Se conserva la compatibilidad web/API del bloque y la preparación independiente de ZA-90 cuando corresponda.

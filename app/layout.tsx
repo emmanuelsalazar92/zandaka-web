@@ -13,9 +13,6 @@ import "./globals.css"
 export const metadata: Metadata = {
   title: "Zandaka — Tu dinero, con claridad",
   description: "Organiza tus cuentas, sobres y movimientos con claridad.",
-  icons: {
-    icon: "/favicon.ico",
-  },
 }
 
 export default async function RootLayout({
