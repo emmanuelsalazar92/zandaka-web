@@ -74,3 +74,5 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
 El sistema visual compartido y su galería se documentan en [Atlántico — ZA-83](docs/design-system.md).
+
+La navegación por tareas, los accesos a catálogos y el encabezado compartido se documentan en [ZA-84](docs/navigation.md).

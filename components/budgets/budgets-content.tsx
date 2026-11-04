@@ -11,6 +11,7 @@ import { BudgetStatusBadge } from "@/components/budgets/budget-status-badge"
 import { NewBudgetDialog } from "@/components/budgets/new-budget-dialog"
 import type { Budget } from "@/components/budgets/types"
 import { LoadingSkeleton } from "@/components/loading-skeleton"
+import { PageHeader } from "@/components/page-header"
 import { AccessibleFieldError } from "@/components/ui/accessible-field"
 import {
   AlertDialog,
@@ -50,6 +51,7 @@ import {
 import { toast } from "@/components/ui/use-toast"
 import { BudgetApiError, deleteBudget, fetchBudgets } from "@/lib/budgets-api"
 import { formatCurrency } from "@/lib/currency-formatter"
+import { categoryManagement } from "@/lib/navigation"
 
 const ALL_FILTER = "all"
 
@@ -130,16 +132,17 @@ export function BudgetsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Presupuestos</h2>
-          <p className="text-muted-foreground">Planifica tus presupuestos mensuales</p>
-        </div>
+      <PageHeader
+        title={<>Presupuestos</>}
+        description={<>Planifica tus presupuestos mensuales</>}
+        related={[categoryManagement]}
+        actionsLabel="Acciones de presupuestos"
+      >
         <Button onClick={() => setIsCreateOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Nuevo presupuesto
         </Button>
-      </div>
+      </PageHeader>
 
       <Card>
         <CardContent className="flex flex-col gap-3 p-4 md:flex-row">

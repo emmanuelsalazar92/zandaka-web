@@ -3,6 +3,7 @@
 import { FileStack, Plus } from "lucide-react"
 import * as React from "react"
 
+import { PageHeader } from "@/components/page-header"
 import { GenerateReportDialog } from "@/components/reports/generate-report-dialog"
 import {
   groupSnapshotsByMonth,
@@ -235,19 +236,16 @@ export function ReportsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-1">
-          <h2 className="text-3xl font-semibold tracking-tight">Reportes</h2>
-          <p className="text-muted-foreground">
-            Una perspectiva clara de tus versiones históricas.
-          </p>
-        </div>
-
+      <PageHeader
+        title={<>Reportes</>}
+        description={<>Una perspectiva clara de tus versiones históricas.</>}
+        actionsLabel="Acciones de reportes"
+      >
         <Button type="button" onClick={() => setIsGenerateOpen(true)}>
           <Plus className="h-4 w-4" />
           Generar reporte
         </Button>
-      </div>
+      </PageHeader>
 
       {error ? (
         <Alert>

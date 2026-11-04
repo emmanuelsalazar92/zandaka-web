@@ -2,11 +2,10 @@
 
 import {
   LayoutDashboard,
-  Building2,
   CreditCard,
-  FolderTree,
   Mail,
   ArrowLeftRight,
+  ArrowLeft,
   CheckSquare,
   BarChart3,
   Moon,
@@ -37,22 +36,23 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
+import {
+  navigationContext,
+  navigationCurrent,
+  settingsDestination,
+  taskDestinations,
+} from "@/lib/navigation"
 
-const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: "Resumen", href: "/" },
-  { icon: ArrowLeftRight, label: "Movimientos", href: "/transactions" },
-  { icon: CreditCard, label: "Cuentas", href: "/accounts" },
-  { icon: Mail, label: "Sobres", href: "/envelopes" },
-  { icon: CheckSquare, label: "Conciliación", href: "/reconciliation" },
-  { icon: PiggyBank, label: "Presupuestos", href: "/budgets" },
-  { icon: BarChart3, label: "Reportes", href: "/reports" },
-]
-
-const SETTINGS_ROUTES = ["/settings", "/institutions", "/categories"]
-const CATALOG_ITEMS = [
-  { icon: Building2, label: "Instituciones", href: "/institutions" },
-  { icon: FolderTree, label: "Categorías", href: "/categories" },
-]
+const NAV_ICONS = {
+  "/": LayoutDashboard,
+  "/transactions": ArrowLeftRight,
+  "/accounts": CreditCard,
+  "/envelopes": Mail,
+  "/reconciliation": CheckSquare,
+  "/budgets": PiggyBank,
+  "/reports": BarChart3,
+} as const
+const NAV_ITEMS = taskDestinations.map((item) => ({ ...item, icon: NAV_ICONS[item.href] }))
 
 function AppSidebar() {
   const pathname = usePathname()
@@ -86,23 +86,20 @@ function AppSidebar() {
             <SidebarMenu>
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon
-                const isActive =
-                  item.href === "/"
-                    ? pathname === item.href
-                    : pathname === item.href || pathname.startsWith(`${item.href}/`)
+                const isActive = navigationContext(pathname).activeHref === item.href
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
                       tooltip={item.label}
-                      className="h-11 rounded-xl px-3"
+                      className="min-h-11 h-auto whitespace-normal rounded-xl px-3 [&>span:last-child]:whitespace-normal [&>span:last-child]:overflow-visible [&>span:last-child]:[overflow-wrap:anywhere]"
                     >
                       <Link
                         href={item.href}
                         data-testid={`nav-${item.href.replace("/", "") || "dashboard"}`}
                         aria-label={item.label}
-                        aria-current={isActive ? "page" : undefined}
+                        aria-current={navigationCurrent(pathname, item.href)}
                         onNavigate={closeMobile}
                       >
                         <Icon className="h-5 w-5" />
@@ -122,16 +119,14 @@ function AppSidebar() {
             <SidebarMenuButton
               asChild
               tooltip="Ajustes"
-              isActive={SETTINGS_ROUTES.some((route) => pathname.startsWith(route))}
+              isActive={navigationContext(pathname).activeHref === settingsDestination.href}
               className="h-11 rounded-xl px-3"
             >
               <Link
-                href="/settings"
+                href={settingsDestination.href}
                 onNavigate={closeMobile}
                 aria-label="Ajustes"
-                aria-current={
-                  SETTINGS_ROUTES.some((route) => pathname.startsWith(route)) ? "page" : undefined
-                }
+                aria-current={navigationCurrent(pathname, settingsDestination.href)}
               >
                 <Settings2 className="h-5 w-5" />
                 <span>Ajustes</span>
@@ -158,41 +153,43 @@ function AppHeader() {
     }
   }, [pathname])
 
-  const Title = pathname === "/design-system" ? "p" : "h1"
+  const { parent } = navigationContext(pathname)
 
   const toggleTheme = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark")
   }
 
   return (
-    <header className="flex h-18 shrink-0 items-center justify-between border-b border-border/70 bg-card px-4 md:px-7">
-      <div className="flex items-center gap-4">
-        <SidebarTrigger
-          className="-ml-1 size-11 text-muted-foreground"
-          aria-expanded={isMobile ? openMobile : state === "expanded"}
-          aria-label={
-            (isMobile ? openMobile : state === "expanded")
-              ? "Cerrar navegación"
-              : "Abrir navegación"
-          }
-        />
-        <Title className="text-sm font-medium text-muted-foreground">
-          {[
-            ...NAV_ITEMS,
-            ...CATALOG_ITEMS,
-            { label: "Ajustes", href: "/settings" },
-            { label: "Galería visual", href: "/design-system" },
-          ]
-            .sort((left, right) => right.href.length - left.href.length)
-            .find((item) =>
-              item.href === "/" ? pathname === item.href : pathname.startsWith(item.href),
-            )?.label || "Resumen"}
-        </Title>
-      </div>
+    <header
+      aria-label="Herramientas de Zandaka"
+      className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-card px-4 py-2 md:px-7"
+    >
+      <SidebarTrigger
+        className="-ml-1 size-11 text-muted-foreground"
+        aria-expanded={isMobile ? openMobile : state === "expanded"}
+        aria-label={
+          (isMobile ? openMobile : state === "expanded") ? "Cerrar navegación" : "Abrir navegación"
+        }
+      />
+      {parent && (
+        <nav
+          aria-label="Ubicación"
+          className="order-last w-full min-w-0 md:order-none md:w-auto md:flex-1"
+        >
+          <Link
+            href={parent.href}
+            aria-label={`Volver a ${parent.label}`}
+            className="flex min-h-control min-w-0 items-center gap-2 rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 break-words">{parent.label}</span>
+          </Link>
+        </nav>
+      )}
       <Button
         variant="ghost"
         size="icon"
-        className="size-11 text-muted-foreground"
+        className="ml-auto size-11 text-muted-foreground"
         onClick={toggleTheme}
         aria-label="Cambiar apariencia"
       >

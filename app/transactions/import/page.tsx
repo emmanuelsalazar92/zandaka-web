@@ -1,10 +1,10 @@
 "use client"
 
-import { AlertCircle, ArrowLeft, Check, FileUp, Trash2, X } from "lucide-react"
-import Link from "next/link"
+import { AlertCircle, Check, FileUp, Trash2, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import * as React from "react"
 
+import { PageHeader } from "@/components/page-header"
 import { AccessibleField } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -397,19 +397,13 @@ export default function ImportTransactionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/transactions" aria-label="Volver a Movimientos">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Importar movimientos</h2>
-          <p className="text-muted-foreground">
-            Pega los movimientos de tu banco, revísalos y asígnalos a tus cuentas y sobres.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={<>Importar movimientos</>}
+        description={
+          <>Pega los movimientos de tu banco, revísalos y asígnalos a tus cuentas y sobres.</>
+        }
+        actionsLabel="Acciones de importar movimientos"
+      ></PageHeader>
 
       {/* Import Error */}
       {importError && (

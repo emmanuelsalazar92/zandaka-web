@@ -14,6 +14,7 @@ import {
 import * as React from "react"
 
 import { EmptyState } from "@/components/empty-state"
+import { PageHeader } from "@/components/page-header"
 import { AccessibleFieldError, AccessibleField } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -54,6 +55,7 @@ import {
   type EnvelopeInsightInput,
   type EnvelopeVisualStatus,
 } from "@/lib/envelope-insights"
+import { categoryManagement } from "@/lib/navigation"
 import { readPublicError } from "@/lib/public-error"
 import { cn } from "@/lib/utils"
 
@@ -617,60 +619,65 @@ export function EnvelopesContent() {
 
   if (accountsError) {
     return (
-      <EmptyState
-        icon={AlertTriangle}
-        title="No pudimos cargar los sobres"
-        description={accountsError}
-        actionLabel="Volver a intentar"
-        onAction={() => window.location.reload()}
-      />
+      <div className="space-y-6">
+        <EnvelopesPageHeader />
+        <EmptyState
+          icon={AlertTriangle}
+          title="No pudimos cargar los sobres"
+          description={accountsError}
+          actionLabel="Volver a intentar"
+          onAction={() => window.location.reload()}
+        />
+      </div>
     )
   }
 
   if (accountsLoading) {
     return (
-      <div className="space-y-4">
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            Cargando sobres…
-          </CardContent>
-        </Card>
+      <div className="space-y-6">
+        <EnvelopesPageHeader />
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="py-10 text-center text-muted-foreground">
+              Cargando sobres…
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   if (activeAccounts.length === 0) {
     return (
-      <EmptyState
-        icon={Wallet}
-        title="No hay cuentas activas"
-        description="Activa o crea una cuenta para organizar sus sobres."
-      />
+      <div className="space-y-6">
+        <EnvelopesPageHeader />
+        <EmptyState
+          icon={Wallet}
+          title="No hay cuentas activas"
+          description="Activa o crea una cuenta para organizar sus sobres."
+        />
+      </div>
     )
   }
 
   if (!isAccountSelected || !selectedAccountData) {
     return (
-      <EmptyState
-        icon={Layers3}
-        title="Elige una cuenta"
-        description="Elige una cuenta para ver cómo se distribuye su saldo entre sobres."
-      />
+      <div className="space-y-6">
+        <EnvelopesPageHeader />
+        <EmptyState
+          icon={Layers3}
+          title="Elige una cuenta"
+          description="Elige una cuenta para ver cómo se distribuye su saldo entre sobres."
+        />
+      </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Sobres</h2>
-          <p className="text-muted-foreground">
-            Cómo se distribuye el dinero de la cuenta seleccionada.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="min-w-[260px] space-y-2">
+      <EnvelopesPageHeader>
+        <div className="flex min-w-0 max-w-full flex-wrap items-end gap-3">
+          <div className="w-full min-w-0 space-y-2 sm:w-64 sm:max-w-full">
             <p className="text-sm font-medium">Cuenta</p>
             <Select value={selectedAccount} onValueChange={setSelectedAccount}>
               <SelectTrigger className="w-full" aria-label="Cuenta de los sobres">
@@ -686,7 +693,7 @@ export function EnvelopesContent() {
             </Select>
           </div>
 
-          <div className="pt-0 sm:pt-7">
+          <div className="min-w-0 max-w-full">
             <LinkCategoryDialog
               isOpen={isLinkOpen}
               onOpenChange={(open) => {
@@ -707,7 +714,7 @@ export function EnvelopesContent() {
             />
           </div>
         </div>
-      </div>
+      </EnvelopesPageHeader>
 
       <Card className="overflow-hidden">
         <CardHeader className="border-b border-border/60 bg-muted/10">
@@ -911,5 +918,18 @@ export function EnvelopesContent() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+function EnvelopesPageHeader({ children }: { children?: React.ReactNode }) {
+  return (
+    <PageHeader
+      title={<>Sobres</>}
+      description={<>Cómo se distribuye el dinero de la cuenta seleccionada.</>}
+      related={[categoryManagement]}
+      actionsLabel="Acciones de sobres"
+    >
+      {children}
+    </PageHeader>
   )
 }

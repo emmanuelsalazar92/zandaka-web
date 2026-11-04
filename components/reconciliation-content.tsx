@@ -5,6 +5,7 @@ import Link from "next/link"
 import * as React from "react"
 
 import { EmptyState } from "@/components/empty-state"
+import { PageHeader } from "@/components/page-header"
 import { ReconciliationDenominationTable } from "@/components/reconciliation-denomination-table"
 import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -518,52 +519,53 @@ export function ReconciliationContent() {
 
   if (accountsLoading || (!hasLoadedHistory && selectableAccounts.length > 0)) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="space-y-6">
+        <ReconciliationPageHeader />
+        <div className="flex h-64 items-center justify-center">
+          <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
       </div>
     )
   }
 
   if (accountsError) {
     return (
-      <EmptyState
-        icon={AlertCircle}
-        title="No pudimos cargar la conciliación"
-        description={accountsError}
-        actionLabel="Volver a intentar"
-        onAction={() => void handleRefresh()}
-      />
+      <div className="space-y-6">
+        <ReconciliationPageHeader />
+        <EmptyState
+          icon={AlertCircle}
+          title="No pudimos cargar la conciliación"
+          description={accountsError}
+          actionLabel="Volver a intentar"
+          onAction={() => void handleRefresh()}
+        />
+      </div>
     )
   }
 
   if (selectableAccounts.length === 0) {
     return (
-      <EmptyState
-        icon={Scale}
-        title="No hay cuentas disponibles"
-        description="Crea o activa una cuenta para consultar sus conciliaciones."
-        actionLabel="Actualizar"
-        onAction={() => void handleRefresh()}
-      />
+      <div className="space-y-6">
+        <ReconciliationPageHeader />
+        <EmptyState
+          icon={Scale}
+          title="No hay cuentas disponibles"
+          description="Crea o activa una cuenta para consultar sus conciliaciones."
+          actionLabel="Actualizar"
+          onAction={() => void handleRefresh()}
+        />
+      </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Historial de conciliación</h2>
-          <p className="text-muted-foreground">
-            Compara el saldo contado con el esperado. Para cuentas de efectivo, puedes contar por
-            denominaciones.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="min-w-[240px] space-y-2">
+      <ReconciliationPageHeader>
+        <div className="flex min-w-0 max-w-full flex-wrap items-end gap-2">
+          <div className="w-full min-w-0 space-y-2 sm:w-60 sm:max-w-full">
             <p className="text-sm font-medium">Cuenta</p>
             <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-              <SelectTrigger aria-label="Cuenta a conciliar">
+              <SelectTrigger className="w-full min-w-0" aria-label="Cuenta a conciliar">
                 <SelectValue placeholder="Elige una cuenta" />
               </SelectTrigger>
               <SelectContent>
@@ -591,7 +593,7 @@ export function ReconciliationContent() {
             Actualizar
           </Button>
         </div>
-      </div>
+      </ReconciliationPageHeader>
 
       <Card>
         <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
@@ -908,7 +910,7 @@ export function ReconciliationContent() {
                 ) : (
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <AlertDescription className="flex min-w-0 max-w-full flex-wrap items-end gap-3 sm:justify-between">
                       <span>
                         No hay denominaciones configuradas para{" "}
                         {createAccount?.currency ?? "esta moneda"}.
@@ -1175,5 +1177,22 @@ export function ReconciliationContent() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+function ReconciliationPageHeader({ children }: { children?: React.ReactNode }) {
+  return (
+    <PageHeader
+      title="Conciliación"
+      description={
+        <>
+          Compara el saldo contado con el esperado. Para cuentas de efectivo, puedes contar por
+          denominaciones.
+        </>
+      }
+      actionsLabel="Acciones de conciliación"
+    >
+      {children}
+    </PageHeader>
   )
 }

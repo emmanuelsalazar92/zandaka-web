@@ -63,7 +63,7 @@ async function measureHeader(page: Page) {
   return page.getByTestId("transactions-header").evaluate((header) => {
     const viewportWidth = document.documentElement.clientWidth
     const headerRect = header.getBoundingClientRect()
-    const controls = Array.from(header.querySelectorAll<HTMLElement>("h2, p, button, a"))
+    const controls = Array.from(header.querySelectorAll<HTMLElement>("h1, h2, p, button, a"))
     const failures: string[] = []
     if (headerRect.left < -1 || headerRect.right > viewportWidth + 1)
       failures.push("header exceeds viewport")
@@ -156,10 +156,18 @@ test("the geometry guard detects the original non-wrapping mobile regression", a
     header.style.flexDirection = "row"
     header.style.flexWrap = "nowrap"
     const title = header.firstElementChild as HTMLElement
-    title.style.flexShrink = "0"
+    title.style.flex = "0 0 auto"
+    title.style.width = "max-content"
     const actions = header.querySelector<HTMLElement>('[role="group"]')!
     actions.style.flexWrap = "nowrap"
-    actions.style.flexShrink = "0"
+    actions.style.flex = "0 0 auto"
+    actions.style.maxWidth = "none"
+    actions.style.width = "max-content"
+    for (const child of actions.querySelectorAll<HTMLElement>("div, button, a")) {
+      child.style.flexWrap = "nowrap"
+      child.style.whiteSpace = "nowrap"
+      child.style.maxWidth = "none"
+    }
   })
   expect((await measureHeader(page)).failures).toContain("Nuevo movimiento: outside usable width")
 })

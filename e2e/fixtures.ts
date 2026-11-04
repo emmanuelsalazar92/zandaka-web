@@ -46,7 +46,17 @@ export async function installSyntheticAPI(
         { id: 2, name: "Alimentación", parent_id: 1, is_active: 1 },
       ]
     else if (path === "/reports/account-balances")
-      json = [{ accountId: 1, accountName: "Cuenta de prueba", currency: "CRC", balance: 10000 }]
+      json = [
+        {
+          ...syntheticAccounts[0],
+          user_id: 1,
+          institution: "Banco de prueba",
+          type: "BANK",
+          allow_overdraft: 0,
+          has_active_envelopes: true,
+          active_envelopes_count: 3,
+        },
+      ]
     else if (path === "/reports/envelope-balances")
       json = [
         {

@@ -1,9 +1,10 @@
 import { Plus } from "lucide-react"
-import Link from "next/link"
 
 import { AccountFormDialog } from "@/components/accounts/components/account-form-dialog"
 import type { AccountFormData, InstitutionUi } from "@/components/accounts/types/accounts.types"
+import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
+import { institutionManagement } from "@/lib/navigation"
 
 type AccountsHeaderProps = {
   isCreateOpen: boolean
@@ -29,17 +30,12 @@ export function AccountsHeader({
   error,
 }: AccountsHeaderProps) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h2 className="text-3xl font-semibold tracking-tight">Cuentas</h2>
-        <p className="mt-1 text-muted-foreground">Dónde está tu dinero y en qué moneda.</p>
-        <Link
-          href="/institutions"
-          className="mt-2 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
-        >
-          Gestionar instituciones
-        </Link>
-      </div>
+    <PageHeader
+      title={<>Cuentas</>}
+      description={<>Dónde está tu dinero y en qué moneda.</>}
+      related={[institutionManagement]}
+      actionsLabel="Acciones de cuentas"
+    >
       <AccountFormDialog
         open={isCreateOpen}
         onOpenChange={onCreateOpenChange}
@@ -62,6 +58,6 @@ export function AccountsHeader({
           </Button>
         }
       />
-    </div>
+    </PageHeader>
   )
 }

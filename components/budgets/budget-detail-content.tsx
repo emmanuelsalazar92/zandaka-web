@@ -27,15 +27,8 @@ import type {
   BudgetPlanningLineDraft,
   BudgetValidation,
 } from "@/components/budgets/types"
+import { PageHeader } from "@/components/page-header"
 import { AccessibleFieldError } from "@/components/ui/accessible-field"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -80,6 +73,7 @@ import {
   roundDecimal,
   tryDecimalInput,
 } from "@/lib/money"
+import { categoryManagement } from "@/lib/navigation"
 import { cn } from "@/lib/utils"
 
 type BudgetDetailContentProps = {
@@ -512,103 +506,97 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-6 w-32" />
-        <Skeleton className="h-28 w-full" />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <Skeleton key={index} className="h-28 w-full" />
-          ))}
+        <PageHeader
+          title="Presupuesto"
+          description="Revisa la planificación de tu mes."
+          related={[categoryManagement]}
+        />
+        <div className="space-y-6">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-28 w-full" />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Skeleton key={index} className="h-28 w-full" />
+            ))}
+          </div>
+          <Skeleton className="h-96 w-full" />
         </div>
-        <Skeleton className="h-96 w-full" />
       </div>
     )
   }
 
   if (loadError || !budget) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Presupuesto no disponible</CardTitle>
-          <CardDescription>No pudimos consultar el presupuesto. Vuelve a intentar.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <AccessibleFieldError className="text-sm text-destructive">
-            {loadError ?? "No encontramos el presupuesto."}
-          </AccessibleFieldError>
-          <Button asChild variant="outline">
-            <Link href="/budgets">Volver a Presupuestos</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <PageHeader
+          title="Presupuesto"
+          description="Revisa la planificación de tu mes."
+          related={[categoryManagement]}
+        />
+        <Card>
+          <CardHeader>
+            <CardTitle>Presupuesto no disponible</CardTitle>
+            <CardDescription>
+              No pudimos consultar el presupuesto. Vuelve a intentar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <AccessibleFieldError className="text-sm text-destructive">
+              {loadError ?? "No encontramos el presupuesto."}
+            </AccessibleFieldError>
+            <Button asChild variant="outline">
+              <Link href="/budgets">Volver a Presupuestos</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="space-y-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href="/budgets">Presupuestos</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{formatBudgetMonth(budget.month)}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-2xl font-bold tracking-tight">
-                {formatBudgetMonth(budget.month)} Presupuesto
-              </h2>
-              <BudgetStatusBadge status={budget.status} />
-            </div>
-            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-              <span>Moneda: {budget.currency}</span>
-              <span>Ingreso total: {formatCurrency(budget.totalIncome, budget.currency)}</span>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCopyFromPrevious}
-              disabled={!isEditable || isCopying}
-            >
-              {isCopying ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Copy className="mr-2 h-4 w-4" />
-              )}
-              Copiar del anterior
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleValidate}
-              disabled={isValidating || isFinalizing}
-            >
-              {isValidating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <ShieldCheck className="mr-2 h-4 w-4" />
-              )}
-              Validar
-            </Button>
-            <Button onClick={handleFinalize} disabled={!isEditable || isFinalizing}>
-              {isFinalizing ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-              )}
-              Finalizar
-            </Button>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title={<>Presupuesto · {formatBudgetMonth(budget.month)}</>}
+        description="Distribuye tus ingresos y revisa la planificación del mes."
+        related={[categoryManagement]}
+        meta={
+          <>
+            <BudgetStatusBadge status={budget.status} />
+            <span>Moneda: {budget.currency}</span>
+            <span>Ingreso total: {formatCurrency(budget.totalIncome, budget.currency)}</span>
+          </>
+        }
+        actionsLabel="Acciones del presupuesto"
+      >
+        <Button
+          variant="outline"
+          onClick={handleCopyFromPrevious}
+          disabled={!isEditable || isCopying}
+        >
+          {isCopying ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Copy className="mr-2 h-4 w-4" />
+          )}
+          Copiar del anterior
+        </Button>
+        <Button variant="outline" onClick={handleValidate} disabled={isValidating || isFinalizing}>
+          {isValidating ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <ShieldCheck className="mr-2 h-4 w-4" />
+          )}
+          Validar
+        </Button>
+        <Button onClick={handleFinalize} disabled={!isEditable || isFinalizing}>
+          {isFinalizing ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+          )}
+          Finalizar
+        </Button>
+      </PageHeader>
 
       <BudgetSummaryCards
         currency={budget.currency}

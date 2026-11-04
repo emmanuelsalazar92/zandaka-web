@@ -4,6 +4,7 @@ import { Building2, Edit2, FolderTree, Plus, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
 
+import { PageHeader } from "@/components/page-header"
 import { SettingsCashDenominationsSection } from "@/components/settings-cash-denominations-section"
 import { SettingsPayrollRulesSection } from "@/components/settings-payroll-rules-section"
 import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
@@ -33,6 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { formatAccountingTimestamp } from "@/lib/date-only"
+import { institutionManagement, categoryManagement } from "@/lib/navigation"
 import {
   type AccountOption,
   type AutoAssignmentMatchType,
@@ -248,25 +250,30 @@ export function SettingsContent() {
 
   if (loading)
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Ajustes</CardTitle>
-          <CardDescription>Cargando tu configuración.</CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="space-y-6">
+        <PageHeader
+          title="Ajustes"
+          description="Tu perfil, catálogos y reglas, organizados en un solo lugar."
+        />
+        <Card>
+          <CardHeader>
+            <CardTitle>Preparando configuración</CardTitle>
+            <CardDescription>Cargando tu configuración.</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
     )
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-semibold tracking-tight">Ajustes</h2>
-        <p className="text-muted-foreground">
-          Tu perfil, catálogos y reglas, organizados en un solo lugar.
-        </p>
-      </div>
+      <PageHeader
+        title={<>Ajustes</>}
+        description={<>Tu perfil, catálogos y reglas, organizados en un solo lugar.</>}
+        actionsLabel="Acciones de ajustes"
+      />
       <div className="grid gap-3 sm:grid-cols-2">
         <Link
-          href="/institutions"
+          href={institutionManagement.href}
           className="flex min-h-20 items-center gap-4 rounded-2xl border bg-card p-5 transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-ring"
         >
           <Building2 className="h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
@@ -278,7 +285,7 @@ export function SettingsContent() {
           </div>
         </Link>
         <Link
-          href="/categories"
+          href={categoryManagement.href}
           className="flex min-h-20 items-center gap-4 rounded-2xl border bg-card p-5 transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-ring"
         >
           <FolderTree className="h-6 w-6 shrink-0 text-primary" aria-hidden="true" />

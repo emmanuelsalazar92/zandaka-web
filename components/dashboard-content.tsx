@@ -4,6 +4,7 @@ import { AlertCircle, ArrowDownLeft, ArrowRight, ArrowUpRight, Plus, Upload } fr
 import Link from "next/link"
 import * as React from "react"
 
+import { PageHeader } from "@/components/page-header"
 import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -160,15 +161,11 @@ export function DashboardContent() {
 
   return (
     <div className="space-y-7">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-            Tu panorama financiero
-          </p>
-          <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-            Todo en perspectiva.
-          </h2>
-        </div>
+      <PageHeader
+        title={<>Todo en perspectiva.</>}
+        eyebrow="Tu panorama financiero"
+        actionsLabel="Acciones de todo en perspectiva."
+      >
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
             <Link href="/transactions/import">
@@ -183,7 +180,7 @@ export function DashboardContent() {
             </Link>
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       <section
         className="atlantic-hero p-6 md:p-9"

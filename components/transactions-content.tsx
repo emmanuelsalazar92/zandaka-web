@@ -15,6 +15,7 @@ import Link from "next/link"
 import * as React from "react"
 
 import { EmptyState } from "@/components/empty-state"
+import { PageHeader } from "@/components/page-header"
 import { TransactionTimeline, TransactionTimelineSkeleton } from "@/components/transaction-timeline"
 import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -552,21 +553,13 @@ export function TransactionsContent() {
 
   return (
     <div className="space-y-6">
-      <header
+      <PageHeader
+        title={<>Movimientos</>}
+        description={<>Cada ingreso, gasto y traslado, en un solo lugar.</>}
+        actionsLabel="Acciones de movimientos"
         data-testid="transactions-header"
-        className="flex min-w-0 flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"
       >
-        <div className="min-w-0">
-          <h2 className="break-words text-3xl font-semibold tracking-tight">Movimientos</h2>
-          <p className="mt-1 text-muted-foreground">
-            Cada ingreso, gasto y traslado, en un solo lugar.
-          </p>
-        </div>
-        <div
-          role="group"
-          aria-label="Acciones de movimientos"
-          className="flex min-w-0 max-w-full flex-wrap items-center gap-2 lg:justify-end"
-        >
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 lg:justify-end">
           <Button
             variant="outline"
             onClick={() => setIsFiltersOpen(!isFiltersOpen)}
@@ -820,7 +813,7 @@ export function TransactionsContent() {
             </DialogContent>
           </Dialog>
         </div>
-      </header>
+      </PageHeader>
 
       {/* Filters Panel */}
       <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>

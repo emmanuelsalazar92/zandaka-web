@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { InstitutionFormDialog } from "@/components/institutions/components/institution-form-dialog"
 import type { InstitutionFormData } from "@/components/institutions/types/institutions.types"
+import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 
 type InstitutionsHeaderProps = {
@@ -23,11 +24,11 @@ export function InstitutionsHeader({
   createDisabled,
 }: InstitutionsHeaderProps) {
   return (
-    <div className="flex items-center justify-between">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Instituciones</h2>
-        <p className="text-muted-foreground">Administra tus instituciones financieras</p>
-      </div>
+    <PageHeader
+      title={<>Instituciones</>}
+      description={<>Administra tus instituciones financieras</>}
+      actionsLabel="Acciones de instituciones"
+    >
       <InstitutionFormDialog
         open={isCreateOpen}
         onOpenChange={onCreateOpenChange}
@@ -46,6 +47,6 @@ export function InstitutionsHeader({
           </Button>
         }
       />
-    </div>
+    </PageHeader>
   )
 }

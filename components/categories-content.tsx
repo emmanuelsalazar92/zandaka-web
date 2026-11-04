@@ -3,6 +3,7 @@
 import { Plus, Edit2, XCircle, ChevronDown, ChevronRight } from "lucide-react"
 import * as React from "react"
 
+import { PageHeader } from "@/components/page-header"
 import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import {
   AlertDialog,
@@ -322,11 +323,11 @@ export function CategoriesContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Categorías</h2>
-          <p className="text-muted-foreground">Organiza categorías principales y subcategorías</p>
-        </div>
+      <PageHeader
+        title={<>Categorías</>}
+        description={<>Organiza categorías principales y subcategorías</>}
+        actionsLabel="Acciones de categorías"
+      >
         <Dialog
           open={isCreateOpen}
           onOpenChange={(open) => {
@@ -407,7 +408,7 @@ export function CategoriesContent() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       {isLoading ? (
         <Card>
