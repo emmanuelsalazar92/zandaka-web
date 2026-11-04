@@ -173,7 +173,7 @@ async function open(type = "INCOME") {
     target: { value: "Synthetic test" },
   })
   if (type === "TRANSFER") return dialog
-  await within(dialog).findByRole("option", { name: "Synthetic CRC" })
+  await within(dialog).findByRole("option", { name: /Synthetic CRC/ })
   fireEvent.change(within(dialog).getByRole("combobox", { name: "Cuenta 1" }), {
     target: { value: "1" },
   })
@@ -196,7 +196,11 @@ describe("transaction form regression", () => {
     }
     fireEvent.blur(input)
     expect(input).toHaveValue(text)
-    fireEvent.click(within(dialog).getByRole("button", { name: "Nuevo movimiento" }))
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: /^(Guardar ingreso|Guardar gasto|Nuevo movimiento)$/,
+      }),
+    )
     await waitFor(() => expect(posts()).toHaveLength(1))
     expect(JSON.parse(String(posts()[0][1]?.body)).lines[0].amount).toBe(Number(text))
   })
@@ -210,7 +214,9 @@ describe("transaction form regression", () => {
       fireEvent.blur(input)
       expect(input).toHaveValue(text)
       expect(input).toHaveAttribute("aria-invalid", "true")
-      const button = within(dialog).getByRole("button", { name: "Nuevo movimiento" })
+      const button = within(dialog).getByRole("button", {
+        name: /^(Guardar ingreso|Guardar gasto|Nuevo movimiento)$/,
+      })
       expect(button).toBeDisabled()
       fireEvent.click(button)
       expect(posts()).toHaveLength(0)
@@ -223,7 +229,11 @@ describe("transaction form regression", () => {
     fireEvent.change(input, { target: { value: "-0.02" } })
     fireEvent.blur(input)
     expect(input).toHaveValue("-0.02")
-    fireEvent.click(within(dialog).getByRole("button", { name: "Nuevo movimiento" }))
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: /^(Guardar ingreso|Guardar gasto|Nuevo movimiento)$/,
+      }),
+    )
     await waitFor(() => expect(posts()).toHaveLength(1))
     expect(JSON.parse(String(posts()[0][1]?.body))).toMatchObject({
       type: "ADJUSTMENT",

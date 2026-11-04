@@ -37,3 +37,7 @@ El cambio de UI no requiere migración de dinero ni modificación de snapshots. 
 ## Transferencias guiadas — ZA-90
 
 El compositor requiere una imagen API con POST /api/transfers y su tabla auxiliar transfer_request preparada explícitamente en la base de testing. Consultar docs/transfers.md en ambos repositorios para el comando y el procedimiento del bloque. No existe fallback al guardado anterior sin idempotencia. El endpoint rechaza antes de escribir si falta la preparación. Conservar la pareja de imágenes y las confirmaciones al revertir.
+
+## Ingresos y gastos — ZA-91
+
+El nuevo formulario usa el contrato existente POST /api/transactions. No requiere preparación de DB ni una API adicional. El despliegue sigue siendo por bloques; la preparación de ZA-90 continúa vigente cuando esté incluido. Ver [comportamiento y límites de confirmación](movement-entry.md).

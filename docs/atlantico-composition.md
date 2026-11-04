@@ -23,7 +23,7 @@ La comparación previa se captura sobre la ruta **actual `/envelopes`**, con la 
 
 ## Roles de superficies y acentos
 
-Los roles de la referencia se centralizan en `components/design-reference/study.module.css`. No cambian los tokens globales ni la apariencia de las pantallas existentes; su adopción se realiza por módulo. Complementan [ZA-83](design-system.md): no son una autorización para introducir paletas por módulo.
+Los neutros aprobados se centralizan en `app/globals.css` como `--marea-*`; la referencia usa alias en `components/design-reference/study.module.css`, conservando los mismos valores y apariencia. `.marea-surface` permite su adopción acotada por módulo; ZA-91 la aplica al diálogo de ingresos/gastos. Los demás roles de la referencia continúan acotados a ella. Complementan [ZA-83](design-system.md): no son una autorización para introducir paletas por módulo ni sustituir globalmente las pantallas anteriores.
 
 | Rol                    | Uso                                                                                                                              |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |

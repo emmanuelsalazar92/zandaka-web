@@ -17,6 +17,7 @@ import * as React from "react"
 import { EmptyState } from "@/components/empty-state"
 import { PageHeader } from "@/components/page-header"
 import { TransactionTimeline, TransactionTimelineSkeleton } from "@/components/transaction-timeline"
+import { MovementComposer } from "@/components/transactions/movement-composer"
 import { TransferComposer } from "@/components/transfers/transfer-composer"
 import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -33,6 +34,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Feedback } from "@/components/ui/feedback"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -122,11 +124,16 @@ export function TransactionsContent() {
     setHasPendingTransfer(pendingTransferExists(1))
   }, [])
   const [createLoading, setCreateLoading] = React.useState(false)
+  const [movementBusy, setMovementBusy] = React.useState(false)
+  const [movementNotice, setMovementNotice] = React.useState<{
+    title: string
+    description: string
+  } | null>(null)
   const [createError, setCreateError] = React.useState<string | null>(null)
   const [isFiltersOpen, setIsFiltersOpen] = React.useState(false)
   const [transactionsReloadToken, setTransactionsReloadToken] = React.useState(0)
   const [accounts, setAccounts] = React.useState<
-    { id: number; name: string; currency: string; active: boolean }[]
+    { id: number; name: string; currency: string; active: boolean; institution: string | null }[]
   >([])
   const [accountsLoading, setAccountsLoading] = React.useState(false)
   const [accountsError, setAccountsError] = React.useState<string | null>(null)
@@ -224,6 +231,8 @@ export function TransactionsContent() {
           name: string
           currency: string
           is_active: number
+          institution?: string | null
+          institution_name?: string | null
         }[]
         setAccounts(
           data.map((account) => ({
@@ -231,6 +240,7 @@ export function TransactionsContent() {
             name: account.name,
             currency: account.currency,
             active: account.is_active === 1,
+            institution: account.institution ?? account.institution_name ?? null,
           })),
         )
         // A direct action from Resumen opens the composer only after its account context is ready.
@@ -302,13 +312,14 @@ export function TransactionsContent() {
   }, [activeAccounts])
 
   React.useEffect(() => {
+    if (formData.type !== "ADJUSTMENT") return
     const accountIds = new Set(
       formData.lines.map((line) => line.accountId).filter((accountId) => accountId),
     )
     accountIds.forEach((accountId) => {
       void fetchEnvelopes(accountId)
     })
-  }, [formData.lines, fetchEnvelopes])
+  }, [formData.lines, formData.type, fetchEnvelopes])
 
   React.useEffect(() => {
     if (draftFilters.accountId && draftFilters.accountId !== "ALL") {
@@ -575,6 +586,7 @@ export function TransactionsContent() {
           <Dialog
             open={isCreateOpen}
             onOpenChange={(open) => {
+              if (!open && movementBusy) return
               if (!open) {
                 handleCloseCreate()
                 return
@@ -591,9 +603,17 @@ export function TransactionsContent() {
               </Button>
             </DialogTrigger>
             <DialogContent
+              showCloseButton={!movementBusy}
+              onEscapeKeyDown={(event) => {
+                if (movementBusy) event.preventDefault()
+              }}
+              onInteractOutside={(event) => {
+                if (movementBusy) event.preventDefault()
+              }}
               className={cn(
                 "max-h-[90dvh]",
-                formData.type === "TRANSFER"
+                (formData.type === "INCOME" || formData.type === "EXPENSE") && "marea-surface",
+                formData.type !== "ADJUSTMENT"
                   ? "grid-cols-1 p-3 sm:max-w-3xl sm:p-6"
                   : "sm:max-w-5xl xl:max-w-6xl",
               )}
@@ -612,6 +632,54 @@ export function TransactionsContent() {
                   onRefreshAccounts={() => setAccountsReload((n) => n + 1)}
                   onConfirmed={() => {
                     setHasPendingTransfer(false)
+                    resetCreateForm()
+                    setIsCreateOpen(false)
+                    setTransactionsReloadToken((n) => n + 1)
+                  }}
+                />
+              ) : formData.type === "INCOME" || formData.type === "EXPENSE" ? (
+                <MovementComposer
+                  type={formData.type}
+                  accounts={activeAccounts}
+                  accountsLoading={accountsLoading}
+                  accountsError={accountsError}
+                  history={transactions}
+                  initialDate={formData.date}
+                  initialDescription={formData.description}
+                  userId={userId}
+                  onTypeChange={(type, metadata) =>
+                    setFormData((d) => ({ ...d, ...metadata, type }))
+                  }
+                  onClose={handleCloseCreate}
+                  onBusyChange={setMovementBusy}
+                  onRefreshAccounts={() => setAccountsReload((n) => n + 1)}
+                  onCreated={() => {
+                    setMovementNotice({
+                      title: formData.type === "INCOME" ? "Ingreso registrado" : "Gasto registrado",
+                      description:
+                        "El movimiento se confirmó. La lista conserva tus filtros actuales.",
+                    })
+                    setMovementBusy(false)
+                    resetCreateForm()
+                    setIsCreateOpen(false)
+                    setTransactionsReloadToken((n) => n + 1)
+                  }}
+                  onReviewHistory={(metadata) => {
+                    const review = {
+                      ...defaultFilters,
+                      dateFrom: metadata.date,
+                      dateTo: metadata.date,
+                      type: metadata.type,
+                      keyword: metadata.description,
+                    }
+                    setFilters(review)
+                    setDraftFilters(review)
+                    setCurrentPage(1)
+                    setMovementNotice({
+                      title: "Revisa el movimiento por confirmar",
+                      description:
+                        "Filtramos por fecha, tipo y descripción. Compara los detalles antes de registrar otra operación; no hemos confirmado que se guardó.",
+                    })
                     resetCreateForm()
                     setIsCreateOpen(false)
                     setTransactionsReloadToken((n) => n + 1)
@@ -820,6 +888,15 @@ export function TransactionsContent() {
           </Dialog>
         </div>
       </PageHeader>
+
+      {movementNotice && (
+        <Feedback title={movementNotice.title}>
+          <p>{movementNotice.description}</p>
+          <Button type="button" variant="ghost" onClick={() => setMovementNotice(null)}>
+            Cerrar aviso
+          </Button>
+        </Feedback>
+      )}
 
       {hasPendingTransfer && (
         <Alert>

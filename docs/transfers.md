@@ -1,6 +1,6 @@
 # Transferencias desde origen, destino e importe — ZA-90
 
-En Movimientos → Nuevo movimiento → Transferencia se abre un compositor específico. El usuario elige cuenta y sobre de origen, cuenta y sobre de destino, fecha, descripción e importe positivo. No introduce líneas opuestas ni suma cero. Ingresos, gastos y ajustes conservan su editor existente.
+En Movimientos → Nuevo movimiento → Transferencia se abre un compositor específico. El usuario elige cuenta y sobre de origen, cuenta y sobre de destino, fecha, descripción e importe positivo. No introduce líneas opuestas ni suma cero. Ingresos y gastos usan el [registro de ZA-91](movement-entry.md); ajustes conserva su editor existente.
 
 ## Interacción y significado
 
