@@ -80,3 +80,5 @@ El sistema visual compartido y su galería se documentan en [Atlántico — ZA-8
 La navegación por tareas, los accesos a catálogos y el encabezado compartido se documentan en [ZA-84](docs/navigation.md).
 
 El registro guiado de transferencias y su recuperación segura se documentan en [ZA-90](docs/transfers.md).
+
+Las dos composiciones completas de Sobres y sus pautas de aplicación se revisan en `/design-reference`: [Marea y Faro — ZA-111](docs/atlantico-composition.md). El propietario eligió Marea como referencia; su adopción en las pantallas financieras continúa en los tickets de cada módulo.

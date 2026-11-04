@@ -1,0 +1,668 @@
+/* ZA-111: reference surface roles, scoped here for adoption by the owning module tickets.
+   Brand/semantic colors reuse Atlántico; charcoal neutrals add a distinct dark hierarchy. */
+.study {
+  --study-ground: #eff2f5;
+  --study-surface: #fff;
+  --study-raised: #f7f9fb;
+  --study-ink: #16283a;
+  --study-muted: #566372;
+  --study-line: #d6dde5;
+  --study-control: #74808b;
+  --study-focus: #245bdb;
+  --study-brand: #245bdb;
+  --study-brand-soft: #e7efff;
+  --study-brand-ink: #163f9d;
+  --study-teal: #d5f1eb;
+  --study-teal-ink: #075751;
+  --study-negative: #a83028;
+  --study-negative-bg: #fff0ed;
+  color: var(--study-ink);
+  overflow-wrap: anywhere;
+}
+:global(.dark) .study {
+  --study-ground: #121417;
+  --study-surface: #1d2025;
+  --study-raised: #292d33;
+  --study-ink: #f4f5f7;
+  --study-muted: #b9c0ca;
+  --study-line: #3c424a;
+  --study-control: #85929f;
+  --study-focus: #a5bfff;
+  --study-brand: #9bbaff;
+  --study-brand-soft: #223354;
+  --study-brand-ink: #bed2ff;
+  --study-teal: #173d3a;
+  --study-teal-ink: #9be7dc;
+  --study-negative: #ffa396;
+  --study-negative-bg: #3c2525;
+}
+.study :is(h1, h2, h3, p, ul) {
+  margin: 0;
+}
+.study :is(button, select, a):focus-visible {
+  outline: 3px solid var(--study-focus);
+  outline-offset: 4px;
+}
+.study select {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.65rem 2rem 0.65rem 0.8rem;
+  border: 1px solid var(--study-control);
+  border-radius: 0.7rem;
+  background: var(--study-surface);
+  color: var(--study-ink);
+  font: inherit;
+  text-overflow: ellipsis;
+}
+.study button {
+  overflow-wrap: anywhere;
+}
+.reviewTools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  background: var(--study-surface);
+  border: 1px solid var(--study-line);
+  border-radius: 1rem;
+}
+.reviewTools h1 {
+  font-size: 1.2rem;
+  font-weight: 650;
+  margin: 0.35rem 0;
+  letter-spacing: -0.025em;
+}
+.reviewTools p:not(.eyebrow) {
+  font-size: 0.875rem;
+  color: var(--study-muted);
+  line-height: 1.6;
+}
+.eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  font-weight: 650;
+  line-height: 1.6;
+}
+.toolFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.toolFields > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.variantDescription {
+  border-top: 1px solid var(--study-line);
+  padding-top: 0.8rem;
+}
+.canvas {
+  container-type: inline-size;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  background: var(--study-ground);
+  border: 1px solid var(--study-line);
+  border-radius: 1.5rem;
+}
+.pageHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.pageHeading h2 {
+  font-size: clamp(2.4rem, 4vw, 3.5rem);
+  font-weight: 650;
+  letter-spacing: -0.065em;
+  line-height: 1.1;
+  margin: 0.35rem 0 0.5rem;
+}
+.titleDot {
+  color: var(--study-brand);
+}
+.pageHeading p:last-child {
+  color: var(--study-muted);
+  font-size: 0.95rem;
+}
+.sampleLabel {
+  color: var(--study-muted);
+  border: 1px solid var(--study-control);
+  border-radius: 2rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.accountPicker {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  margin-bottom: 1.5rem;
+}
+.accountPicker label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.accountPicker span {
+  color: var(--study-muted);
+  font-size: 0.75rem;
+}
+.composition {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+}
+.composition > * {
+  min-width: 0;
+}
+.balancePanel {
+  position: relative;
+  isolation: isolate;
+  border-radius: 1.25rem;
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+  background:
+    radial-gradient(ellipse at 100% 100%, #075f69 0%, transparent 70%),
+    linear-gradient(120deg, var(--brand-deep), var(--hero-mid));
+  color: #fff;
+}
+.balanceContent {
+  position: relative;
+  z-index: 1;
+}
+.balancePanel .eyebrow {
+  color: var(--hero-caption);
+}
+.balancePanel h3 {
+  font-size: 1rem;
+  font-weight: 450;
+  margin: 1.5rem 0 0.6rem;
+}
+.amount {
+  display: block;
+  font-size: clamp(1.8rem, 3.2vw, 3.25rem);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.045em;
+  line-height: 1.2;
+}
+.money {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 0.3em;
+  font-variant-numeric: tabular-nums;
+}
+.amount {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.25em;
+}
+.moneyDigits {
+  white-space: nowrap;
+}
+.balanceNote {
+  max-width: 35rem;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  margin-top: 1rem !important;
+  color: var(--hero-caption);
+}
+.heroFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-top: 1.75rem;
+}
+.heroFooter > span {
+  font-size: 0.8rem;
+  color: var(--hero-caption);
+}
+.study .primaryButton {
+  background: var(--study-brand);
+  color: var(--study-ground);
+  border: 1px solid transparent;
+  border-radius: 0.8rem;
+  box-shadow: none;
+}
+.study .balancePanel .primaryButton {
+  background: #fff;
+  color: #163f9d;
+}
+.tide {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 70%;
+  height: 70%;
+  color: #ffffff14;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.distributionPanel {
+  background: var(--study-surface);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+}
+.sectionHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.sectionHeading h2 {
+  font-size: 1.4rem;
+  letter-spacing: -0.035em;
+  font-weight: 650;
+}
+.sectionHeading h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.sectionHeading > svg {
+  color: var(--study-brand);
+  flex-shrink: 0;
+}
+.count {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 1.6rem;
+  min-height: 1.6rem;
+  margin-left: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.5rem;
+  background: var(--study-brand-soft);
+  color: var(--study-brand-ink);
+  font-size: 0.8rem;
+  vertical-align: middle;
+  letter-spacing: 0;
+}
+.distributionTotal {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+.distributionTotal > span:last-child {
+  display: block;
+  color: var(--study-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+  margin-top: 0.2rem;
+}
+.bars {
+  display: grid;
+  gap: 0.7rem;
+  margin: 1.25rem 0;
+}
+.barLine {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.75rem;
+}
+.track {
+  height: 0.35rem;
+  background: var(--study-line);
+  border-radius: 1rem;
+}
+.track i {
+  display: block;
+  height: 100%;
+  background: var(--study-brand);
+  border-radius: inherit;
+}
+.distributionNote,
+.distribution > p:not(.distributionTotal) {
+  font-size: 0.75rem;
+  line-height: 1.65;
+  color: var(--study-muted);
+}
+.ledger > .sectionHeading .eyebrow {
+  color: var(--study-muted);
+  margin-bottom: 0.35rem;
+}
+.rowGroup ul {
+  list-style: none;
+  padding: 0;
+}
+.envelopeRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 0.8rem;
+  align-items: center;
+  border-bottom: 1px solid var(--study-line);
+  padding: 1.25rem 0;
+}
+.rowMark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: var(--study-brand-soft);
+  color: var(--study-brand-ink);
+  border-radius: 0.8rem;
+}
+.rowName {
+  min-width: 0;
+}
+.rowName h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.rowName p {
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--study-muted);
+  margin-top: 0.3rem;
+}
+.rowAmount {
+  text-align: right;
+  font-size: 1rem;
+  font-weight: 600;
+  min-width: 0;
+}
+.study .rowAction,
+.study .textButton {
+  color: var(--study-brand-ink);
+}
+.study .rowAction:hover,
+.study .textButton:hover {
+  background: var(--study-brand-soft);
+}
+.negative {
+  color: var(--study-negative);
+}
+.sidePanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  align-content: start;
+}
+.attention {
+  padding: 1.5rem;
+  background: var(--study-surface);
+  border-radius: 1.25rem;
+  border-top: 3px solid var(--study-negative);
+}
+.attention > .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--study-negative);
+  margin-bottom: 1rem;
+}
+.neutralAttention {
+  border-top-color: var(--study-control);
+}
+.neutralAttention > .eyebrow {
+  color: var(--study-muted);
+}
+.attention h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.attention .negative {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0.6rem 0;
+}
+.attention p:not(.negative),
+.contextNote > p:not(.eyebrow) {
+  font-size: 0.8rem;
+  line-height: 1.75;
+  color: var(--study-muted);
+  margin-top: 0.5rem;
+}
+.study .outlineButton {
+  border-color: var(--study-control);
+  background: var(--study-surface);
+  color: var(--study-ink);
+  margin-top: 1.25rem;
+  width: 100%;
+}
+.contextNote {
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  background: var(--study-teal);
+  color: var(--study-teal-ink);
+}
+.contextNote h3 {
+  font-size: 1.4rem;
+  font-weight: 550;
+  letter-spacing: -0.035em;
+  line-height: 1.3;
+  margin-top: 0.8rem;
+}
+.contextNote > p:not(.eyebrow) {
+  color: inherit;
+}
+.contextNote > svg {
+  margin-top: 1.5rem;
+}
+.statePanel {
+  padding: 2rem;
+  background: var(--study-surface);
+  border-radius: 1.25rem;
+  display: grid;
+  justify-items: start;
+  align-content: center;
+  gap: 1rem;
+}
+.statePanel h3 {
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+.statePanel p {
+  color: var(--study-muted);
+  line-height: 1.7;
+}
+.skeleton {
+  width: 100%;
+  height: 5rem;
+  background: var(--study-raised);
+  border: 1px solid var(--study-line);
+  border-radius: 0.8rem;
+}
+.canvasFooter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  border-top: 1px solid var(--study-line);
+  padding-top: 1.5rem;
+  margin-top: 2rem;
+  color: var(--study-muted);
+  font-size: 0.7rem;
+  line-height: 1.6;
+}
+.canvasFooter > span {
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  font-size: 1rem;
+}
+.canvasFooter p {
+  max-width: 28rem;
+}
+.faro .balancePanel {
+  background: var(--study-teal);
+  color: var(--study-teal-ink);
+}
+.faro .balancePanel :is(.eyebrow, .balanceNote, .heroFooter > span) {
+  color: inherit;
+}
+.faro .balancePanel .primaryButton {
+  color: #fff;
+  background: #163f9d;
+}
+.heroStatus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  margin-top: 1rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  width: fit-content;
+  border-radius: 0.2rem;
+}
+.heroStatus svg {
+  flex-shrink: 0;
+}
+.marea .balancePanel :is(button, a):focus-visible {
+  outline-color: #fff;
+}
+.faro .distributionPanel {
+  background: var(--study-brand-soft);
+}
+.faro .groupTitle {
+  font-size: 0.7rem;
+  color: var(--study-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-top: 1.5rem;
+  padding-bottom: 0.4rem;
+}
+.faro .rowMark {
+  background: var(--study-raised);
+  color: var(--study-muted);
+  border-radius: 50%;
+}
+.faro .envelopeRow {
+  padding: 1rem 0;
+}
+
+@media (min-width: 1100px) {
+  .reviewTools {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+  }
+  .variantDescription {
+    grid-column: 1 / -1;
+  }
+  .accountPicker {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    align-items: center;
+    max-width: 44rem;
+  }
+  .accountPicker span {
+    grid-column: 2;
+  }
+}
+@container (min-width: 52rem) {
+  .marea .composition {
+    grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  }
+  .marea .balancePanel {
+    grid-column: 1;
+  }
+  .marea .distributionPanel {
+    grid-column: 2;
+  }
+  .marea .listPanel {
+    grid-column: 1;
+  }
+  .marea .sidePanel {
+    grid-column: 2;
+  }
+  .faro .composition {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+    align-items: start;
+  }
+  .faro .balancePanel {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .faro .distributionPanel {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .faro .listPanel {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .faro .sidePanel {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .faro .heroFooter {
+    align-items: start;
+    flex-direction: column;
+  }
+}
+@media (max-width: 600px) {
+  .toolFields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .reviewTools {
+    padding: 1rem;
+  }
+  .canvas {
+    padding: min(1rem, 3vw);
+    border-radius: 1rem;
+  }
+  .envelopeRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem;
+  }
+  .rowMark {
+    display: none;
+  }
+  .rowName {
+    grid-column: 1;
+  }
+  .rowAmount {
+    grid-column: 1;
+    text-align: left;
+  }
+  .rowAction {
+    grid-column: 2;
+    grid-row: 1 / 3;
+  }
+  .barLine {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.35rem;
+  }
+  .study .balancePanel .primaryButton {
+    width: 100%;
+  }
+  .distributionPanel,
+  .attention,
+  .contextNote {
+    padding: 1rem;
+  }
+  .balancePanel {
+    padding: min(1.25rem, 4vw);
+  }
+  .amount {
+    font-size: clamp(1.25rem, 7vw, 1.8rem);
+  }
+  .attention .negative {
+    font-size: clamp(1rem, 4.5vw, 1.5rem);
+  }
+  .distributionTotal {
+    font-size: 1rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .study *,
+  .study *::before,
+  .study *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
