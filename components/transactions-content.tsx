@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/empty-state"
 import { PageHeader } from "@/components/page-header"
 import { TransactionTimeline, TransactionTimelineSkeleton } from "@/components/transaction-timeline"
 import { MovementComposer } from "@/components/transactions/movement-composer"
+import { TransactionDetailDialog } from "@/components/transactions/transaction-detail-dialog"
 import { TransferComposer } from "@/components/transfers/transfer-composer"
 import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -106,6 +107,8 @@ interface PaginationMeta {
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
 const API_BASE_URL = "/api"
 export function TransactionsContent() {
+  const [detailId, setDetailId] = React.useState<number | null>(null)
+  const detailTrigger = React.useRef<HTMLButtonElement | null>(null)
   const [transactionsData, setTransactionsData] = React.useState<ApiTransaction[]>([])
   const [transactionsLoading, setTransactionsLoading] = React.useState(false)
   const [transactionsError, setTransactionsError] = React.useState<string | null>(null)
@@ -1210,7 +1213,23 @@ export function TransactionsContent() {
               onAction={activeFilterCount > 0 ? clearFilters : undefined}
             />
           ) : (
-            <TransactionTimeline groups={timelineGroups} />
+            <TransactionTimeline
+              groups={timelineGroups}
+              onOpen={(id, trigger) => {
+                detailTrigger.current = trigger
+                setDetailId(id)
+              }}
+            />
+          )}
+
+          {detailId !== null && (
+            <TransactionDetailDialog
+              key={detailId}
+              transactionId={detailId}
+              userId={userId}
+              returnFocus={detailTrigger}
+              onClose={() => setDetailId(null)}
+            />
           )}
 
           {/* Pagination */}

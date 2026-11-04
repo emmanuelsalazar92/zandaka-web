@@ -1,5 +1,7 @@
 # Staging y entregas por bloques
 
+ZA-88 incorpora la [ficha completa de movimientos](transaction-detail.md) y requiere una API del mismo bloque con `GET /api/transactions/:id?userId=...`. Promover el par web/API compatible. No añade cambios de esquema ni recálculos; la preparación de DB de ZA-90 sigue siendo independiente. Con una API anterior, la ficha indica que no está disponible y conserva el historial.
+
 **Entrada operativa: [Desplegar un bloque en testing](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/deploy-testing.md), en `zandaka-api/docs/deploy-testing.md` del workspace. Incluye la preparación de DB de ZA-90 que debe acompañar a las imágenes web/API.**
 
 Hay dos repositorios y dos imágenes: zandaka-web y zandaka-api. Ambos trabajan en la rama staging. Esta rama parte de las correcciones de precisión monetaria ya presentes; no deben perderse al integrar el rediseño.

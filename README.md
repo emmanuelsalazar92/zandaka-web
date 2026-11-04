@@ -83,4 +83,6 @@ El registro guiado de transferencias y su recuperación segura se documentan en 
 
 El registro simple y desglosado de ingresos/gastos, con moneda explícita, búsqueda y propuestas recientes, se documenta en [ZA-91](docs/movement-entry.md).
 
+La ficha completa de movimientos, sus líneas históricas y el retorno accesible al historial se documentan en [ZA-88](docs/transaction-detail.md).
+
 Las dos composiciones completas de Sobres y sus pautas de aplicación se revisan en `/design-reference`: [Marea y Faro — ZA-111](docs/atlantico-composition.md). El propietario eligió Marea como referencia; su adopción en las pantallas financieras continúa en los tickets de cada módulo.

@@ -15,6 +15,8 @@ import {
 } from "@/lib/transaction-timeline"
 import { cn } from "@/lib/utils"
 
+type OpenDetail = (transactionId: number, trigger: HTMLButtonElement) => void
+
 function toneClasses(tone: TransactionVisualTone) {
   if (tone === "income") {
     return {
@@ -97,7 +99,13 @@ function buildAmountText(transaction: TimelineTransaction) {
   }
 }
 
-function TransactionTimelineItem({ transaction }: { transaction: TimelineTransaction }) {
+function TransactionTimelineItem({
+  transaction,
+  onOpen,
+}: {
+  transaction: TimelineTransaction
+  onOpen: OpenDetail
+}) {
   const meta = getTransactionTypeMeta(transaction.type)
   const tones = toneClasses(meta.tone)
   const amountText = buildAmountText(transaction)
@@ -108,7 +116,14 @@ function TransactionTimelineItem({ transaction }: { transaction: TimelineTransac
   )
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-border/70 bg-card/50 transition-all hover:border-primary/20 hover:bg-muted/15">
+    <article className="group relative overflow-hidden rounded-xl border border-border/70 bg-card/50 transition-all hover:border-primary/20 hover:bg-muted/15">
+      <button
+        type="button"
+        aria-label={`Ver detalle del movimiento ${transaction.id}`}
+        aria-haspopup="dialog"
+        className="absolute inset-0 z-10 w-full cursor-pointer rounded-xl focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+        onClick={(event) => onOpen(transaction.id, event.currentTarget)}
+      />
       <div className={cn("absolute inset-y-4 left-0 w-1 rounded-full", tones.accent)} />
 
       <div className="space-y-4 px-4 py-4 sm:px-5">
@@ -158,6 +173,7 @@ function TransactionTimelineItem({ transaction }: { transaction: TimelineTransac
                   <span>
                     {transaction.lines.length} detalle{transaction.lines.length === 1 ? "" : "s"}
                   </span>
+                  <span className="font-medium text-primary">Ver detalle completo</span>
                   {transaction.lines.length > 1 ? (
                     <span>Desglose por cuenta a continuación</span>
                   ) : null}
@@ -198,11 +214,17 @@ function TransactionTimelineItem({ transaction }: { transaction: TimelineTransac
           </div>
         ) : null}
       </div>
-    </div>
+    </article>
   )
 }
 
-function TransactionDateGroup({ group }: { group: TransactionTimelineGroup }) {
+function TransactionDateGroup({
+  group,
+  onOpen,
+}: {
+  group: TransactionTimelineGroup
+  onOpen: OpenDetail
+}) {
   const showFullDate = group.label !== group.fullDateLabel
 
   return (
@@ -227,18 +249,24 @@ function TransactionDateGroup({ group }: { group: TransactionTimelineGroup }) {
 
       <div className="space-y-3">
         {group.items.map((transaction) => (
-          <TransactionTimelineItem key={transaction.id} transaction={transaction} />
+          <TransactionTimelineItem key={transaction.id} transaction={transaction} onOpen={onOpen} />
         ))}
       </div>
     </section>
   )
 }
 
-export function TransactionTimeline({ groups }: { groups: TransactionTimelineGroup[] }) {
+export function TransactionTimeline({
+  groups,
+  onOpen,
+}: {
+  groups: TransactionTimelineGroup[]
+  onOpen: OpenDetail
+}) {
   return (
     <div className="space-y-6">
       {groups.map((group) => (
-        <TransactionDateGroup key={group.key} group={group} />
+        <TransactionDateGroup key={group.key} group={group} onOpen={onOpen} />
       ))}
     </div>
   )
