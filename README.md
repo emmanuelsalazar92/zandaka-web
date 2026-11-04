@@ -76,3 +76,5 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 El sistema visual compartido y su galería se documentan en [Atlántico — ZA-83](docs/design-system.md).
 
 La navegación por tareas, los accesos a catálogos y el encabezado compartido se documentan en [ZA-84](docs/navigation.md).
+
+El registro guiado de transferencias y su recuperación segura se documentan en [ZA-90](docs/transfers.md).

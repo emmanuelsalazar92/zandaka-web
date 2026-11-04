@@ -9,6 +9,12 @@ export function publicErrorMessage(payload: unknown, fallback: string): string {
       ? String((error as { code: unknown }).code)
       : ""
   const messages: Record<string, string> = {
+    IDEMPOTENCY_CONFLICT:
+      "Esta transferencia ya se confirmó con otros datos. Revisa tus movimientos antes de iniciar otra.",
+    FEATURE_NOT_READY:
+      "Las transferencias guiadas aún no están habilitadas. Vuelve a intentar más tarde.",
+    INACTIVE_RESOURCE:
+      "Una cuenta, institución o sobre ya no está activo. Actualiza las opciones antes de continuar.",
     VALIDATION_ERROR: "Revisa los campos indicados y vuelve a intentar.",
     NOT_FOUND: "No encontramos este registro. Actualiza la vista para continuar.",
     CONFLICT: "El registro cambió o ya existe. Actualiza la vista y revisa los datos.",

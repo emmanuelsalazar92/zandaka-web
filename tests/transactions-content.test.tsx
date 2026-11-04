@@ -51,6 +51,36 @@ vi.mock("@/components/ui/select", async () => {
   }
 })
 
+vi.mock("@/components/ui/searchable-select", () => ({
+  SearchableSelect: ({
+    id,
+    options,
+    value,
+    onValueChange,
+    disabled,
+  }: {
+    id: string
+    options: Array<{ value: string; label: string }>
+    value: string
+    onValueChange: (value: string) => void
+    disabled?: boolean
+  }) => (
+    <select
+      id={id}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onValueChange(e.target.value)}
+    >
+      <option value="">Elige</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  ),
+}))
+
 vi.mock("@/components/transaction-timeline", () => ({
   TransactionTimeline: () => null,
   TransactionTimelineSkeleton: () => null,
@@ -61,6 +91,31 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
   let data: unknown
   if (init?.method === "POST") {
     const payload = JSON.parse(String(init.body))
+    if (url === "/api/transfers")
+      return {
+        ok: true,
+        json: async () => ({
+          transaction: {
+            id: 100,
+            type: "TRANSFER",
+            user_id: payload.userId,
+            date: payload.date,
+            description: payload.description,
+          },
+          lines: [
+            {
+              account_id: payload.from.accountId,
+              envelope_id: payload.from.envelopeId,
+              amount: -payload.amount,
+            },
+            {
+              account_id: payload.to.accountId,
+              envelope_id: payload.to.envelopeId,
+              amount: payload.amount,
+            },
+          ],
+        }),
+      } as Response
     data = {
       transaction: { ...payload, id: 100 },
       lines: payload.lines.map(
@@ -95,6 +150,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
 })
 
 beforeEach(() => {
+  window.sessionStorage.clear()
   fetchMock.mockClear()
   vi.stubGlobal("fetch", fetchMock)
 })
@@ -116,6 +172,7 @@ async function open(type = "INCOME") {
   fireEvent.change(within(dialog).getByLabelText("Descripción"), {
     target: { value: "Synthetic test" },
   })
+  if (type === "TRANSFER") return dialog
   await within(dialog).findByRole("option", { name: "Synthetic CRC" })
   fireEvent.change(within(dialog).getByRole("combobox", { name: "Cuenta 1" }), {
     target: { value: "1" },
@@ -174,29 +231,35 @@ describe("transaction form regression", () => {
     })
   })
 
-  it("enables a transfer only with complete, valid, exactly opposite amounts", async () => {
+  it("posts a positive transfer intent with no manual accounting lines", async () => {
     const dialog = await open("TRANSFER")
+    fireEvent.change(within(dialog).getByLabelText("Cuenta de origen"), { target: { value: "1" } })
+    await within(dialog).findByRole("option", { name: "Source" })
+    fireEvent.change(within(dialog).getByLabelText("Sobre de origen"), { target: { value: "1" } })
+    fireEvent.change(within(dialog).getByLabelText("Cuenta de destino"), { target: { value: "1" } })
+    await waitFor(() =>
+      expect(within(dialog).getByLabelText("Sobre de destino")).not.toBeDisabled(),
+    )
+    fireEvent.change(within(dialog).getByLabelText("Sobre de destino"), { target: { value: "1" } })
     fireEvent.change(within(dialog).getByLabelText(/^Importe/), { target: { value: "-0.1" } })
-    fireEvent.click(within(dialog).getByRole("button", { name: "Añadir detalle" }))
-    fireEvent.change(within(dialog).getByRole("combobox", { name: "Cuenta 2" }), {
-      target: { value: "1" },
-    })
-    fireEvent.change(within(dialog).getByRole("combobox", { name: "Sobre 2" }), {
-      target: { value: "2" },
-    })
-    const second = within(dialog).getAllByLabelText(/^Importe/)[1]
-    const button = within(dialog).getByRole("button", { name: "Nuevo movimiento" })
-    fireEvent.change(second, { target: { value: "0.09" } })
+    const button = within(dialog).getByRole("button", { name: "Guardar transferencia" })
     expect(button).toBeDisabled()
-    fireEvent.change(second, { target: { value: "1e-1" } })
+    fireEvent.change(within(dialog).getByLabelText(/^Importe/), { target: { value: "0.1" } })
     expect(button).toBeDisabled()
-    fireEvent.change(second, { target: { value: "0.1" } })
+    fireEvent.change(within(dialog).getByLabelText("Sobre de destino"), { target: { value: "2" } })
     expect(button).toBeEnabled()
-    fireEvent.blur(second)
+    expect(within(dialog).queryByRole("button", { name: "Añadir detalle" })).not.toBeInTheDocument()
     fireEvent.click(button)
     await waitFor(() => expect(posts()).toHaveLength(1))
-    expect(
-      JSON.parse(String(posts()[0][1]?.body)).lines.map((line: { amount: number }) => line.amount),
-    ).toEqual([-0.1, 0.1])
+    expect(String(posts()[0][0])).toBe("/api/transfers")
+    const body = JSON.parse(String(posts()[0][1]?.body))
+    expect(body).toMatchObject({
+      amount: 0.1,
+      from: { accountId: 1, envelopeId: 1 },
+      to: { accountId: 1, envelopeId: 2 },
+    })
+    expect(body.requestId).toMatch(/^[a-f0-9-]{36}$/)
+    expect(body.lines).toBeUndefined()
+    await waitFor(() => expect(window.sessionStorage.length).toBe(0))
   })
 })

@@ -17,6 +17,7 @@ import * as React from "react"
 import { EmptyState } from "@/components/empty-state"
 import { PageHeader } from "@/components/page-header"
 import { TransactionTimeline, TransactionTimelineSkeleton } from "@/components/transaction-timeline"
+import { TransferComposer } from "@/components/transfers/transfer-composer"
 import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -42,7 +43,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { getAccountingDate } from "@/lib/date-only"
-import { sumMoney } from "@/lib/money"
 import { readPublicError } from "@/lib/public-error"
 import {
   applyTypeSign,
@@ -55,6 +55,7 @@ import {
   type TimelineTransaction,
   type TransactionType,
 } from "@/lib/transaction-timeline"
+import { pendingTransferExists } from "@/lib/transfer"
 import { cn } from "@/lib/utils"
 
 interface TransactionLine {
@@ -115,6 +116,11 @@ export function TransactionsContent() {
     hasPrevPage: false,
   })
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
+  const [hasPendingTransfer, setHasPendingTransfer] = React.useState(false)
+  const [accountsReload, setAccountsReload] = React.useState(0)
+  React.useEffect(() => {
+    setHasPendingTransfer(pendingTransferExists(1))
+  }, [])
   const [createLoading, setCreateLoading] = React.useState(false)
   const [createError, setCreateError] = React.useState<string | null>(null)
   const [isFiltersOpen, setIsFiltersOpen] = React.useState(false)
@@ -241,7 +247,7 @@ export function TransactionsContent() {
     }
 
     fetchAccounts()
-  }, [])
+  }, [accountsReload])
 
   const fetchEnvelopes = React.useCallback(
     async (accountId: string) => {
@@ -445,29 +451,12 @@ export function TransactionsContent() {
     }
   })
 
-  const getTransactionLineSum = () => {
-    try {
-      return sumMoney(
-        formData.lines.map((line) =>
-          transactionAmount(line.amount, formData.type, lineCurrency(line)),
-        ),
-      )
-    } catch {
-      return Number.NaN
-    }
-  }
-
   const linesValid = formData.lines.every(
     (line, index) => line.accountId && line.envelopeId && line.amount.trim() && !lineErrors[index],
   )
-  const isTransferValid =
-    formData.type === "TRANSFER" &&
-    linesValid &&
-    formData.lines.length === 2 &&
-    new Set(formData.lines.map(lineCurrency)).size === 1 &&
-    getTransactionLineSum() === 0
+
   const isOtherValid = formData.type !== "TRANSFER" && formData.lines.length >= 1 && linesValid
-  const isFormValid = (isTransferValid || isOtherValid) && formData.description && formData.date
+  const isFormValid = isOtherValid && formData.description && formData.date
 
   const resetCreateForm = React.useCallback(() => {
     setFormData({
@@ -479,7 +468,7 @@ export function TransactionsContent() {
   }, [])
 
   const handleCreate = async () => {
-    if (!isFormValid) return
+    if (!isFormValid || formData.type === "TRANSFER") return
 
     setCreateLoading(true)
     setCreateError(null)
@@ -590,6 +579,7 @@ export function TransactionsContent() {
                 handleCloseCreate()
                 return
               }
+              if (pendingTransferExists(userId)) setFormData((d) => ({ ...d, type: "TRANSFER" }))
               setCreateError(null)
               setIsCreateOpen(open)
             }}
@@ -600,221 +590,254 @@ export function TransactionsContent() {
                 Nuevo movimiento
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] sm:max-w-5xl xl:max-w-6xl">
-              <DialogHeader>
-                <DialogTitle>Nuevo movimiento</DialogTitle>
-                <DialogDescription>
-                  Registra un ingreso, gasto, transferencia o ajuste. Usa punto decimal y no
-                  incluyas separadores de miles; por ejemplo, 1234.56.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="max-h-[70vh] space-y-4 overflow-y-auto py-4 pr-2">
-                {createError && (
-                  <Alert className="border-error/50 bg-error/5">
-                    <AlertCircle className="h-4 w-4 text-error" />
-                    <AlertDescription className="text-sm">{createError}</AlertDescription>
-                  </Alert>
-                )}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(180px,0.9fr)_minmax(160px,0.7fr)_minmax(0,1.4fr)]">
-                  <AccessibleField className="space-y-2">
-                    <Label htmlFor="date">Fecha</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    />
-                  </AccessibleField>
-                  <AccessibleField className="space-y-2">
-                    <Label htmlFor="type">Tipo</Label>
-                    <Select
-                      value={formData.type}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, type: value as TransactionType })
-                      }
-                    >
-                      <SelectTrigger id="type">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="INCOME">Ingreso</SelectItem>
-                        <SelectItem value="EXPENSE">Gasto</SelectItem>
-                        <SelectItem value="TRANSFER">Transferencia</SelectItem>
-                        <SelectItem value="ADJUSTMENT">Ajuste</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </AccessibleField>
-                  <AccessibleField className="space-y-2">
-                    <Label htmlFor="description">Descripción</Label>
-                    <Input
-                      id="description"
-                      placeholder="Por ejemplo, Compra de alimentos"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    />
-                  </AccessibleField>
-                </div>
-
-                {/* Lines Editor */}
-                <div className="space-y-3 border-t pt-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="font-semibold">Detalle por cuenta y sobre</Label>
-                    <Button variant="outline" size="sm" onClick={handleAddLine}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      Añadir detalle
-                    </Button>
-                  </div>
-
-                  {formData.type === "TRANSFER" && formData.lines.length !== 2 && (
-                    <Alert className="border-warning/50 bg-warning/5">
-                      <AlertCircle className="h-4 w-4 text-warning" />
-                      <AlertDescription className="text-sm">
-                        Las transferencias requieren dos detalles con importes opuestos y suma cero
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {formData.lines.map((line, index) => (
-                    <div
-                      key={index}
-                      className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(220px,0.8fr)_auto] md:items-end"
-                    >
-                      <AccessibleField className="min-w-0 space-y-1">
-                        <Label className="text-xs">Cuenta</Label>
-                        <Select
-                          value={line.accountId}
-                          onValueChange={(value) => handleLineChange(index, "accountId", value)}
-                          disabled={accountsLoading || activeAccounts.length === 0}
-                        >
-                          <SelectTrigger className="h-9 w-full" aria-label={`Cuenta ${index + 1}`}>
-                            <SelectValue
-                              placeholder={
-                                accountsLoading
-                                  ? "Cargando cuentas…"
-                                  : activeAccounts.length === 0
-                                    ? "No hay cuentas activas"
-                                    : "Elige una cuenta"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activeAccounts.map((acc) => (
-                              <SelectItem key={acc.id} value={acc.id.toString()}>
-                                {acc.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {accountsError && (
-                          <AccessibleFieldError className="text-xs text-error mt-1">
-                            {accountsError}
-                          </AccessibleFieldError>
-                        )}
-                      </AccessibleField>
-                      <AccessibleField className="min-w-0 space-y-1">
-                        <Label className="text-xs">Sobre</Label>
-                        <Select
-                          value={line.envelopeId}
-                          onValueChange={(value) => handleLineChange(index, "envelopeId", value)}
-                          disabled={!line.accountId || envelopesLoading[line.accountId]}
-                        >
-                          <SelectTrigger className="h-9 w-full" aria-label={`Sobre ${index + 1}`}>
-                            <SelectValue
-                              placeholder={
-                                !line.accountId
-                                  ? "Elige primero una cuenta"
-                                  : envelopesLoading[line.accountId]
-                                    ? "Cargando sobres…"
-                                    : "Elige un sobre"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(envelopesByAccount[line.accountId] || []).map((env) => (
-                              <SelectItem key={env.id} value={env.id.toString()}>
-                                {env.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {line.accountId && envelopesError[line.accountId] && (
-                          <AccessibleFieldError className="text-xs text-error mt-1">
-                            {envelopesError[line.accountId]}
-                          </AccessibleFieldError>
-                        )}
-                      </AccessibleField>
-                      <AccessibleField className="space-y-1">
-                        <Label className="text-xs" htmlFor={`transaction-amount-${index}`}>
-                          Importe (
-                          {accounts.find((account) => account.id.toString() === line.accountId)
-                            ?.currency ?? "elige una cuenta"}
-                          )
-                        </Label>
+            <DialogContent
+              className={cn(
+                "max-h-[90dvh]",
+                formData.type === "TRANSFER"
+                  ? "grid-cols-1 p-3 sm:max-w-3xl sm:p-6"
+                  : "sm:max-w-5xl xl:max-w-6xl",
+              )}
+            >
+              {formData.type === "TRANSFER" ? (
+                <TransferComposer
+                  userId={userId}
+                  accounts={activeAccounts}
+                  accountsLoading={accountsLoading}
+                  accountsError={accountsError}
+                  initialDate={formData.date}
+                  initialDescription={formData.description}
+                  onTypeChange={(type) => setFormData((d) => ({ ...d, type }))}
+                  onClose={handleCloseCreate}
+                  onPendingChange={setHasPendingTransfer}
+                  onRefreshAccounts={() => setAccountsReload((n) => n + 1)}
+                  onConfirmed={() => {
+                    setHasPendingTransfer(false)
+                    resetCreateForm()
+                    setIsCreateOpen(false)
+                    setTransactionsReloadToken((n) => n + 1)
+                  }}
+                />
+              ) : (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>Nuevo movimiento</DialogTitle>
+                    <DialogDescription>
+                      Registra un ingreso, gasto, transferencia o ajuste. Usa punto decimal y no
+                      incluyas separadores de miles; por ejemplo, 1234.56.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="max-h-[70vh] space-y-4 overflow-y-auto py-4 pr-2">
+                    {createError && (
+                      <Alert className="border-error/50 bg-error/5">
+                        <AlertCircle className="h-4 w-4 text-error" />
+                        <AlertDescription className="text-sm">{createError}</AlertDescription>
+                      </Alert>
+                    )}
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(180px,0.9fr)_minmax(160px,0.7fr)_minmax(0,1.4fr)]">
+                      <AccessibleField className="space-y-2">
+                        <Label htmlFor="date">Fecha</Label>
                         <Input
-                          id={`transaction-amount-${index}`}
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          value={line.amount}
-                          onChange={(e) => handleLineChange(index, "amount", e.target.value)}
-                          onBlur={() => normalizeLineAmountForType(index)}
-                          aria-invalid={Boolean(lineErrors[index])}
-                          aria-describedby={
-                            lineErrors[index] ? `transaction-amount-error-${index}` : undefined
-                          }
-                          className="h-9 text-right font-medium tabular-nums"
+                          id="date"
+                          type="date"
+                          value={formData.date}
+                          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                         />
-                        {lineErrors[index] && (
-                          <AccessibleFieldError
-                            id={`transaction-amount-error-${index}`}
-                            className="text-xs text-error"
-                          >
-                            {lineErrors[index]}
-                          </AccessibleFieldError>
-                        )}
                       </AccessibleField>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveLine(index)}
-                        aria-label={`Quitar línea ${index + 1}`}
-                        disabled={formData.lines.length === 1}
-                        className="h-9 w-9 p-0 md:self-end"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <AccessibleField className="space-y-2">
+                        <Label htmlFor="type">Tipo</Label>
+                        <Select
+                          value={formData.type}
+                          onValueChange={(value) =>
+                            setFormData({ ...formData, type: value as TransactionType })
+                          }
+                        >
+                          <SelectTrigger id="type">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="INCOME">Ingreso</SelectItem>
+                            <SelectItem value="EXPENSE">Gasto</SelectItem>
+                            <SelectItem value="TRANSFER">Transferencia</SelectItem>
+                            <SelectItem value="ADJUSTMENT">Ajuste</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </AccessibleField>
+                      <AccessibleField className="space-y-2">
+                        <Label htmlFor="description">Descripción</Label>
+                        <Input
+                          id="description"
+                          placeholder="Por ejemplo, Compra de alimentos"
+                          value={formData.description}
+                          onChange={(e) =>
+                            setFormData({ ...formData, description: e.target.value })
+                          }
+                        />
+                      </AccessibleField>
                     </div>
-                  ))}
 
-                  {formData.type === "TRANSFER" && (
-                    <div className="text-sm font-medium mt-2">
-                      Total:{" "}
-                      <span
-                        className={cn(
-                          getTransactionLineSum() === 0 ? "text-success" : "text-error",
-                        )}
-                      >
-                        {Number.isFinite(getTransactionLineSum())
-                          ? getTransactionLineSum().toFixed(2)
-                          : "—"}
-                      </span>
+                    {/* Lines Editor */}
+                    <div className="space-y-3 border-t pt-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="font-semibold">Detalle por cuenta y sobre</Label>
+                        <Button variant="outline" size="sm" onClick={handleAddLine}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Añadir detalle
+                        </Button>
+                      </div>
+
+                      {formData.lines.map((line, index) => (
+                        <div
+                          key={index}
+                          className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(220px,0.8fr)_auto] md:items-end"
+                        >
+                          <AccessibleField className="min-w-0 space-y-1">
+                            <Label className="text-xs">Cuenta</Label>
+                            <Select
+                              value={line.accountId}
+                              onValueChange={(value) => handleLineChange(index, "accountId", value)}
+                              disabled={accountsLoading || activeAccounts.length === 0}
+                            >
+                              <SelectTrigger
+                                className="h-9 w-full"
+                                aria-label={`Cuenta ${index + 1}`}
+                              >
+                                <SelectValue
+                                  placeholder={
+                                    accountsLoading
+                                      ? "Cargando cuentas…"
+                                      : activeAccounts.length === 0
+                                        ? "No hay cuentas activas"
+                                        : "Elige una cuenta"
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {activeAccounts.map((acc) => (
+                                  <SelectItem key={acc.id} value={acc.id.toString()}>
+                                    {acc.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {accountsError && (
+                              <AccessibleFieldError className="text-xs text-error mt-1">
+                                {accountsError}
+                              </AccessibleFieldError>
+                            )}
+                          </AccessibleField>
+                          <AccessibleField className="min-w-0 space-y-1">
+                            <Label className="text-xs">Sobre</Label>
+                            <Select
+                              value={line.envelopeId}
+                              onValueChange={(value) =>
+                                handleLineChange(index, "envelopeId", value)
+                              }
+                              disabled={!line.accountId || envelopesLoading[line.accountId]}
+                            >
+                              <SelectTrigger
+                                className="h-9 w-full"
+                                aria-label={`Sobre ${index + 1}`}
+                              >
+                                <SelectValue
+                                  placeholder={
+                                    !line.accountId
+                                      ? "Elige primero una cuenta"
+                                      : envelopesLoading[line.accountId]
+                                        ? "Cargando sobres…"
+                                        : "Elige un sobre"
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(envelopesByAccount[line.accountId] || []).map((env) => (
+                                  <SelectItem key={env.id} value={env.id.toString()}>
+                                    {env.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {line.accountId && envelopesError[line.accountId] && (
+                              <AccessibleFieldError className="text-xs text-error mt-1">
+                                {envelopesError[line.accountId]}
+                              </AccessibleFieldError>
+                            )}
+                          </AccessibleField>
+                          <AccessibleField className="space-y-1">
+                            <Label className="text-xs" htmlFor={`transaction-amount-${index}`}>
+                              Importe (
+                              {accounts.find((account) => account.id.toString() === line.accountId)
+                                ?.currency ?? "elige una cuenta"}
+                              )
+                            </Label>
+                            <Input
+                              id={`transaction-amount-${index}`}
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="0.00"
+                              value={line.amount}
+                              onChange={(e) => handleLineChange(index, "amount", e.target.value)}
+                              onBlur={() => normalizeLineAmountForType(index)}
+                              aria-invalid={Boolean(lineErrors[index])}
+                              aria-describedby={
+                                lineErrors[index] ? `transaction-amount-error-${index}` : undefined
+                              }
+                              className="h-9 text-right font-medium tabular-nums"
+                            />
+                            {lineErrors[index] && (
+                              <AccessibleFieldError
+                                id={`transaction-amount-error-${index}`}
+                                className="text-xs text-error"
+                              >
+                                {lineErrors[index]}
+                              </AccessibleFieldError>
+                            )}
+                          </AccessibleField>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveLine(index)}
+                            aria-label={`Quitar línea ${index + 1}`}
+                            disabled={formData.lines.length === 1}
+                            className="h-9 w-9 p-0 md:self-end"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={handleCloseCreate}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleCreate} disabled={!isFormValid || createLoading}>
-                  {createLoading ? "Creando…" : "Nuevo movimiento"}
-                </Button>
-              </DialogFooter>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={handleCloseCreate}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleCreate} disabled={!isFormValid || createLoading}>
+                      {createLoading ? "Creando…" : "Nuevo movimiento"}
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
             </DialogContent>
           </Dialog>
         </div>
       </PageHeader>
 
+      {hasPendingTransfer && (
+        <Alert>
+          <AlertCircle aria-hidden="true" className="size-4" />
+          <AlertDescription className="space-y-2">
+            <p>Hay una transferencia por confirmar. Revisa el intento antes de iniciar otra.</p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFormData((d) => ({ ...d, type: "TRANSFER" }))
+                setIsCreateOpen(true)
+              }}
+            >
+              Revisar transferencia
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       {/* Filters Panel */}
       <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
         <CollapsibleContent>
