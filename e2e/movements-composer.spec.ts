@@ -279,7 +279,7 @@ test("account changes clear incompatible envelope and currency amount with an ex
   await expect(dialog.getByRole("button", { name: "Sobre 1", exact: true })).toContainText(
     "Elige un sobre",
   )
-  await expect(dialog.getByText(/Cambió la moneda/)).toBeVisible()
+  await expect(dialog.getByText(/La moneda cambió/)).toBeVisible()
   await expect(dialog.getByRole("button", { name: "Guardar gasto" })).toBeDisabled()
   expect(state.posts).toHaveLength(0)
 })

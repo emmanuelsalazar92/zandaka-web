@@ -11,7 +11,7 @@ La moneda aparece en la etiqueta y junto al importe, incluso si la cuenta se lla
 ## Cambios de contexto y opciones
 
 - Cambiar cuenta elimina el sobre anterior y explica que debe seleccionarse uno de la cuenta nueva. Reabrir la misma opción no invalida el detalle.
-- Si cambia la moneda, también se borra el importe previo y se explica el motivo. No se convierte ni se interpreta la cifra anterior como otra moneda.
+- Si cambia la moneda, también se borra el importe previo y se explica el motivo. Lo mismo ocurre si la cuenta anterior desapareció al actualizar opciones y ya no se puede confirmar su moneda. No se convierte ni se interpreta la cifra anterior como otra moneda.
 - Las peticiones se comparten entre detalles de una misma cuenta mientras el compositor está abierto. El caché se limita a esa instancia; cerrar aborta las cargas pendientes. Una respuesta atrasada de otra cuenta no cambia la selección vigente.
 - Una carga fallida conserva el borrador y ofrece un reintento explícito. No se vuelve a solicitar en bucle por cada render o tecla. Una respuesta de catálogo malformada es un error, no una lista vacía confirmada.
 - Un catálogo vacío muestra «Esta cuenta no tiene sobres»; un error o una cuenta no disponible impiden guardar un detalle incompleto. El backend conserva sus validaciones de actividad y pertenencia en el momento de escribir.

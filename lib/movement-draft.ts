@@ -29,6 +29,34 @@ export const emptyMovementLine = (key: number): MovementLineDraft => ({
 export const movementAccountLabel = (a: MovementAccount) =>
   `${a.name} · ${a.institution || "Institución sin identificar"} · ${a.currency}`
 
+export function selectMovementAccount(
+  line: MovementLineDraft,
+  value: string,
+  accounts: MovementAccount[],
+  candidate?: number,
+): MovementLineDraft {
+  if (line.accountId === value && !candidate) return line
+  const before = accounts.find((a) => String(a.id) === line.accountId),
+    after = accounts.find((a) => String(a.id) === value)
+  // An account may disappear on refresh. Its former currency is then unknown;
+  // never carry its amount into a newly selected currency by assuming equality.
+  const currencyChanged = Boolean(
+    line.accountId && (!before || before.currency !== after?.currency),
+  )
+  return {
+    ...line,
+    accountId: value,
+    envelopeId: "",
+    candidate,
+    amount: currencyChanged ? "" : line.amount,
+    notice: candidate
+      ? "Comprobando el sobre de la propuesta reciente…"
+      : currencyChanged
+        ? "La moneda cambió o no se pudo confirmar: se borró el importe anterior. Selecciona un sobre e introduce el importe en la nueva moneda."
+        : "Selecciona un sobre de esta cuenta; el sobre anterior no se conserva al cambiar cuenta.",
+  }
+}
+
 export function movementLineState(
   line: MovementLineDraft,
   kind: MovementKind,

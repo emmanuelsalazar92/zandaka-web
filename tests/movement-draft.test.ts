@@ -6,6 +6,7 @@ import {
   movementLineState,
   movementTotals,
   recentMovementDestinations,
+  selectMovementAccount,
   validMovementDate,
   type MovementPayload,
 } from "@/lib/movement-draft"
@@ -25,6 +26,24 @@ const line = (amount: string, key = 1) => ({
   amount,
 })
 describe("income and expense drafts", () => {
+  it("clears money when a previous account vanished rather than guessing its currency", () => {
+    const draft = line("0.02")
+    expect(selectMovementAccount(draft, "2", accounts)).toMatchObject({
+      amount: "",
+      envelopeId: "",
+    })
+    expect(
+      selectMovementAccount(
+        draft,
+        "2",
+        accounts.filter((a) => a.id !== 1),
+      ),
+    ).toMatchObject({ amount: "", envelopeId: "" })
+    expect(
+      selectMovementAccount(draft, "3", [...accounts, { ...accounts[0], id: 3 }]),
+    ).toMatchObject({ amount: "0.02", envelopeId: "" })
+    expect(selectMovementAccount(draft, "1", accounts)).toBe(draft)
+  })
   it("retains exact cents and applies existing income/expense normalization", () => {
     expect(movementTotals([line("0.1"), line("0.2", 2)], "INCOME", accounts, options)).toEqual([
       { currency: "CRC", amount: 0.3 },

@@ -26,6 +26,7 @@ import {
   movementLineState,
   movementTotals,
   recentMovementDestinations,
+  selectMovementAccount,
   validMovementDate,
   type MovementAccount,
   type MovementKind,
@@ -139,21 +140,7 @@ export function MovementComposer({
     setLines((rows) =>
       rows.map((line) => {
         if (line.key !== key || (line.accountId === value && !candidate)) return line
-        const before = accounts.find((a) => String(a.id) === line.accountId),
-          after = accounts.find((a) => String(a.id) === value)
-        const currencyChanged = Boolean(before && before.currency !== after?.currency)
-        return {
-          ...line,
-          accountId: value,
-          envelopeId: "",
-          candidate,
-          amount: currencyChanged ? "" : line.amount,
-          notice: candidate
-            ? "Comprobando el sobre de la propuesta reciente…"
-            : currencyChanged
-              ? "Cambió la moneda: se borró el importe anterior. Selecciona un sobre e introduce el importe en la nueva moneda."
-              : "Selecciona un sobre de esta cuenta; el sobre anterior no se conserva al cambiar cuenta.",
-        }
+        return selectMovementAccount(line, value, accounts, candidate)
       }),
     )
   }
