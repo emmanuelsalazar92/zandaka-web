@@ -1,5 +1,7 @@
 # Staging y entregas por bloques
 
+**Entrada operativa: [Desplegar un bloque en testing](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/deploy-testing.md), en `zandaka-api/docs/deploy-testing.md` del workspace. Incluye la preparación de DB de ZA-90 que debe acompañar a las imágenes web/API.**
+
 Hay dos repositorios y dos imágenes: zandaka-web y zandaka-api. Ambos trabajan en la rama staging. Esta rama parte de las correcciones de precisión monetaria ya presentes; no deben perderse al integrar el rediseño.
 
 ## Integración continua

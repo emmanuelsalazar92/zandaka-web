@@ -2,6 +2,8 @@
 
 ## Atlántico y staging
 
+**Para desplegar testing, empezar por la [guía operativa del backend](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/deploy-testing.md). ZA-90 requiere preparar una tabla SQLite además de promover las imágenes web/API.**
+
 La dirección visual elegida es Atlántico. Consultar [fundamentos de experiencia](docs/atlantico.md) y [rama staging y entregas por bloques](docs/staging.md). Web y API se publican como imágenes independientes en GitHub Container Registry; testing se actualiza por bloques de tickets.
 
 Zandaka is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
