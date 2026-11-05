@@ -195,84 +195,91 @@ async function apply(page: Page) {
 for (const width of [360, 390, 1440])
   for (const theme of ["light", "dark"] as const)
     for (const scale of [100, 200])
-      test(`budget plan ${width}px ${theme} ${scale}% readable and accessible`, async ({
-        page,
-      }, info) => {
-        await page.setViewportSize({ width, height: 1000 })
-        await page.emulateMedia({ colorScheme: theme })
-        await fixture(page)
-        await open(page)
-        await page.evaluate((size) => {
-          document.documentElement.style.fontSize = `${size}%`
-        }, scale)
-        await expect(
-          page.getByRole("button", { name: "Editar Personal", exact: true }),
-        ).toBeVisible()
-        await expect
-          .poll(() =>
-            page.locator("main#main-content").evaluate((root) => {
-              const bounds = root.getBoundingClientRect()
-              return [...root.querySelectorAll<HTMLElement>("section,div,p,strong,button,small")]
-                .filter(
-                  (node) =>
-                    node.getClientRects().length &&
-                    (node.getBoundingClientRect().right > bounds.right + 1 ||
-                      node.scrollWidth > node.clientWidth + 1),
-                )
-                .slice(0, 12)
-                .map((node) => ({
-                  tag: node.tagName,
-                  class: node.className,
-                  scroll: node.scrollWidth,
-                  width: node.clientWidth,
-                  text: node.textContent?.slice(0, 45),
-                }))
-            }),
-          )
-          .toEqual([])
-        const results = await new AxeBuilder({ page })
-          .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-          .analyze()
-        expect(
-          results.violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) })),
-        ).toEqual([])
-        await page
-          .locator("main#main-content")
-          .screenshot({ path: info.outputPath(`budget-${width}-${theme}-${scale}.png`) })
-        await page.getByRole("button", { name: "Editar Personal", exact: true }).click()
-        await expect(page.getByLabel("Moneda de origen", { exact: true })).toBeDisabled()
-        await expect(page.getByRole("dialog")).toContainText("La asignación nace en USD")
-        const editorA11y = await new AxeBuilder({ page })
-          .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-          .analyze()
-        expect(
-          editorA11y.violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) })),
-        ).toEqual([])
-        await page.getByRole("button", { name: "Cancelar", exact: true }).click()
-        for (const name of ["Ingreso", "Tipo de cambio", "Revisar sobres"]) {
-          await page.getByRole("tab", { name, exact: true }).click()
-          const overflow = await page.locator("main#main-content").evaluate((root) =>
-            [...root.querySelectorAll<HTMLElement>("section,div,p,strong,button,small")]
-              .filter(
-                (node) => node.getClientRects().length && node.scrollWidth > node.clientWidth + 1,
-              )
-              .map((node) => ({
-                class: node.className,
-                text: node.textContent?.slice(0, 40),
-                width: node.clientWidth,
-                scroll: node.scrollWidth,
-              })),
-          )
-          expect(overflow, name).toEqual([])
-          const a11y = await new AxeBuilder({ page })
+      for (const font of width === 360 && scale === 200
+        ? ["system", "Arial", "Verdana"]
+        : ["system"])
+        test(`budget plan ${width}px ${theme} ${scale}% ${font} readable and accessible`, async ({
+          page,
+        }, info) => {
+          await page.setViewportSize({ width, height: 1000 })
+          await page.emulateMedia({ colorScheme: theme })
+          await fixture(page)
+          await open(page)
+          await page.evaluate((size) => {
+            document.documentElement.style.fontSize = `${size}%`
+          }, scale)
+          if (font !== "system")
+            await page.evaluate((value) => {
+              document.body.style.fontFamily = value
+            }, font)
+          await expect(
+            page.getByRole("button", { name: "Editar Personal", exact: true }),
+          ).toBeVisible()
+          await expect
+            .poll(() =>
+              page.locator("main#main-content").evaluate((root) => {
+                const bounds = root.getBoundingClientRect()
+                return [...root.querySelectorAll<HTMLElement>("section,div,p,strong,button,small")]
+                  .filter(
+                    (node) =>
+                      node.getClientRects().length &&
+                      (node.getBoundingClientRect().right > bounds.right + 1 ||
+                        node.scrollWidth > node.clientWidth + 1),
+                  )
+                  .slice(0, 12)
+                  .map((node) => ({
+                    tag: node.tagName,
+                    class: node.className,
+                    scroll: node.scrollWidth,
+                    width: node.clientWidth,
+                    text: node.textContent?.slice(0, 45),
+                  }))
+              }),
+            )
+            .toEqual([])
+          const results = await new AxeBuilder({ page })
             .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
             .analyze()
           expect(
-            a11y.violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) })),
-            name,
+            results.violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) })),
           ).toEqual([])
-        }
-      })
+          await page
+            .locator("main#main-content")
+            .screenshot({ path: info.outputPath(`budget-${width}-${theme}-${scale}.png`) })
+          await page.getByRole("button", { name: "Editar Personal", exact: true }).click()
+          await expect(page.getByLabel("Moneda de origen", { exact: true })).toBeDisabled()
+          await expect(page.getByRole("dialog")).toContainText("La asignación nace en USD")
+          const editorA11y = await new AxeBuilder({ page })
+            .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+            .analyze()
+          expect(
+            editorA11y.violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) })),
+          ).toEqual([])
+          await page.getByRole("button", { name: "Cancelar", exact: true }).click()
+          for (const name of ["Ingreso", "Tipo de cambio", "Revisar sobres"]) {
+            await page.getByRole("tab", { name, exact: true }).click()
+            const overflow = await page.locator("main#main-content").evaluate((root) =>
+              [...root.querySelectorAll<HTMLElement>("section,div,p,strong,button,small")]
+                .filter(
+                  (node) => node.getClientRects().length && node.scrollWidth > node.clientWidth + 1,
+                )
+                .map((node) => ({
+                  class: node.className,
+                  text: node.textContent?.slice(0, 40),
+                  width: node.clientWidth,
+                  scroll: node.scrollWidth,
+                })),
+            )
+            expect(overflow, name).toEqual([])
+            const a11y = await new AxeBuilder({ page })
+              .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+              .analyze()
+            expect(
+              a11y.violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) })),
+              name,
+            ).toEqual([])
+          }
+        })
 test("net income stays independent from deductions and assignment edits persist on explicit save", async ({
   page,
 }) => {

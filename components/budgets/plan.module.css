@@ -5,6 +5,7 @@
   --card: var(--marea-surface);
   color: var(--marea-ink);
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .heading {
   display: flex;
@@ -19,6 +20,10 @@
   font-weight: 650;
   letter-spacing: -0.05em;
   margin: 0.35rem 0;
+}
+.heading > div {
+  min-width: 0;
+  max-width: 100%;
 }
 .heading p,
 .muted {
