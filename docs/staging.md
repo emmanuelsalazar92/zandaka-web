@@ -1,5 +1,7 @@
 # Staging y entregas por bloques
 
+**Última entrega registrada: [testing del 4 de noviembre de 2026](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/deployments/2026-11-04-testing.md). Web `ae5161f` y API `c7af11c`; ZA-90 preparada efectivamente. Los pushes posteriores no despliegan testing.**
+
 La actualización de [marca Atlántico](brand.md) unifica sidebar, favicon, icono de inicio y logo de PDF/HTML. La API recibe solo el asset y documentación, sin cambios de contrato o DB. Promover ambas imágenes para ver la identidad uniforme; respetar `ZANDAKA_LOGO_PATH` y la prioridad de imágenes personalizadas del entorno. No requiere migraciones; la preparación de ZA-90 sigue siendo independiente. Publicar las imágenes no despliega testing.
 
 ZA-94 rediseña [Conciliación](reconciliation-review.md) solo en web y añade el enlace a Movimientos filtrado por cuenta/corte. Reutiliza los contratos existentes de creación, lectura, estado activo, previsualización, denominaciones e ignorar. Sin nuevos endpoints ni cambios de DB; conserva los cierres automáticos y las restricciones del backend. La preparación de ZA-90 sigue siendo independiente.
