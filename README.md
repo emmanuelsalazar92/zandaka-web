@@ -4,7 +4,9 @@
 
 Identidad visual: [logo Atlántico, assets y reproducción](docs/brand.md).
 
-**Para desplegar testing, empezar por la [guía operativa del backend](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/deploy-testing.md). ZA-90 requiere preparar una tabla SQLite además de promover las imágenes web/API.**
+**Para desplegar testing, empezar por la [guía operativa del backend](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/deploy-testing.md). ZA-97 requiere `budget_plan`, además de `transfer_request` de ZA-90. El worker SSH instalado necesita ampliación revisada para preparar ZA-97; promover imágenes no basta.**
+
+[Presupuestos Marea](docs/budget-plans.md): ingreso neto/comprobantes, planificación USD/CRC y asignación explícita de fondos existentes a sobres, con recuperación sin duplicación.
 
 La dirección visual elegida es Atlántico. Consultar [fundamentos de experiencia](docs/atlantico.md) y [rama staging y entregas por bloques](docs/staging.md). Web y API se publican como imágenes independientes en GitHub Container Registry; testing se actualiza por bloques de tickets.
 

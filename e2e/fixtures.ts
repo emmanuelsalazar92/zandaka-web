@@ -136,7 +136,9 @@ export async function installSyntheticAPI(
           json: { error: { code: "INTERNAL_ERROR", message: "upstream exception" } },
         })
       json = { compra: 500, venta: 510, fecha: rate === "previous" ? "31/10/2026" : "03/11/2026" }
-    } else if (
+    } else if (path === "/budget-plans")
+      json = { items: [], page: 1, pageSize: 20, total: 0, totalPages: 0 }
+    else if (
       path === "/exchange-rate" ||
       path === "/auto-assignment-rules" ||
       path === "/reports" ||

@@ -1,0 +1,163 @@
+import { calculateBudgetPlan, type BudgetPlanDocument } from "@/lib/budget-plan"
+import type { PlanOptions, SavedBudgetPlan } from "@/lib/budget-plan-api"
+
+export const planId = "00000000-0000-4000-8000-000000000097"
+export const planOptions: PlanOptions = {
+  accounts: [
+    { id: 1, name: "Reserva USD", currency: "USD", institutionName: "Banco de ejemplo" },
+    { id: 2, name: "Pagos CRC", currency: "CRC", institutionName: "Banco de ejemplo" },
+    { id: 3, name: "Tarjeta CRC", currency: "CRC", institutionName: "Banco de ejemplo" },
+  ],
+  envelopes: [
+    {
+      id: 11,
+      accountId: 1,
+      accountName: "Reserva USD",
+      currency: "USD",
+      categoryName: "Disponible USD",
+      institutionName: "Banco de ejemplo",
+      balance: 5000,
+    },
+    {
+      id: 12,
+      accountId: 1,
+      accountName: "Reserva USD",
+      currency: "USD",
+      categoryName: "Meta USD",
+      institutionName: "Banco de ejemplo",
+      balance: 0,
+    },
+    {
+      id: 21,
+      accountId: 2,
+      accountName: "Pagos CRC",
+      currency: "CRC",
+      categoryName: "Disponible pagos",
+      institutionName: "Banco de ejemplo",
+      balance: 1000000,
+    },
+    {
+      id: 22,
+      accountId: 2,
+      accountName: "Pagos CRC",
+      currency: "CRC",
+      categoryName: "Casa",
+      institutionName: "Banco de ejemplo",
+      balance: 0,
+    },
+    {
+      id: 31,
+      accountId: 3,
+      accountName: "Tarjeta CRC",
+      currency: "CRC",
+      categoryName: "Disponible tarjeta",
+      institutionName: "Banco de ejemplo",
+      balance: 1000000,
+    },
+    {
+      id: 32,
+      accountId: 3,
+      accountName: "Tarjeta CRC",
+      currency: "CRC",
+      categoryName: "Personal",
+      institutionName: "Banco de ejemplo",
+      balance: 0,
+    },
+    {
+      id: 33,
+      accountId: 3,
+      accountName: "Tarjeta CRC",
+      currency: "CRC",
+      categoryName: "Suscripción",
+      institutionName: "Banco de ejemplo",
+      balance: 0,
+    },
+  ],
+}
+export function exampleDocument(): BudgetPlanDocument {
+  return {
+    version: 1,
+    month: "2026-11",
+    incomeMonth: "2026-05",
+    incomeMode: "receipts",
+    income: { net: "", gross: "3600", ccss: "390", tax: "210", q1: "1500.10", q2: "1499.90" },
+    exchange: {
+      source: "Banco de ejemplo",
+      date: "2026-11-01",
+      buy: "500",
+      sell: "515",
+      margin: "2",
+    },
+    incomeAccountId: 1,
+    retainedAccountId: 1,
+    sources: [
+      { accountId: 2, envelopeId: 21 },
+      { accountId: 3, envelopeId: 31 },
+      { accountId: 1, envelopeId: 11 },
+    ],
+    lines: [
+      {
+        id: "10000000-0000-4000-8000-000000000001",
+        name: "Casa",
+        group: 50,
+        kind: "fixed",
+        currency: "CRC",
+        payCurrency: "CRC",
+        amount: "425000",
+        iva: "0",
+        roundUsd: "up",
+        targetEnvelopeId: 22,
+      },
+      {
+        id: "10000000-0000-4000-8000-000000000002",
+        name: "Personal",
+        group: 30,
+        kind: "percent",
+        currency: "USD",
+        payCurrency: "CRC",
+        amount: "15",
+        iva: "0",
+        roundUsd: "none",
+        targetEnvelopeId: 32,
+      },
+      {
+        id: "10000000-0000-4000-8000-000000000003",
+        name: "Netflix",
+        group: 30,
+        kind: "subscription",
+        currency: "USD",
+        payCurrency: "CRC",
+        amount: "14.99",
+        iva: "13",
+        roundUsd: "up",
+        targetEnvelopeId: 33,
+      },
+      {
+        id: "10000000-0000-4000-8000-000000000004",
+        name: "Meta en dólares",
+        group: 20,
+        kind: "fixed",
+        currency: "USD",
+        payCurrency: "USD",
+        amount: "68.25",
+        iva: "0",
+        roundUsd: "none",
+        targetEnvelopeId: 12,
+      },
+    ],
+  }
+}
+export function exampleSavedPlan(): SavedBudgetPlan {
+  const document = exampleDocument()
+  return {
+    id: planId,
+    userId: 1,
+    revision: 1,
+    status: "draft",
+    document,
+    calculation: calculateBudgetPlan(document),
+    receipt: null,
+    createdAt: "2026-11-01 00:00:00",
+    updatedAt: "2026-11-01 00:00:00",
+  }
+}

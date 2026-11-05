@@ -1,5 +1,5 @@
-import { BudgetsContent } from "@/components/budgets/budgets-content"
+import { BudgetPlansList } from "@/components/budgets/plan-list"
 
 export default function BudgetsPage() {
-  return <BudgetsContent />
+  return <BudgetPlansList />
 }

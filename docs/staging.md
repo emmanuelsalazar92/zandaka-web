@@ -51,3 +51,7 @@ El compositor requiere una imagen API con POST /api/transfers y su tabla auxilia
 ## Ingresos y gastos — ZA-91
 
 El nuevo formulario usa el contrato existente POST /api/transactions. No requiere preparación de DB ni una API adicional. El despliegue sigue siendo por bloques; la preparación de ZA-90 continúa vigente cuando esté incluido. Ver [comportamiento y límites de confirmación](movement-entry.md).
+
+## Presupuestos Marea — ZA-97
+
+La nueva lista y el espacio de trabajo requieren API compatible y preparación explícita de budget_plan; transfer_request continúa siendo necesario para asignar. Presupuestos anteriores conserva sus rutas y contratos. Ver [flujo, recuperación y pruebas](budget-plans.md) y la guía operativa de la API. El worker SSH instalado solo prepara ZA-90: revisar su ampliación antes del primer deploy ZA-97. No se ejecutó preparación contra bases del usuario al implementar este módulo.
