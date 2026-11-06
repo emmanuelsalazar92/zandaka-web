@@ -1,4 +1,5 @@
 import { transactionAmount } from "@/lib/transaction-amount"
+import { secureUuid } from "@/lib/uuid"
 
 export type TransferAccount = { id: number; name: string; currency: string }
 export type TransferEnvelope = { id: number; name: string }
@@ -91,11 +92,7 @@ export function transferState(
 
 /** getRandomValues is available on the LAN HTTP testing origin; randomUUID may not be. */
 export function transferRequestId(): string {
-  const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16))
-  bytes[6] = (bytes[6] & 15) | 64
-  bytes[8] = (bytes[8] & 63) | 128
-  const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+  return secureUuid()
 }
 export function pendingTransferExists(userId: number): boolean {
   try {

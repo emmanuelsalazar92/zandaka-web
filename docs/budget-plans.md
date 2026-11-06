@@ -13,6 +13,8 @@ La lista tiene paginación y muestra estado, neto y libre. **Presupuestos anteri
 
 ## Guardado, conflictos y recuperación
 
+Los IDs del plan, sus líneas y los intentos se generan con el helper criptográfico compartido basado en `crypto.getRandomValues`, disponible también en el origen HTTP de la LAN de testing. Las pruebas del módulo deshabilitan `crypto.randomUUID` para cubrir esa diferencia respecto de localhost y verifican crear, añadir líneas, guardar, asignar y recuperar el intento. La ausencia de aleatoriedad criptográfica bloquea la generación de IDs.
+
 Los cambios del editor son locales hasta **Guardar borrador**. Un borrador incompleto puede guardarse; preparar exige resolver los datos y referencias. Después de preparar se puede volver a borrador; un plan asignado queda en consulta con recibo y enlaces a sus movimientos.
 
 Cada pestaña conserva su borrador y el intento pendiente en `sessionStorage`, con ID estable y revisión base. No se guardan credenciales. Los importes y comprobantes introducidos sí quedan en el almacenamiento de esa pestaña: no usar una sesión compartida con personas no autorizadas. El servidor conserva el plan únicamente tras una escritura explícita. Si el almacenamiento local no está disponible, la UI informa y no envía una operación sin poder conservar el intento.

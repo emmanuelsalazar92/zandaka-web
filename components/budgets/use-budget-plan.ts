@@ -17,6 +17,7 @@ import {
   type SavedBudgetPlan,
 } from "@/lib/budget-plan-api"
 import { getAccountingDate } from "@/lib/date-only"
+import { secureUuid } from "@/lib/uuid"
 
 type Intent = {
   kind: "save" | "finalize" | "reopen" | "fund"
@@ -122,7 +123,7 @@ export function useBudgetPlan(planId: string) {
         setStorageError(true)
       }
       try {
-        const selectedId = planId === "new" ? (cached?.id ?? crypto.randomUUID()) : planId
+        const selectedId = planId === "new" ? (cached?.id ?? secureUuid()) : planId
         if (cached && cached.id !== selectedId) cached = null
         if (!z.string().uuid().safeParse(selectedId).success)
           throw new Error("No encontramos este presupuesto.")
@@ -257,7 +258,7 @@ export function useBudgetPlan(planId: string) {
       kind,
       document: clean,
       revision: saved?.revision ?? 0,
-      requestId: crypto.randomUUID(),
+      requestId: secureUuid(),
       date,
     })
   }

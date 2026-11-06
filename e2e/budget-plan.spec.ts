@@ -9,6 +9,13 @@ import { installSyntheticAPI } from "./fixtures"
 import type { BudgetPlanDocument } from "../lib/budget-plan"
 import type { FundingPreview } from "../lib/budget-plan-api"
 
+test.beforeEach(async ({ page }) => {
+  // Localhost is a secure context; reproduce the capability of the real LAN HTTP origin.
+  await page.addInitScript(() => {
+    Object.defineProperty(globalThis.crypto, "randomUUID", { value: undefined, configurable: true })
+  })
+})
+
 type Mode =
   | "success"
   | "new"
@@ -327,6 +334,25 @@ test("USD percentage, original currency and subscription breakdown remain explic
   expect(state.saved.document.lines[1].amount).toBe("12")
   expect(state.posted).toBe(0)
 })
+test("new assignments retain a UUID when randomUUID is unavailable on LAN HTTP", async ({
+  page,
+}) => {
+  const state = await fixture(page)
+  await open(page)
+  expect(await page.evaluate(() => typeof globalThis.crypto.randomUUID)).toBe("undefined")
+  await page.getByRole("button", { name: "Añadir asignación", exact: true }).click()
+  await page.getByLabel("Nombre de la asignación", { exact: true }).fill("Extra HTTP")
+  await page.getByLabel("Importe original", { exact: true }).fill("1000")
+  await page.getByLabel("Sobre de destino", { exact: true }).selectOption("22")
+  await page.getByRole("button", { name: "Actualizar plan", exact: true }).click()
+  await page.getByRole("button", { name: "Guardar borrador", exact: true }).click()
+  await expect(page.getByText("Borrador guardado", { exact: true })).toBeVisible()
+  expect(state.saved.document.lines.find((line) => line.name === "Extra HTTP")?.id).toMatch(
+    /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/,
+  )
+  expect(state.posted).toBe(0)
+})
+
 test("a lost save is recovered by querying the same plan rather than creating another", async ({
   page,
 }) => {

@@ -20,6 +20,7 @@ import { planDocumentSchema, planRequest, type FundingPreview } from "@/lib/budg
 import { formatPlanMoney as money } from "@/lib/budget-plan-view"
 import { formatIsoDateOnly, getAccountingDate } from "@/lib/date-only"
 import { decimal } from "@/lib/money"
+import { secureUuid } from "@/lib/uuid"
 
 import { AmountField, PlanField } from "./plan-fields"
 import { PlanLineEditor } from "./plan-line-editor"
@@ -73,7 +74,7 @@ export function BudgetPlanWorkspace({ planId }: { planId: string }) {
   const add = () => {
     if (locked) return
     setEditing({
-      id: crypto.randomUUID(),
+      id: secureUuid(),
       name: "",
       group: 30,
       kind: "fixed",
