@@ -96,9 +96,10 @@ for (const rate of ["current", "previous", "missing"] as const) {
     const hero = page.getByRole("region", { name: "Saldo consolidado" })
     if (rate === "missing") {
       await expect(hero.getByText("Por confirmar", { exact: true })).toBeVisible()
-      await expect(hero.getByText("Cotización no disponible.")).toBeVisible()
+      await expect(hero.getByText("Cotización no disponible", { exact: true })).toBeVisible()
       await expect(hero.getByText(/CRC/).first()).toBeVisible()
     } else {
+      await hero.getByText("Alcance y cotización", { exact: true }).click()
       await expect(hero.getByText(/Fuente: tipodecambio.paginasweb.cr/)).toBeVisible()
       await expect(hero.getByText(/Conversión con tasa de compra/)).toBeVisible()
       await expect(

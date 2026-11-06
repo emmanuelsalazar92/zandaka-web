@@ -114,13 +114,20 @@ export function TransactionTimeline({
   groups,
   onOpen,
   density = "compact",
+  appearance = "adaptive",
 }: {
   groups: TransactionTimelineGroup[]
   onOpen: OpenDetail
   density?: "compact" | "comfortable"
+  appearance?: "adaptive" | "open"
 }) {
   return (
-    <div className={styles.timeline} data-density={density} data-testid="history-timeline">
+    <div
+      className={styles.timeline}
+      data-density={density}
+      data-appearance={appearance}
+      data-testid="history-timeline"
+    >
       {groups.map((group) => (
         <section key={group.key} className={styles.dateGroup} aria-label={group.fullDateLabel}>
           <div className={styles.dateHeading}>

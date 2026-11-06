@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { dashboardAccountId, dashboardMonthRange } from "@/lib/dashboard-period"
+
 export const emptyHistoryFilters = {
   dateFrom: "",
   dateTo: "",
@@ -12,6 +14,31 @@ export const emptyHistoryFilters = {
 }
 export type HistoryFilters = typeof emptyHistoryFilters
 export const historyPageSizes = [10, 25, 50, 100]
+
+/** Dashboard links deliberately scope either a month or one account/category. */
+export function dashboardHistoryFilters(params: URLSearchParams): HistoryFilters | null {
+  if (params.get("source") !== "dashboard") return null
+  const month = params.get("month")
+  if (month) {
+    try {
+      const range = dashboardMonthRange(month)
+      if (params.has("type") && params.get("type") !== "EXPENSE") return null
+      return {
+        ...emptyHistoryFilters,
+        dateFrom: range.from,
+        dateTo: range.to,
+        type: params.get("type") ?? "ALL",
+      }
+    } catch {
+      return null
+    }
+  }
+  const accountId = dashboardAccountId(params.get("accountId"))
+  const categoryId = dashboardAccountId(params.get("categoryId"))
+  return accountId && categoryId
+    ? { ...emptyHistoryFilters, accountId, envelopeId: categoryId }
+    : null
+}
 
 /** Explicit navigation from a reconciliation: account and inclusive cutoff only. */
 export function reconciliationHistoryFilters(params: URLSearchParams): HistoryFilters | null {

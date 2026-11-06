@@ -1,358 +1,176 @@
+import { z } from "zod"
+
+import { dashboardMonthRange, dashboardSpending } from "@/lib/dashboard-period"
 import { getAccountingDate } from "@/lib/date-only"
-import { decimalNumber } from "@/lib/money"
-import { publicErrorMessage } from "@/lib/public-error"
-import { SETTINGS_USER_ID, fetchUserSettings } from "@/lib/settings-api"
+import { assertMoney } from "@/lib/money"
+import { SETTINGS_USER_ID } from "@/lib/settings-api"
+import { parseHistory } from "@/lib/transaction-history"
+import type { TimelineTransaction } from "@/lib/transaction-timeline"
 
-const API_BASE_URL = "/api"
-
-type RequestOptions = {
-  query?: Record<string, string | number | undefined | null>
-}
-
-type ApiErrorPayload = {
-  message?: unknown
-  error?: {
-    code?: unknown
-    message?: unknown
-  }
-}
-
-export type DashboardMonthlyExpense = {
-  categoryId: number
-  categoryName: string
-  currency: string
-  total: number
-}
-
-export type DashboardNegativeEnvelope = {
-  envelopeId: number
-  accountId: number
-  accountName: string
-  currency: string
-  categoryId: number
-  categoryName: string
-  balance: number
-}
-
-export type DashboardInconsistency = {
-  accountId: number
-  accountName: string
-  currency: string
-  reconciliationDate: string
-  realBalance: number
-  calculatedBalance: number
-  difference: number
-}
-
-export type DashboardRecentTransaction = {
-  id: number
-  date: string
-  description: string
-  accountName: string | null
-  accountCurrency: string | null
-  amount: number
-  lines: Array<{
-    accountCurrency: string | null
-  }>
-}
-
-export type DashboardExchangeRate = {
-  compra: number
-  venta: number
-  fecha: string
-}
-
+const id = z.number().int().positive().safe()
+const currency = z.enum(["CRC", "USD"])
+const amount = z.number().finite()
+const monthlyExpense = z.object({
+  categoryId: id,
+  categoryName: z.string(),
+  currency,
+  total: amount.nonpositive(),
+})
+const negativeEnvelope = z.object({
+  envelopeId: id,
+  accountId: id,
+  accountName: z.string(),
+  currency,
+  categoryId: id,
+  categoryName: z.string(),
+  balance: amount.negative(),
+})
+const inconsistency = z.object({
+  accountId: id,
+  accountName: z.string(),
+  currency,
+  reconciliationDate: z.string(),
+  realBalance: amount,
+  calculatedBalance: amount,
+  difference: amount,
+})
+const exchangeRate = z.object({ compra: amount, venta: amount, fecha: z.string() })
+export type DashboardMonthlyExpense = z.infer<typeof monthlyExpense>
+export type DashboardNegativeEnvelope = z.infer<typeof negativeEnvelope>
+export type DashboardInconsistency = z.infer<typeof inconsistency>
+export type DashboardExchangeRate = z.infer<typeof exchangeRate>
 export type DashboardSummary = {
   balancesAvailable: boolean
+  currencyAvailable: { CRC: boolean; USD: boolean }
+  settingsAvailable: boolean
   negativeEnvelopesAvailable: boolean
   inconsistenciesAvailable: boolean
-  monthlyExpensesAvailable: boolean
-  totals: {
-    CRC: number
-    USD: number
-  }
+  totals: { CRC: number; USD: number }
   preferredCurrency: "CRC" | "USD"
   exchangeRate: DashboardExchangeRate | null
-  monthlyExpenses: DashboardMonthlyExpense[]
-  recentTransactions: DashboardRecentTransaction[]
   negativeEnvelopes: DashboardNegativeEnvelope[]
   inconsistencies: DashboardInconsistency[]
   warnings: string[]
 }
-
-const EMPTY_DASHBOARD_SUMMARY: DashboardSummary = {
-  balancesAvailable: false,
-  negativeEnvelopesAvailable: false,
-  inconsistenciesAvailable: false,
-  monthlyExpensesAvailable: false,
-  totals: {
-    CRC: 0,
-    USD: 0,
-  },
-  preferredCurrency: "CRC",
-  exchangeRate: null,
-  monthlyExpenses: [],
-  recentTransactions: [],
-  negativeEnvelopes: [],
-  inconsistencies: [],
-  warnings: [],
+export type DashboardPeriod = {
+  expenses: DashboardMonthlyExpense[] | null
+  transactions: TimelineTransaction[] | null
 }
 
-export class DashboardApiError extends Error {
-  status: number
-  code: string | null
-
-  constructor({
-    status,
-    code,
-    message,
-  }: {
-    status: number
-    code?: string | null
-    message: string
-  }) {
-    super(message)
-    this.name = "DashboardApiError"
-    this.status = status
-    this.code = code ?? null
-  }
-}
-
-type SettledResult<T> = { status: "fulfilled"; value: T } | { status: "rejected"; reason: unknown }
-
-const toNumber = (value: unknown, fallback = 0) => {
-  if (typeof value === "number" && Number.isFinite(value)) return decimalNumber(value)
-  if (typeof value === "string" && value.trim() !== "") {
-    return decimalNumber(value.trim())
-  }
-  return fallback
-}
-
-const toStringValue = (value: unknown, fallback = "") =>
-  typeof value === "string" ? value : fallback
-
-const buildUrl = (path: string, query?: RequestOptions["query"]) => {
-  const params = new URLSearchParams()
-
-  Object.entries(query ?? {}).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") return
-    params.set(key, String(value))
-  })
-
-  const queryString = params.toString()
-  return `${API_BASE_URL}${path}${queryString ? `?${queryString}` : ""}`
-}
-
-const getErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
-  publicErrorMessage(payload, fallback)
-
-async function request<T>(path: string, options?: RequestOptions): Promise<T> {
-  const response = await fetch(buildUrl(path, options?.query), {
+/** Bounded read with cancellation; failures are unavailable data, never a confirmed zero. */
+async function request(path: string, signal?: AbortSignal): Promise<unknown> {
+  const response = await fetch(`/api${path}`, {
     headers: { Accept: "application/json" },
     cache: "no-store",
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(15_000)])
+      : AbortSignal.timeout(15_000),
   })
-
-  const contentType = response.headers.get("content-type") || ""
-  const payload = contentType.includes("application/json")
-    ? ((await response.json().catch(() => null)) as T | ApiErrorPayload | null)
-    : null
-
-  if (!response.ok) {
-    const errorPayload = payload as ApiErrorPayload | null
-    throw new DashboardApiError({
-      status: response.status,
-      code:
-        errorPayload && typeof errorPayload === "object" && errorPayload.error?.code
-          ? String(errorPayload.error.code)
-          : null,
-      message: getErrorMessage(
-        errorPayload,
-        "No pudimos completar la consulta. Vuelve a intentar.",
-      ),
-    })
-  }
-
-  return payload as T
-}
-
-const mapMonthlyExpense = (raw: unknown): DashboardMonthlyExpense => {
-  const item = raw as Record<string, unknown>
-  return {
-    categoryId: toNumber(item.categoryId ?? item.category_id),
-    categoryName: toStringValue(item.categoryName ?? item.category_name),
-    currency: toStringValue(item.currency).toUpperCase(),
-    total: toNumber(item.total),
-  }
-}
-
-const mapNegativeEnvelope = (raw: unknown): DashboardNegativeEnvelope => {
-  const item = raw as Record<string, unknown>
-  return {
-    envelopeId: toNumber(item.envelopeId ?? item.envelope_id),
-    accountId: toNumber(item.accountId ?? item.account_id),
-    accountName: toStringValue(item.accountName ?? item.account_name),
-    currency: toStringValue(item.currency).toUpperCase(),
-    categoryId: toNumber(item.categoryId ?? item.category_id),
-    categoryName: toStringValue(item.categoryName ?? item.category_name),
-    balance: toNumber(item.balance),
-  }
-}
-
-const mapInconsistency = (raw: unknown): DashboardInconsistency => {
-  const item = raw as Record<string, unknown>
-  return {
-    accountId: toNumber(item.accountId ?? item.account_id),
-    accountName: toStringValue(item.accountName ?? item.account_name),
-    currency: toStringValue(item.currency).toUpperCase(),
-    reconciliationDate: toStringValue(item.reconciliationDate ?? item.reconciliation_date),
-    realBalance: toNumber(item.realBalance ?? item.real_balance),
-    calculatedBalance: toNumber(item.calculatedBalance ?? item.calculated_balance),
-    difference: toNumber(item.difference),
-  }
-}
-
-const mapRecentTransaction = (raw: unknown): DashboardRecentTransaction => {
-  const item = raw as Record<string, unknown>
-  return {
-    id: toNumber(item.id),
-    date: toStringValue(item.date),
-    description: toStringValue(item.description),
-    accountName: (() => {
-      const value = toStringValue(item.accountName ?? item.account_name)
-      return value || null
-    })(),
-    accountCurrency: (() => {
-      const value = toStringValue(item.accountCurrency ?? item.account_currency).toUpperCase()
-      return value || null
-    })(),
-    amount: toNumber(item.amount),
-    lines: Array.isArray(item.lines)
-      ? item.lines.map((line) => {
-          const row = line as Record<string, unknown>
-          return {
-            accountCurrency: (() => {
-              const value = toStringValue(row.accountCurrency ?? row.account_currency).toUpperCase()
-              return value || null
-            })(),
-          }
-        })
-      : [],
-  }
+  if (!response.ok) throw new Error("No pudimos consultar esta información.")
+  return response.json()
 }
 
 export async function fetchDashboardSummary(userId = SETTINGS_USER_ID): Promise<DashboardSummary> {
-  try {
-    const [year, month, day] = getAccountingDate().split("-").map(Number)
-    const monthKey = `${year}-${String(month).padStart(2, "0")}`
-
-    const [
-      crcEnvelopeTotal,
-      usdEnvelopeTotal,
-      monthlyExpenses,
-      recentTransactions,
-      negativeEnvelopes,
-      inconsistencies,
-      userSettings,
-      exchangeRate,
-    ] = (await Promise.allSettled([
-      request<{ currency: string; total: number }>(`/reports/envelope-total`, {
-        query: { currency: "CRC" },
-      }),
-      request<{ currency: string; total: number }>(`/reports/envelope-total`, {
-        query: { currency: "USD" },
-      }),
-      request<unknown[]>(`/reports/monthly-expenses`, { query: { month: monthKey } }),
-      request<{ data: unknown[] }>(`/transactions`, {
-        query: {
-          userId,
-          page: 1,
-          pageSize: 10,
-          sortBy: "date",
-          sortDir: "desc",
-        },
-      }),
-      request<unknown[]>(`/reports/negative-envelopes`),
-      request<unknown[]>(`/reports/active-inconsistencies`),
-      fetchUserSettings(userId),
-      request<DashboardExchangeRate>(`/exchange-rate/${day}/${month}/${year}`),
-    ])) as [
-      SettledResult<{ currency: string; total: number }>,
-      SettledResult<{ currency: string; total: number }>,
-      SettledResult<unknown[]>,
-      SettledResult<{ data: unknown[] }>,
-      SettledResult<unknown[]>,
-      SettledResult<unknown[]>,
-      SettledResult<Awaited<ReturnType<typeof fetchUserSettings>>>,
-      SettledResult<DashboardExchangeRate>,
-    ]
-
-    const warnings = [
-      crcEnvelopeTotal,
-      usdEnvelopeTotal,
-      monthlyExpenses,
-      recentTransactions,
-      negativeEnvelopes,
-      inconsistencies,
-      userSettings,
-      exchangeRate,
-    ]
+  const [year, month, day] = getAccountingDate().split("-").map(Number)
+  const [crc, usd, negatives, differences, settings, rate] = await Promise.allSettled([
+    request("/reports/envelope-total?currency=CRC").then((value) => {
+      const result = z.object({ currency: z.literal("CRC"), total: amount }).parse(value)
+      return assertMoney(result.total, "CRC")
+    }),
+    request("/reports/envelope-total?currency=USD").then((value) => {
+      const result = z.object({ currency: z.literal("USD"), total: amount }).parse(value)
+      return assertMoney(result.total, "USD")
+    }),
+    request("/reports/negative-envelopes").then((value) => {
+      const rows = z.array(negativeEnvelope).parse(value)
+      rows.forEach((row) => assertMoney(row.balance, row.currency))
+      return rows
+    }),
+    request("/reports/active-inconsistencies").then((value) => {
+      const rows = z.array(inconsistency).parse(value)
+      rows.forEach((row) =>
+        [row.realBalance, row.calculatedBalance, row.difference].forEach((value) =>
+          assertMoney(value, row.currency),
+        ),
+      )
+      return rows
+    }),
+    request(`/users/${userId}`).then((value) => {
+      const user = z
+        .object({ baseCurrency: currency.optional(), base_currency: currency.optional() })
+        .parse(value)
+      return currency.parse(user.baseCurrency ?? user.base_currency)
+    }),
+    request(`/exchange-rate/${day}/${month}/${year}`).then((value) => exchangeRate.parse(value)),
+  ])
+  return {
+    balancesAvailable: crc.status === "fulfilled" && usd.status === "fulfilled",
+    currencyAvailable: { CRC: crc.status === "fulfilled", USD: usd.status === "fulfilled" },
+    settingsAvailable: settings.status === "fulfilled",
+    negativeEnvelopesAvailable: negatives.status === "fulfilled",
+    inconsistenciesAvailable: differences.status === "fulfilled",
+    totals: {
+      CRC: crc.status === "fulfilled" ? crc.value : 0,
+      USD: usd.status === "fulfilled" ? usd.value : 0,
+    },
+    preferredCurrency: settings.status === "fulfilled" ? settings.value : "CRC",
+    exchangeRate: rate.status === "fulfilled" ? rate.value : null,
+    negativeEnvelopes: negatives.status === "fulfilled" ? negatives.value : [],
+    inconsistencies: differences.status === "fulfilled" ? differences.value : [],
+    warnings: [crc, usd, negatives, differences, settings, rate]
       .filter((result) => result.status === "rejected")
-      .map((result) => {
-        const reason = (result as { reason: unknown }).reason
-        return reason instanceof Error && reason.message
-          ? reason.message
-          : "No pudimos consultar parte de la información. Vuelve a intentar."
-      })
-
-    return {
-      balancesAvailable:
-        crcEnvelopeTotal.status === "fulfilled" && usdEnvelopeTotal.status === "fulfilled",
-      negativeEnvelopesAvailable: negativeEnvelopes.status === "fulfilled",
-      inconsistenciesAvailable: inconsistencies.status === "fulfilled",
-      monthlyExpensesAvailable: monthlyExpenses.status === "fulfilled",
-      totals: {
-        CRC: crcEnvelopeTotal.status === "fulfilled" ? toNumber(crcEnvelopeTotal.value.total) : 0,
-        USD: usdEnvelopeTotal.status === "fulfilled" ? toNumber(usdEnvelopeTotal.value.total) : 0,
-      },
-      preferredCurrency:
-        userSettings.status === "fulfilled"
-          ? (userSettings.value.baseCurrency as "CRC" | "USD")
-          : "CRC",
-      exchangeRate: exchangeRate.status === "fulfilled" ? exchangeRate.value : null,
-      monthlyExpenses:
-        monthlyExpenses.status === "fulfilled" && Array.isArray(monthlyExpenses.value)
-          ? monthlyExpenses.value.map(mapMonthlyExpense)
-          : [],
-      recentTransactions:
-        recentTransactions.status === "fulfilled" && Array.isArray(recentTransactions.value.data)
-          ? recentTransactions.value.data.map(mapRecentTransaction).slice(0, 5)
-          : [],
-      negativeEnvelopes:
-        negativeEnvelopes.status === "fulfilled" && Array.isArray(negativeEnvelopes.value)
-          ? negativeEnvelopes.value.map(mapNegativeEnvelope)
-          : [],
-      inconsistencies:
-        inconsistencies.status === "fulfilled" && Array.isArray(inconsistencies.value)
-          ? inconsistencies.value.map(mapInconsistency)
-          : [],
-      warnings,
-    }
-  } catch (error) {
-    return {
-      ...EMPTY_DASHBOARD_SUMMARY,
-      warnings: [
-        error instanceof Error && error.message
-          ? error.message
-          : "No pudimos cargar el resumen. Vuelve a intentar.",
-      ],
-    }
+      .map(() => "Una fuente no está disponible."),
   }
 }
 
-export async function fetchDashboardMonthlyExpenses(
+export async function fetchDashboardPeriod(
   month: string,
-): Promise<DashboardMonthlyExpense[]> {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("Elige un mes válido.")
-  const values = await request<unknown[]>("/reports/monthly-expenses", { query: { month } })
-  return Array.isArray(values) ? values.map(mapMonthlyExpense) : []
+  signal?: AbortSignal,
+  userId = SETTINGS_USER_ID,
+): Promise<DashboardPeriod> {
+  const range = dashboardMonthRange(month)
+  const query = new URLSearchParams({
+    userId: String(userId),
+    ...range,
+    page: "1",
+    pageSize: "10",
+    sortBy: "date",
+    sortDir: "desc",
+  })
+  const [expenses, transactions] = await Promise.allSettled([
+    request(
+      `/reports/monthly-expenses?${new URLSearchParams({ month, type: "EXPENSE" })}`,
+      signal,
+    ).then((value) => {
+      const rows = z.array(monthlyExpense).parse(value)
+      if (new Set(rows.map((row) => `${row.categoryId}:${row.currency}`)).size !== rows.length)
+        throw new Error("Distribución duplicada")
+      rows.forEach((row) => assertMoney(row.total, row.currency))
+      dashboardSpending(rows)
+      return rows
+    }),
+    request(`/transactions?${query}`, signal).then((value) => {
+      const parsed = parseHistory(value, 1, 10, userId)
+      if (parsed.data.some((row) => row.date < range.from || row.date > range.to))
+        throw new Error("Actividad fuera del período")
+      return parsed.data.slice(0, 5).map((row) => ({
+        id: row.id,
+        date: row.date,
+        description: row.description,
+        type: row.type,
+        lines: row.lines.map((line) => ({
+          accountId: line.accountId ?? line.account_id ?? 0,
+          account: line.accountName ?? line.account_name ?? "Cuenta por identificar",
+          envelopeId: line.envelopeId ?? line.envelope_id ?? 0,
+          envelope: line.categoryName ?? line.category_name ?? "Sobre por identificar",
+          accountCurrency: line.accountCurrency ?? line.account_currency ?? "",
+          amount: line.amount,
+        })),
+      }))
+    }),
+  ])
+  return {
+    expenses: expenses.status === "fulfilled" ? expenses.value : null,
+    transactions: transactions.status === "fulfilled" ? transactions.value : null,
+  }
 }

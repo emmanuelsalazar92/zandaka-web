@@ -87,13 +87,14 @@ export async function installSyntheticAPI(
         currency: url.searchParams.get("currency"),
       }
     else if (path === "/reports/monthly-expenses")
-      json = [{ categoryId: 2, categoryName: "Alimentación", total: 500, currency: "CRC" }]
+      json = [{ categoryId: 2, categoryName: "Alimentación", total: -500, currency: "CRC" }]
     else if (path === "/reports/negative-envelopes")
       json = [
         {
           envelopeId: 1,
           accountId: 1,
           accountName: "Cuenta de prueba",
+          categoryId: 2,
           categoryName: "Alimentación",
           balance: -100,
           currency: "CRC",

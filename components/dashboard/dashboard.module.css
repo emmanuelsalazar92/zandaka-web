@@ -1,0 +1,237 @@
+.page {
+  container-type: inline-size;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.header,
+.sectionHeading,
+.period {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+.header > *,
+.sectionHeading > *,
+.period > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.title {
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+.eyebrow {
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+}
+.caption {
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1.65;
+  font-weight: 400;
+  color: var(--muted-foreground);
+  margin-top: 0.3rem;
+}
+.hero {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  background: linear-gradient(115deg, var(--brand-deep), var(--hero-end));
+  color: var(--hero-foreground);
+}
+.heroCaption {
+  color: var(--hero-caption);
+  font-size: 0.8rem;
+  line-height: 1.65;
+}
+.heroAmount {
+  font-size: clamp(1.8rem, 5cqi, 3.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.055em;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  margin-block: 0.75rem;
+}
+.originals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem 2rem;
+  margin-top: 1.5rem;
+}
+.originals dd {
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.rate {
+  border-top: 1px solid #ffffff33;
+  padding-top: 1rem;
+  min-width: 0;
+}
+.rate summary {
+  cursor: pointer;
+  min-height: 2.75rem;
+  display: list-item;
+  align-content: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.rate summary:focus-visible,
+.hero a:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 4px;
+  border-radius: 0.2rem;
+}
+.heroLink {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.period {
+  border-bottom: 1px solid var(--border);
+  padding-block: 0.5rem 1.25rem;
+}
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+}
+.body > *,
+.aside > * {
+  min-width: 0;
+}
+.aside {
+  display: grid;
+  gap: 2rem;
+  align-content: start;
+  min-width: 0;
+}
+.activity,
+.spending {
+  min-width: 0;
+}
+.spending {
+  padding-top: 0.25rem;
+}
+.activity [data-testid="history-timeline"] {
+  margin-top: 1rem;
+}
+.currencyGroup {
+  margin-top: 1.25rem;
+}
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.spendRow {
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+.spendRow > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.spendRow strong {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.bar {
+  height: 0.25rem;
+  background: var(--border);
+  border-radius: 1rem;
+  margin-top: 0.6rem;
+}
+.bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+.attention {
+  border-radius: 1.5rem;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  padding: 1.25rem;
+  scroll-margin-top: 2rem;
+}
+.attention .title {
+  margin-top: 0.5rem;
+}
+.attention .eyebrow,
+.attention .caption {
+  color: inherit;
+}
+.attentionRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  padding-block: 1rem;
+  border-bottom: 1px solid currentColor;
+  font-size: 0.875rem;
+  min-width: 0;
+}
+.attentionRow:hover strong {
+  text-decoration: underline;
+}
+.attentionRow:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+  border-radius: 0.3rem;
+}
+.attentionRow > svg {
+  display: none;
+}
+.attentionRow strong {
+  font-weight: 600;
+}
+.negative {
+  color: var(--error);
+  font-variant-numeric: tabular-nums;
+}
+@container (min-width: 32rem) {
+  .hero {
+    padding: 2rem;
+  }
+  .attentionRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 1rem;
+    align-items: center;
+  }
+  .attentionRow > svg {
+    display: block;
+  }
+}
+@container (min-width: 62rem) {
+  .hero {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    align-items: end;
+  }
+  .rate {
+    border-top: 0;
+    border-left: 1px solid #ffffff33;
+    padding: 0 0 0 2rem;
+  }
+  .body {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 2.5rem;
+  }
+}

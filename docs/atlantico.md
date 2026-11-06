@@ -26,7 +26,7 @@ Los estados de sobres son saldo positivo, sin saldo y saldo negativo. La partici
 
 ## Resumen y rendimiento
 
-El Resumen ofrece acceso directo al registro y la importación, distingue saldos originales y consolidado y permite cambiar el mes de gastos. Cambiar el período consulta únicamente gastos mensuales; no recarga las ocho fuentes del panorama completo. Las solicitudes obsoletas se ignoran al cambiar de mes o desmontar la vista. No se inventan tendencias o cifras para completar gráficos.
+El [Resumen Marea de ZA-99](dashboard.md) ofrece registro e importación directos, distingue originales/consolidado y comparte el período entre gastos y actividad. Cambiar el mes consulta esas dos fuentes, sin recargar las seis del panorama registrado. Las respuestas obsoletas se ignoran y las lecturas se abortan al cambiar/desmontar. La actividad precede a las áreas secundarias en móvil; negativos y diferencias enlazan a su contexto exacto. No se inventan tendencias ni se comparan distribuciones entre monedas.
 
 El acceso Nuevo movimiento espera a que se cargue el contexto de cuentas antes de abrir el formulario. Los filtros y la paginación tienen nombres accesibles, y el encabezado y el pie del historial se reacomodan en móvil.
 

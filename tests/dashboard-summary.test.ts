@@ -7,12 +7,11 @@ const summary = (patch: Partial<DashboardSummary> = {}): DashboardSummary => ({
   balancesAvailable: true,
   negativeEnvelopesAvailable: true,
   inconsistenciesAvailable: true,
-  monthlyExpensesAvailable: true,
+  currencyAvailable: { CRC: true, USD: true },
+  settingsAvailable: true,
   totals: { CRC: 100.01, USD: 0.02 },
   preferredCurrency: "CRC",
   exchangeRate: { compra: 500, venta: 510, fecha: "02/11/2026" },
-  monthlyExpenses: [],
-  recentTransactions: [],
   negativeEnvelopes: [],
   inconsistencies: [],
   warnings: [],
@@ -26,6 +25,7 @@ describe("consolidated dashboard balance", () => {
 
   it("does not turn missing data into a complete zero or subtotal", () => {
     expect(consolidatedDashboardBalance(summary({ balancesAvailable: false }))).toBeNull()
+    expect(consolidatedDashboardBalance(summary({ settingsAvailable: false }))).toBeNull()
     expect(consolidatedDashboardBalance(summary({ exchangeRate: null }))).toBeNull()
     expect(
       consolidatedDashboardBalance(summary({ exchangeRate: { compra: 0, venta: 510, fecha: "" } })),

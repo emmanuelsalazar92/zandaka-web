@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Feedback, LoadingState } from "@/components/ui/feedback"
 import { Label } from "@/components/ui/label"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { dashboardAccountId } from "@/lib/dashboard-period"
 import { formatAccountingTimestamp, formatIsoDateOnly } from "@/lib/date-only"
 import {
   fetchActiveReconciliation,
@@ -33,6 +34,11 @@ export function ReconciliationContent() {
   const [accountId, setAccount] = React.useState(""),
     [creating, setCreating] = React.useState(false),
     [detailId, setDetail] = React.useState<number | null>(null)
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const id = dashboardAccountId(params.get("accountId"))
+    if (params.get("source") === "dashboard" && id) setAccount(id)
+  }, [])
   const [notice, setNotice] = React.useState<{ title: string; description: string } | null>(null)
   const createTrigger = React.useRef<HTMLButtonElement>(null),
     historyHeading = React.useRef<HTMLHeadingElement>(null)
@@ -43,8 +49,9 @@ export function ReconciliationContent() {
       ),
     [accounts.data],
   )
-  const selected =
-    selectable.find((account) => String(account.id) === accountId) ?? selectable[0] ?? null
+  const selected = accountId
+    ? (selectable.find((account) => String(account.id) === accountId) ?? null)
+    : (selectable[0] ?? null)
   const selectedId = selected?.id ?? null
   const loadHistory = React.useCallback(
     (signal: AbortSignal) => fetchReconciliations(selectedId!, signal),
@@ -129,8 +136,22 @@ export function ReconciliationContent() {
           </Button>
         </Feedback>
       ) : !selected ? (
-        <Feedback role="note" title="No hay cuentas disponibles">
-          Crea o activa una cuenta para empezar a comparar sus saldos.
+        <Feedback
+          role="note"
+          title={
+            accountId ? "La cuenta del enlace no está disponible" : "No hay cuentas disponibles"
+          }
+        >
+          {accountId ? (
+            <>
+              <p>Actualiza la revisión desde Resumen o elige otra cuenta explícitamente.</p>
+              <Button className="mt-3" variant="outline" onClick={() => setAccount("")}>
+                Elegir otra cuenta
+              </Button>
+            </>
+          ) : (
+            "Crea o activa una cuenta para empezar a comparar sus saldos."
+          )}
         </Feedback>
       ) : (
         <>
