@@ -317,7 +317,7 @@ export default function ImportTransactionsPage() {
 
   // Summary counts
   const totalCount = transactions.length
-  const validCount = transactions.filter((t) => t.status === "valid").length
+  const validCount = importableTransactions.length
   const warningCount = transactions.filter((t) => t.status === "warning").length
   const errorCount = transactions.filter((t) => t.status === "error").length
   const importableCount = importableTransactions.length
@@ -331,7 +331,7 @@ export default function ImportTransactionsPage() {
     let successCount = 0
     let failedCount = 0
 
-    for (const transaction of importCandidates) {
+    for (const transaction of importableTransactions) {
       const validationError = getImportRowValidationError(
         transaction,
         activeAccounts,
@@ -500,7 +500,7 @@ export default function ImportTransactionsPage() {
                 </Badge>
                 <Badge className="gap-1 bg-warning/10 text-warning hover:bg-warning/20">
                   <AlertCircle className="h-3 w-3" />
-                  Advertencias: {warningCount}
+                  Pendientes de completar: {warningCount}
                 </Badge>
                 <Badge className="gap-1 bg-error/10 text-error hover:bg-error/20">
                   <X className="h-3 w-3" />
@@ -538,7 +538,7 @@ export default function ImportTransactionsPage() {
                           {formatIsoDateOnly(transaction.date)}
                         </TableCell>
                         <TableCell
-                          className="max-w-[300px] truncate"
+                          className="max-w-[300px] whitespace-normal break-words"
                           title={transaction.description}
                         >
                           <div className="space-y-1">
@@ -566,6 +566,11 @@ export default function ImportTransactionsPage() {
                             <SelectTrigger
                               className="h-8"
                               aria-label={`Cuenta del movimiento ${index + 1}`}
+                              aria-describedby={
+                                transaction.statusMessage
+                                  ? `import-row-${transaction.id}-reason`
+                                  : undefined
+                              }
                             >
                               <SelectValue placeholder="Elige una opción…" />
                             </SelectTrigger>
@@ -593,6 +598,11 @@ export default function ImportTransactionsPage() {
                             <SelectTrigger
                               className="h-8"
                               aria-label={`Sobre del movimiento ${index + 1}`}
+                              aria-describedby={
+                                transaction.statusMessage
+                                  ? `import-row-${transaction.id}-reason`
+                                  : undefined
+                              }
                             >
                               <SelectValue placeholder="Elige una opción…" />
                             </SelectTrigger>
@@ -615,6 +625,11 @@ export default function ImportTransactionsPage() {
                             <SelectTrigger
                               className="h-8"
                               aria-label={`Tipo del movimiento ${index + 1}`}
+                              aria-describedby={
+                                transaction.statusMessage
+                                  ? `import-row-${transaction.id}-reason`
+                                  : undefined
+                              }
                             >
                               <SelectValue />
                             </SelectTrigger>
@@ -632,12 +647,9 @@ export default function ImportTransactionsPage() {
                             </Badge>
                           )}
                           {transaction.status === "warning" && (
-                            <Badge
-                              className="bg-warning/10 text-warning hover:bg-warning/20"
-                              title={transaction.statusMessage}
-                            >
+                            <Badge className="bg-warning/10 text-warning hover:bg-warning/20">
                               <AlertCircle className="mr-1 h-3 w-3" />
-                              Advertencia
+                              Pendiente
                             </Badge>
                           )}
                           {transaction.status === "error" && (
@@ -648,6 +660,14 @@ export default function ImportTransactionsPage() {
                               <X className="mr-1 h-3 w-3" />
                               Error
                             </Badge>
+                          )}
+                          {transaction.statusMessage && (
+                            <p
+                              id={`import-row-${transaction.id}-reason`}
+                              className="mt-2 min-w-48 whitespace-normal text-sm leading-relaxed"
+                            >
+                              {transaction.statusMessage}
+                            </p>
                           )}
                         </TableCell>
                         <TableCell>
