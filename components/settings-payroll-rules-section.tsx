@@ -542,7 +542,7 @@ export function SettingsPayrollRulesSection() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
           <h3 className="text-xl font-semibold tracking-tight">Reglas de nómina</h3>
@@ -553,7 +553,7 @@ export function SettingsPayrollRulesSection() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <AccessibleField className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
+          <AccessibleField className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2">
             <Label htmlFor="payroll-active-date" className="text-xs text-muted-foreground">
               Vigentes al
             </Label>
@@ -562,7 +562,7 @@ export function SettingsPayrollRulesSection() {
               type="date"
               value={activeDate}
               onChange={(event) => setActiveDate(event.target.value)}
-              className="h-8 w-[160px] border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
+              className="h-8 w-full min-w-0 border-0 sm:w-[160px] bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
             />
           </AccessibleField>
           <Button type="button" variant="outline" onClick={() => void loadRules({ silent: true })}>
@@ -587,7 +587,7 @@ export function SettingsPayrollRulesSection() {
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="border-cyan-500/20 bg-cyan-500/5">
+        <Card className="border-transparent bg-[var(--marea-teal)] text-[var(--marea-teal-ink)]">
           <CardHeader className="pb-3">
             <CardDescription>CCSS vigente al {activeDate}</CardDescription>
             <CardTitle className="text-lg">
@@ -595,7 +595,7 @@ export function SettingsPayrollRulesSection() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-muted-foreground">Tasa del trabajador</span>
               <span className="font-medium">
                 {activeCcssRule?.ccssDetail
@@ -603,7 +603,7 @@ export function SettingsPayrollRulesSection() {
                   : "No disponible"}
               </span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-muted-foreground">Vigencia</span>
               <span className="font-medium">
                 {activeCcssRule ? formatPayrollRuleWindow(activeCcssRule) : "Sin coincidencia"}
@@ -612,7 +612,7 @@ export function SettingsPayrollRulesSection() {
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-500/20 bg-emerald-500/5">
+        <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="pb-3">
             <CardDescription>Renta vigente al {activeDate}</CardDescription>
             <CardTitle className="text-lg">
@@ -620,13 +620,13 @@ export function SettingsPayrollRulesSection() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-muted-foreground">Tramos</span>
               <span className="font-medium">
                 {activeIncomeTaxRule?.incomeTaxBrackets.length ?? 0}
               </span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-muted-foreground">Tasa máxima</span>
               <span className="font-medium">
                 {activeIncomeTaxRule
@@ -643,11 +643,11 @@ export function SettingsPayrollRulesSection() {
             <CardTitle className="text-lg">{totalRuleVersions} versiones de reglas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-muted-foreground">Versiones de CCSS</span>
               <span className="font-medium">{ccssRules.length}</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-muted-foreground">Versiones de renta</span>
               <span className="font-medium">{incomeTaxRules.length}</span>
             </div>
@@ -655,10 +655,10 @@ export function SettingsPayrollRulesSection() {
         </Card>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="space-y-6">
+      <div className="grid min-w-0 grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 space-y-6">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardHeader className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <CardTitle>Historial de aportes a la CCSS</CardTitle>
                 <CardDescription>
@@ -755,7 +755,7 @@ export function SettingsPayrollRulesSection() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardHeader className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <CardTitle>Historial de impuesto sobre la renta</CardTitle>
                 <CardDescription>
@@ -850,7 +850,7 @@ export function SettingsPayrollRulesSection() {
             </CardContent>
           </Card>
         </div>
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>
@@ -894,7 +894,7 @@ export function SettingsPayrollRulesSection() {
                     />
                   </AccessibleField>
 
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
                     <AccessibleField className="space-y-2">
                       <Label htmlFor="ccss-effective-from">Vigente desde</Label>
                       <Input
@@ -925,7 +925,7 @@ export function SettingsPayrollRulesSection() {
                     </AccessibleField>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
                     <AccessibleField className="space-y-2">
                       <Label htmlFor="ccss-employee-rate">Tasa del trabajador</Label>
                       <Input
@@ -978,7 +978,7 @@ export function SettingsPayrollRulesSection() {
                     />
                   </AccessibleField>
 
-                  <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2">
                     <div>
                       <p className="font-medium">Versión activa</p>
                       <p className="text-sm text-muted-foreground">
@@ -1028,7 +1028,7 @@ export function SettingsPayrollRulesSection() {
                     />
                   </AccessibleField>
 
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
                     <AccessibleField className="space-y-2">
                       <Label htmlFor="income-tax-effective-from">Vigente desde</Label>
                       <Input
@@ -1059,7 +1059,7 @@ export function SettingsPayrollRulesSection() {
                     </AccessibleField>
                   </div>
 
-                  <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2">
                     <div>
                       <p className="font-medium">Versión activa</p>
                       <p className="text-sm text-muted-foreground">
@@ -1088,7 +1088,7 @@ export function SettingsPayrollRulesSection() {
                   <div className="space-y-3">
                     {incomeTaxForm.brackets.map((bracket, index) => (
                       <div key={bracket.key} className="rounded-xl border p-3">
-                        <div className="mb-3 flex items-center justify-between">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                           <div>
                             <p className="font-medium">Tramo {index + 1}</p>
                             <p className="text-xs text-muted-foreground">
@@ -1247,7 +1247,7 @@ export function SettingsPayrollRulesSection() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
                 <AccessibleField className="space-y-2">
                   <Label htmlFor="payroll-simulator-gross">Salario bruto (CRC)</Label>
                   <Input
@@ -1320,35 +1320,35 @@ export function SettingsPayrollRulesSection() {
                   </div>
 
                   <div className="space-y-2 rounded-xl border p-3 text-sm">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-muted-foreground">Salario bruto</span>
                       <span className="font-medium">
                         {formatCurrency(simulation.grossSalary, "CRC")}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-muted-foreground">Tasa del trabajador · CCSS</span>
                       <span className="font-medium">
                         {formatPayrollRate(simulation.ccssWorkerRate)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-muted-foreground">Aporte del trabajador · CCSS</span>
                       <span className="font-medium">
                         {formatCurrency(simulation.ccssWorkerAmount, "CRC")}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-muted-foreground">Base de renta (salario bruto)</span>
                       <span className="font-medium">
                         {formatCurrency(simulation.taxableBase, "CRC")}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-muted-foreground">Versión de la regla de CCSS</span>
                       <span className="font-medium">#{simulation.ccssRuleSetId}</span>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-muted-foreground">Versión de la regla de renta</span>
                       <span className="font-medium">#{simulation.incomeTaxRuleSetId}</span>
                     </div>
@@ -1427,7 +1427,7 @@ export function SettingsPayrollRulesSection() {
                       {activeIncomeTaxRule.incomeTaxBrackets.map((bracket) => (
                         <div
                           key={bracket.id}
-                          className="flex items-center justify-between rounded-lg border px-3 py-2"
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2"
                         >
                           <div>
                             <p className="font-medium">Tramo {bracket.rangeOrder}</p>

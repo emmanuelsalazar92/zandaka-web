@@ -264,9 +264,9 @@ export function SettingsCashDenominationsSection({
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <CardHeader className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <CardTitle>Denominaciones de efectivo</CardTitle>
             <CardDescription>
@@ -274,8 +274,8 @@ export function SettingsCashDenominationsSection({
             </CardDescription>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="min-w-[140px]">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="w-full min-w-0 sm:w-36">
               <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
                 <SelectTrigger
                   className="w-full"
@@ -303,7 +303,7 @@ export function SettingsCashDenominationsSection({
             </Button>
             <Button type="button" onClick={openCreateForm}>
               <Plus className="mr-2 h-4 w-4" />
-              Nueva
+              Nueva denominación
             </Button>
           </div>
         </CardHeader>

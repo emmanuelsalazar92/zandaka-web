@@ -170,13 +170,16 @@ test("Spanish movement fields announce an invalid amount and recover through key
 })
 
 for (const section of [
-  { tab: "Efectivo", action: "Nueva" },
-  { tab: "Reglas automáticas", action: "Nueva regla" },
+  { tab: "Efectivo", action: "Nueva denominación" },
+  { tab: "Automatización", action: "Nueva regla" },
 ]) {
   test(`settings ${section.tab}: inline editor labels and states`, async ({ page }) => {
     await installSyntheticAPI(page)
     await page.goto("/settings")
-    await page.getByRole("tab", { name: section.tab, exact: true }).click()
+    await page
+      .getByRole("navigation", { name: "Secciones de ajustes" })
+      .getByRole("link", { name: section.tab, exact: true })
+      .click()
     await page.getByRole("button", { name: section.action, exact: true }).click()
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21aa"])

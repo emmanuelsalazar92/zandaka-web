@@ -233,7 +233,10 @@ export async function contextWrite(
       response.status >= 500,
     )
   if (response.status === 204) {
-    if (method === "POST" && /^\/(accounts|envelopes)\/[1-9]\d*\/deactivate$/.test(path))
+    if (
+      method === "POST" &&
+      /^\/(accounts|envelopes|institutions|categories)\/[1-9]\d*\/deactivate$/.test(path)
+    )
       return null
     throw new ContextWriteError(
       "No pudimos verificar el identificador creado. Revisa el listado antes de repetir la operación.",

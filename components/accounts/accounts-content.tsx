@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { contextActivityLink, contextTotals, selectContextRows } from "@/lib/account-context"
 import { formatCurrency } from "@/lib/currency-formatter"
 import { institutionManagement } from "@/lib/navigation"
+import { catalogLink } from "@/lib/settings-catalog"
 import { cn } from "@/lib/utils"
 
 export function AccountsContent() {
@@ -56,7 +57,9 @@ export function AccountsContent() {
       <PageHeader
         title="Cuentas"
         description="Dónde está tu dinero, con su banco y su moneda."
-        related={[institutionManagement]}
+        related={[
+          { ...institutionManagement, href: catalogLink(institutionManagement.href, "/accounts") },
+        ]}
         actionsLabel="Acciones de cuentas"
       >
         <Button variant="outline" onClick={state.reloadAccounts} disabled={state.loading}>

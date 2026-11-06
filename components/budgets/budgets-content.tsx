@@ -52,6 +52,7 @@ import { toast } from "@/components/ui/use-toast"
 import { BudgetApiError, deleteBudget, fetchBudgets } from "@/lib/budgets-api"
 import { formatCurrency } from "@/lib/currency-formatter"
 import { categoryManagement } from "@/lib/navigation"
+import { catalogLink } from "@/lib/settings-catalog"
 
 const ALL_FILTER = "all"
 
@@ -135,7 +136,9 @@ export function BudgetsContent() {
       <PageHeader
         title={<>Presupuestos</>}
         description={<>Planifica tus presupuestos mensuales</>}
-        related={[categoryManagement]}
+        related={[
+          { ...categoryManagement, href: catalogLink(categoryManagement.href, "/budgets") },
+        ]}
         actionsLabel="Acciones de presupuestos"
       >
         <Button onClick={() => setIsCreateOpen(true)}>

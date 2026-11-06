@@ -54,6 +54,8 @@ Ejecutar formato, lint, tipos, unitarias, build y `npm run test:e2e`. La matriz 
 
 Adopción de Marea: conservar el saldo como protagonista cobalto, filas abiertas con divisores, turquesa como contexto secundario y una revisión explícita de negativos. Integrar sus roles en el sistema común al adoptar por pantalla en ZA-99, ZA-102, ZA-103 y ZA-104. ZA-108 conserva la validación transversal. Mantener móvil, semántica y tareas al adaptar cada módulo; no copiar ciegamente proporciones o textos del ejemplo. Las agrupaciones de Faro son una alternativa comparativa, no una decisión aprobada para incorporar automáticamente.
 
+ZA-103 adopta Marea en [Ajustes, Instituciones y Categorías](settings-catalogs.md), con secciones de configuración, filas abiertas, búsqueda jerárquica y contexto turquesa. Conserva las rutas y validaciones existentes; no incorpora agrupaciones de Faro. Implementación local, sin despliegue.
+
 ## Registro del propietario
 
 ZA-102 adopta Marea en las rutas reales [Cuentas y Sobres](accounts-envelopes.md), con datos de la API existente, saldo protagonista, filas abiertas y contexto turquesa. Sus roles turquesa aprobados se centralizan como `--marea-teal` / `--marea-teal-ink` en globals.css; la referencia los consume mediante alias, conservando exactamente sus colores claros/oscuros. `/design-reference` permanece ficticia. La evidencia original de ZA-111 del 4 de noviembre se conserva como historia; la regresión de la ruta actual usa la misma fixture y etiqueta sus capturas como actuales, sin presentarlas como la UI anterior a la adopción.

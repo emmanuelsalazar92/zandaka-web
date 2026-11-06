@@ -16,6 +16,7 @@ import {
 } from "@/lib/budget-plan-api"
 import { formatPlanMoney as formatCurrency } from "@/lib/budget-plan-view"
 import { categoryManagement } from "@/lib/navigation"
+import { catalogLink } from "@/lib/settings-catalog"
 
 import styles from "./plan.module.css"
 
@@ -68,7 +69,9 @@ export function BudgetPlansList() {
       <PageHeader
         title="Presupuestos"
         description="Prepara el mes y distribuye tu dinero a sobres."
-        related={[categoryManagement]}
+        related={[
+          { ...categoryManagement, href: catalogLink(categoryManagement.href, "/budgets") },
+        ]}
       >
         <Button asChild>
           <Link href="/budgets/plans/new">

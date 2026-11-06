@@ -14,6 +14,8 @@ ZA-88 incorpora la [ficha completa de movimientos](transaction-detail.md) y requ
 
 Hay dos repositorios y dos imágenes: zandaka-web y zandaka-api. Ambos trabajan en la rama staging. Esta rama parte de las correcciones de precisión monetaria ya presentes; no deben perderse al integrar el rediseño.
 
+ZA-103 adopta [Ajustes y catálogos Marea](settings-catalogs.md): seis secciones, búsqueda jerárquica, detalle contextual y probador de reglas de solo simulación. Cambio solo web, en commit local del 6 de noviembre; sin push, deploy ni requisitos nuevos de DB. Conserva los contratos y validaciones existentes. No sustituye la entrega real de testing registrada arriba.
+
 ## Integración continua
 
 ZA-102 adopta [Cuentas y Sobres Marea](accounts-envelopes.md): saldos por moneda, contexto de cuenta, distribución positiva, búsqueda/densidad, actividad filtrada y creación integrada de institución/categoría. Solo web, sin nuevos endpoints, DB o recálculos. Trabajo del 6 de noviembre en commit local, sin push ni deploy; la compatibilidad API de ZA-99 incluida en esta web sigue vigente. No sustituye la entrega real de testing registrada arriba.

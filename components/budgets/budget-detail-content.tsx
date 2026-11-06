@@ -74,6 +74,7 @@ import {
   tryDecimalInput,
 } from "@/lib/money"
 import { categoryManagement } from "@/lib/navigation"
+import { catalogLink } from "@/lib/settings-catalog"
 import { cn } from "@/lib/utils"
 
 type BudgetDetailContentProps = {
@@ -509,7 +510,9 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
         <PageHeader
           title="Presupuesto"
           description="Revisa la planificación de tu mes."
-          related={[categoryManagement]}
+          related={[
+            { ...categoryManagement, href: catalogLink(categoryManagement.href, "/budgets") },
+          ]}
         />
         <div className="space-y-6">
           <Skeleton className="h-6 w-32" />
@@ -531,7 +534,9 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
         <PageHeader
           title="Presupuesto"
           description="Revisa la planificación de tu mes."
-          related={[categoryManagement]}
+          related={[
+            { ...categoryManagement, href: catalogLink(categoryManagement.href, "/budgets") },
+          ]}
         />
         <Card>
           <CardHeader>
@@ -558,7 +563,9 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
       <PageHeader
         title={<>Presupuesto · {formatBudgetMonth(budget.month)}</>}
         description="Distribuye tus ingresos y revisa la planificación del mes."
-        related={[categoryManagement]}
+        related={[
+          { ...categoryManagement, href: catalogLink(categoryManagement.href, "/budgets") },
+        ]}
         meta={
           <>
             <BudgetStatusBadge status={budget.status} />

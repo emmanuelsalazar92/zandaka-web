@@ -38,6 +38,7 @@ import {
 import { formatCurrency } from "@/lib/currency-formatter"
 import { dashboardAccountId } from "@/lib/dashboard-period"
 import { categoryManagement } from "@/lib/navigation"
+import { catalogLink } from "@/lib/settings-catalog"
 import { cn } from "@/lib/utils"
 
 const loadAccounts = async (signal: AbortSignal) =>
@@ -135,7 +136,9 @@ export function EnvelopesContent() {
       <PageHeader
         title="Sobres"
         description="Tu dinero tiene un lugar y un propósito."
-        related={[categoryManagement]}
+        related={[
+          { ...categoryManagement, href: catalogLink(categoryManagement.href, "/envelopes") },
+        ]}
         actionsLabel="Acciones de sobres"
       >
         <Button

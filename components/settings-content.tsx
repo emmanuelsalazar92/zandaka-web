@@ -1,10 +1,11 @@
 "use client"
 
-import { Building2, Edit2, FolderTree, Plus, ShieldCheck } from "lucide-react"
-import Link from "next/link"
+import { Edit2, Plus, ShieldCheck } from "lucide-react"
 import * as React from "react"
 
 import { PageHeader } from "@/components/page-header"
+import { SettingsNavigation } from "@/components/settings/settings-navigation"
+import styles from "@/components/settings/settings.module.css"
 import { SettingsCashDenominationsSection } from "@/components/settings-cash-denominations-section"
 import { SettingsPayrollRulesSection } from "@/components/settings-payroll-rules-section"
 import { AccessibleField, AccessibleFieldError } from "@/components/ui/accessible-field"
@@ -12,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Feedback } from "@/components/ui/feedback"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -22,19 +24,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { formatAccountingTimestamp } from "@/lib/date-only"
-import { institutionManagement, categoryManagement } from "@/lib/navigation"
 import {
   type AccountOption,
   type AutoAssignmentMatchType,
@@ -52,6 +44,7 @@ import {
   updateUserSettings,
   type UserSettings,
 } from "@/lib/settings-api"
+import { matchLabels, ruleDestination, rulePriority } from "@/lib/settings-presentation"
 
 const NONE = "__none__"
 const MATCH_TYPES: AutoAssignmentMatchType[] = [
@@ -72,7 +65,33 @@ const messageOf = (error: unknown, fallback: string) =>
 
 export function SettingsContent() {
   const [loading, setLoading] = React.useState(true)
+  const [ready, setReady] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [loadErrors, setLoadErrors] = React.useState({
+    profile: false,
+    accounts: false,
+    rules: false,
+  })
+  const [section, setSection] = React.useState("profile")
+  const [visited, setVisited] = React.useState(new Set(["profile"]))
+  const profileDirty = React.useRef(false)
+  const testRevision = React.useRef(0)
+  const testPending = React.useRef(false)
+  const [testError, setTestError] = React.useState<string | null>(null)
+  const [togglingRule, setTogglingRule] = React.useState<number | null>(null)
+  const togglePending = React.useRef(false)
+  const chooseSection = React.useCallback((next: string) => {
+    const value = ["profile", "cash", "payroll", "rules"].includes(next) ? next : "profile"
+    setSection(value)
+    setVisited((current) => new Set([...current, value]))
+  }, [])
+  React.useEffect(() => {
+    const sync = () =>
+      chooseSection(new URLSearchParams(window.location.search).get("section") ?? "profile")
+    sync()
+    window.addEventListener("popstate", sync)
+    return () => window.removeEventListener("popstate", sync)
+  }, [chooseSection])
   const [profile, setProfile] = React.useState<UserSettings | null>(null)
   const [profileForm, setProfileForm] = React.useState({ name: "", baseCurrency: "USD" })
   const [savingProfile, setSavingProfile] = React.useState(false)
@@ -102,19 +121,40 @@ export function SettingsContent() {
     try {
       setLoading(true)
       setError(null)
-      const [profileData, accountData, ruleData] = await Promise.all([
+      const results = await Promise.allSettled([
         fetchUserSettings(),
         fetchAccounts(),
         fetchAutoAssignmentRules(),
-      ])
-      setProfile(profileData)
-      setProfileForm({ name: profileData.name, baseCurrency: profileData.baseCurrency })
-      setAccounts(accountData)
-      setRules(ruleData)
+      ] as const)
+      const [profileData, accountData, ruleData] = results
+      if (profileData.status === "fulfilled") {
+        setProfile(profileData.value)
+        if (!profileDirty.current)
+          setProfileForm({
+            name: profileData.value.name,
+            baseCurrency: profileData.value.baseCurrency,
+          })
+      }
+      if (accountData.status === "fulfilled") setAccounts(accountData.value)
+      if (ruleData.status === "fulfilled") {
+        testRevision.current++
+        setTestResult(null)
+        setRules(ruleData.value)
+      }
+      setLoadErrors({
+        profile: profileData.status === "rejected",
+        accounts: accountData.status === "rejected",
+        rules: ruleData.status === "rejected",
+      })
+      if (results.some((result) => result.status === "rejected"))
+        setError(
+          "Algunas secciones no están disponibles. Puedes seguir usando las demás; tus borradores se conservan.",
+        )
     } catch (cause) {
       setError(messageOf(cause, "No pudimos cargar los ajustes. Vuelve a intentar."))
     } finally {
       setLoading(false)
+      setReady(true)
     }
   }, [])
 
@@ -124,8 +164,14 @@ export function SettingsContent() {
 
   const ensureEnvelopesLoaded = async (accountId: number) => {
     if (envelopesByAccount[accountId]) return
-    const data = await fetchEnvelopeOptions(accountId)
-    setEnvelopesByAccount((current) => ({ ...current, [accountId]: data }))
+    try {
+      const data = await fetchEnvelopeOptions(accountId)
+      setEnvelopesByAccount((current) => ({ ...current, [accountId]: data }))
+    } catch {
+      setRuleFormError(
+        "No pudimos cargar los sobres de esta cuenta. Vuelve a seleccionar la cuenta para reintentar.",
+      )
+    }
   }
 
   const selectedAccountId =
@@ -156,7 +202,6 @@ export function SettingsContent() {
     setRuleFormError(null)
     if (!rule) return setEditingRuleId(null)
     const accountId = rule.accountId ?? rule.accountEnvelopeAccountId
-    if (accountId !== null) await ensureEnvelopesLoaded(accountId)
     setEditingRuleId(rule.id)
     setRuleForm({
       pattern: rule.pattern,
@@ -167,9 +212,11 @@ export function SettingsContent() {
       isActive: rule.isActive,
       notes: rule.notes ?? "",
     })
+    if (accountId !== null) await ensureEnvelopesLoaded(accountId)
   }
 
   const saveProfile = async () => {
+    if (savingProfile || loadErrors.profile || !profile) return
     if (!profileForm.name.trim() || !profileForm.baseCurrency.trim()) {
       return toast({
         title: "Perfil incompleto",
@@ -183,11 +230,12 @@ export function SettingsContent() {
         name: profileForm.name,
         baseCurrency: profileForm.baseCurrency,
       })
+      profileDirty.current = false
       setProfile(updated)
       setProfileForm({ name: updated.name, baseCurrency: updated.baseCurrency })
       toast({
         title: "Perfil actualizado",
-        description: `Base currency set to ${updated.baseCurrency}.`,
+        description: `Moneda de presentación: ${updated.baseCurrency}.`,
       })
     } catch (cause) {
       toast({
@@ -201,13 +249,14 @@ export function SettingsContent() {
   }
 
   const saveRule = async () => {
-    const priority = Number.parseInt(ruleForm.priority, 10)
+    if (ruleBusy || loadErrors.rules || loadErrors.accounts) return
+    const priority = rulePriority(ruleForm.priority)
     const accountId = ruleForm.accountId !== NONE ? Number.parseInt(ruleForm.accountId, 10) : null
     const accountEnvelopeId =
       ruleForm.accountEnvelopeId !== NONE ? Number.parseInt(ruleForm.accountEnvelopeId, 10) : null
     if (
       !ruleForm.pattern.trim() ||
-      !Number.isInteger(priority) ||
+      priority === null ||
       (accountId === null && accountEnvelopeId === null)
     ) {
       return setRuleFormError(
@@ -231,13 +280,16 @@ export function SettingsContent() {
         : await createAutoAssignmentRule(payload)
       setRules((current) =>
         [...current.filter((item) => item.id !== saved.id), saved].sort(
-          (a, b) => a.priority - b.priority || a.id - b.id,
+          (a, b) =>
+            a.priority - b.priority || b.updatedAt.localeCompare(a.updatedAt) || a.id - b.id,
         ),
       )
       toast({
         title: editingRuleId ? "Regla actualizada" : "Regla creada",
-        description: `Pattern "${saved.pattern}" saved.`,
+        description: `Patrón «${saved.pattern}» guardado.`,
       })
+      testRevision.current++
+      setTestResult(null)
       resetRuleForm()
     } catch (cause) {
       setRuleFormError(
@@ -248,362 +300,379 @@ export function SettingsContent() {
     }
   }
 
-  if (loading)
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Ajustes"
-          description="Tu perfil, catálogos y reglas, organizados en un solo lugar."
-        />
-        <Card>
-          <CardHeader>
-            <CardTitle>Preparando configuración</CardTitle>
-            <CardDescription>Cargando tu configuración.</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    )
-
+  const activeRuleCount = rules.filter((rule) => rule.isActive).length
   return (
-    <div className="space-y-6">
+    <div
+      className={`marea-surface min-w-0 space-y-6 rounded-2xl bg-background p-3 sm:p-5 ${styles.page}`}
+    >
       <PageHeader
         title={<>Ajustes</>}
         description={<>Tu perfil, catálogos y reglas, organizados en un solo lugar.</>}
         actionsLabel="Acciones de ajustes"
       />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Link
-          href={institutionManagement.href}
-          className="flex min-h-20 items-center gap-4 rounded-2xl border bg-card p-5 transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          <Building2 className="h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
-          <div>
-            <p className="font-semibold">Instituciones</p>
-            <p className="text-sm text-muted-foreground">
-              Bancos y otras entidades de tus cuentas.
-            </p>
-          </div>
-        </Link>
-        <Link
-          href={categoryManagement.href}
-          className="flex min-h-20 items-center gap-4 rounded-2xl border bg-card p-5 transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          <FolderTree className="h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
-          <div>
-            <p className="font-semibold">Categorías</p>
-            <p className="text-sm text-muted-foreground">
-              Organiza los conceptos de tus sobres y presupuestos.
-            </p>
-          </div>
-        </Link>
-      </div>
+      <SettingsNavigation current={section} onSectionChange={chooseSection} />
+      <section className={styles.intro} aria-label="Tu configuración">
+        <p className="!mt-0 text-sm font-medium">Tu espacio · Ajustes</p>
+        <h2>Todo a tu manera.</h2>
+        <p>
+          Tu perfil, tus catálogos y las reglas que simplifican el día a día. Elige una sección para
+          ajustar cada detalle.
+        </p>
+      </section>
       <div className="flex flex-wrap items-center gap-3">
         <Badge variant="secondary">
-          {rules.filter((rule) => rule.isActive).length} reglas activas
+          {loadErrors.rules || loading
+            ? "Reglas por confirmar"
+            : `${activeRuleCount} ${activeRuleCount === 1 ? "regla activa" : "reglas activas"}`}
         </Badge>
-        <Button type="button" variant="outline" onClick={() => void loadAll()}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void loadAll()}
+          disabled={loading || savingProfile || ruleBusy || togglingRule !== null}
+        >
           Actualizar
         </Button>
       </div>
       {error && (
         <Alert>
-          <AlertTitle>Ajustes no disponibles</AlertTitle>
+          <AlertTitle>Disponibilidad de ajustes</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="profile">Perfil</TabsTrigger>
-          <TabsTrigger value="cash">Efectivo</TabsTrigger>
-          <TabsTrigger value="payroll">Nómina</TabsTrigger>
-          <TabsTrigger value="rules">Reglas automáticas</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="profile">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <Card>
-              <CardHeader>
-                <CardTitle>Mi perfil</CardTitle>
-                <CardDescription>
-                  Configura tu nombre y la moneda de presentación de la aplicación.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <AccessibleField className="space-y-2">
-                  <Label htmlFor="settings-name">Nombre</Label>
-                  <Input
-                    id="settings-name"
-                    value={profileForm.name}
-                    onChange={(event) =>
-                      setProfileForm((current) => ({ ...current, name: event.target.value }))
-                    }
-                  />
-                </AccessibleField>
-                <AccessibleField className="space-y-2">
-                  <Label htmlFor="settings-currency">Moneda de presentación</Label>
-                  <Select
-                    value={profileForm.baseCurrency}
-                    onValueChange={(value) =>
-                      setProfileForm((current) => ({ ...current, baseCurrency: value }))
-                    }
-                  >
-                    <SelectTrigger id="settings-currency" className="w-full">
-                      <SelectValue placeholder="Elige la moneda" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BASE_CURRENCIES.map((currency) => (
-                        <SelectItem key={currency.value} value={currency.value}>
-                          {currency.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </AccessibleField>
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    onClick={() => void saveProfile()}
-                    disabled={savingProfile || !hasProfileChanges}
-                  >
-                    Guardar perfil
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Registro</CardTitle>
-                <CardDescription>Fechas de creación y actualización de tu perfil.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Creado</p>
-                  <p className="font-medium">
-                    {profile ? formatTimestamp(profile.createdAt) : "No disponible"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Actualizado</p>
-                  <p className="font-medium">
-                    {profile ? formatTimestamp(profile.updatedAt) : "No disponible"}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="cash" className="space-y-4">
-          <SettingsCashDenominationsSection
-            baseCurrency={profileForm.baseCurrency}
-            accounts={accounts}
-          />
-        </TabsContent>
-
-        <TabsContent value="payroll" className="space-y-4">
-          <SettingsPayrollRulesSection />
-        </TabsContent>
-
-        <TabsContent value="rules" className="space-y-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-4">
-                <div>
-                  <CardTitle>Reglas de asignación automática</CardTitle>
-                  <CardDescription>
-                    Las reglas revisan la descripción por prioridad para sugerir una cuenta y un
-                    sobre.
-                  </CardDescription>
-                </div>
-                <Button type="button" onClick={() => void openRuleForm()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nueva regla
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {ruleFormOpen && (
-                  <div className="grid gap-4 rounded-lg border p-4 md:grid-cols-2">
-                    <AccessibleField className="space-y-2 md:col-span-2">
-                      <Label>Patrón</Label>
+      {loading && (
+        <p role="status" className="text-sm text-muted-foreground">
+          Cargando ajustes…
+        </p>
+      )}
+      {ready && (
+        <div className="space-y-4">
+          {visited.has("profile") && (
+            <section
+              aria-label="Perfil y preferencias"
+              hidden={section !== "profile"}
+              className="space-y-4"
+            >
+              {loadErrors.profile && (
+                <Feedback tone="error" title="Perfil no disponible">
+                  Actualiza los ajustes para volver a consultar el perfil.
+                </Feedback>
+              )}
+              <fieldset
+                disabled={loading || loadErrors.profile || savingProfile}
+                className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]"
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Mi perfil</CardTitle>
+                    <CardDescription>
+                      Configura tu nombre y la moneda de presentación de la aplicación.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <AccessibleField className="space-y-2">
+                      <Label htmlFor="settings-name">Nombre</Label>
                       <Input
-                        value={ruleForm.pattern}
-                        onChange={(event) =>
-                          setRuleForm((current) => ({ ...current, pattern: event.target.value }))
-                        }
+                        id="settings-name"
+                        value={profileForm.name}
+                        onChange={(event) => {
+                          profileDirty.current = true
+                          setProfileForm((current) => ({ ...current, name: event.target.value }))
+                        }}
                       />
                     </AccessibleField>
                     <AccessibleField className="space-y-2">
-                      <Label>Tipo de coincidencia</Label>
+                      <Label htmlFor="settings-currency">Moneda de presentación</Label>
                       <Select
-                        value={ruleForm.matchType}
-                        onValueChange={(value) =>
-                          setRuleForm((current) => ({
-                            ...current,
-                            matchType: value as AutoAssignmentMatchType,
-                          }))
-                        }
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {MATCH_TYPES.map((value) => (
-                            <SelectItem key={value} value={value}>
-                              {{
-                                CONTAINS: "Contiene",
-                                STARTS_WITH: "Empieza con",
-                                ENDS_WITH: "Termina con",
-                                EXACT: "Coincidencia exacta",
-                                REGEX: "Expresión regular",
-                              }[value] ?? value}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </AccessibleField>
-                    <AccessibleField className="space-y-2">
-                      <Label>Prioridad</Label>
-                      <Input
-                        type="number"
-                        value={ruleForm.priority}
-                        onChange={(event) =>
-                          setRuleForm((current) => ({ ...current, priority: event.target.value }))
-                        }
-                      />
-                    </AccessibleField>
-                    <AccessibleField className="space-y-2">
-                      <Label>Cuenta</Label>
-                      <Select
-                        value={ruleForm.accountId}
+                        value={profileForm.baseCurrency}
                         onValueChange={(value) => {
-                          setRuleForm((current) => ({
-                            ...current,
-                            accountId: value,
-                            accountEnvelopeId: NONE,
-                          }))
-                          if (value !== NONE) void ensureEnvelopesLoaded(Number.parseInt(value, 10))
+                          profileDirty.current = true
+                          setProfileForm((current) => ({ ...current, baseCurrency: value }))
                         }}
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
+                        <SelectTrigger id="settings-currency" className="w-full">
+                          <SelectValue placeholder="Elige la moneda" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={NONE}>Sin cuenta de destino</SelectItem>
-                          {accounts.map((account) => (
-                            <SelectItem key={account.id} value={String(account.id)}>
-                              {account.name} ({account.currency})
+                          {BASE_CURRENCIES.map((currency) => (
+                            <SelectItem key={currency.value} value={currency.value}>
+                              {currency.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </AccessibleField>
-                    <AccessibleField className="space-y-2">
-                      <Label>Sobre</Label>
-                      <Select
-                        value={ruleForm.accountEnvelopeId}
-                        onValueChange={(value) =>
-                          setRuleForm((current) => ({ ...current, accountEnvelopeId: value }))
-                        }
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        onClick={() => void saveProfile()}
+                        disabled={savingProfile || !hasProfileChanges}
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={NONE}>Sin sobre de destino</SelectItem>
-                          {selectedEnvelopes.map((envelope) => (
-                            <SelectItem
-                              key={envelope.envelopeId}
-                              value={String(envelope.envelopeId)}
-                            >
-                              {envelope.categoryName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </AccessibleField>
-                    <AccessibleField className="space-y-2 md:col-span-2">
-                      <Label>Notas</Label>
-                      <Textarea
-                        rows={3}
-                        value={ruleForm.notes}
-                        onChange={(event) =>
-                          setRuleForm((current) => ({ ...current, notes: event.target.value }))
-                        }
-                      />
-                    </AccessibleField>
-                    <div className="flex items-center justify-between rounded-lg border px-3 py-2 md:col-span-2">
-                      <div>
-                        <p className="font-medium">Regla activa</p>
-                        <p className="text-sm text-muted-foreground">
-                          Las reglas inactivas se conservan y no se usan para sugerir asignaciones.
-                        </p>
-                      </div>
-                      <Switch
-                        aria-label="Regla activa"
-                        checked={ruleForm.isActive}
-                        onCheckedChange={(checked) =>
-                          setRuleForm((current) => ({ ...current, isActive: checked }))
-                        }
-                      />
+                        Guardar perfil
+                      </Button>
                     </div>
-                    {ruleFormError && (
-                      <AccessibleFieldError className="text-sm text-destructive md:col-span-2">
-                        {ruleFormError}
-                      </AccessibleFieldError>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Registro</CardTitle>
+                    <CardDescription>
+                      Fechas de creación y actualización de tu perfil.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Creado</p>
+                      <p className="font-medium">
+                        {profile ? formatTimestamp(profile.createdAt) : "No disponible"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Actualizado</p>
+                      <p className="font-medium">
+                        {profile ? formatTimestamp(profile.updatedAt) : "No disponible"}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </fieldset>
+            </section>
+          )}
+
+          {visited.has("cash") && (
+            <section aria-label="Efectivo" hidden={section !== "cash"} className="space-y-4">
+              <SettingsCashDenominationsSection
+                baseCurrency={profileForm.baseCurrency}
+                accounts={accounts}
+              />
+            </section>
+          )}
+
+          {visited.has("payroll") && (
+            <section aria-label="Nómina" hidden={section !== "payroll"} className="space-y-4">
+              <SettingsPayrollRulesSection />
+            </section>
+          )}
+
+          {visited.has("rules") && (
+            <section aria-label="Automatización" hidden={section !== "rules"} className="space-y-4">
+              <div className={styles.rules}>
+                <Card>
+                  <CardHeader className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <CardTitle>Reglas de asignación automática</CardTitle>
+                      <CardDescription>
+                        El número menor tiene prioridad. En empate se usa la regla actualizada más
+                        recientemente y luego su identificador. Se evalúan solo las reglas activas.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      type="button"
+                      disabled={loading || loadErrors.rules || loadErrors.accounts || ruleBusy}
+                      onClick={() => {
+                        resetRuleForm()
+                        void openRuleForm()
+                      }}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nueva regla
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {(loadErrors.rules || loadErrors.accounts) && (
+                      <Feedback tone="error" title="Automatización incompleta">
+                        Actualiza los ajustes para consultar las reglas y cuentas antes de editar.
+                      </Feedback>
                     )}
-                    <div className="flex gap-2 md:col-span-2 md:justify-end">
-                      <Button type="button" variant="outline" onClick={resetRuleForm}>
-                        Cancelar
-                      </Button>
-                      <Button type="button" onClick={() => void saveRule()} disabled={ruleBusy}>
-                        {editingRuleId ? "Guardar regla" : "Crear regla"}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                {rules.length === 0 ? (
-                  <Alert>
-                    <AlertTitle>No hay reglas configuradas</AlertTitle>
-                    <AlertDescription>
-                      Crea reglas para descripciones habituales, como suscripciones, salarios o
-                      transferencias.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Patrón</TableHead>
-                          <TableHead>Coincidencia</TableHead>
-                          <TableHead>Destino</TableHead>
-                          <TableHead>Prioridad</TableHead>
-                          <TableHead>Activo</TableHead>
-                          <TableHead className="text-right">Acciones</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+                    {ruleFormOpen && (
+                      <fieldset
+                        disabled={ruleBusy}
+                        className="grid min-w-0 gap-4 rounded-lg border p-4 md:grid-cols-2"
+                      >
+                        <AccessibleField className="space-y-2 md:col-span-2">
+                          <Label>Patrón</Label>
+                          <Input
+                            value={ruleForm.pattern}
+                            onChange={(event) =>
+                              setRuleForm((current) => ({
+                                ...current,
+                                pattern: event.target.value,
+                              }))
+                            }
+                          />
+                        </AccessibleField>
+                        <AccessibleField className="space-y-2">
+                          <Label>Tipo de coincidencia</Label>
+                          <Select
+                            value={ruleForm.matchType}
+                            onValueChange={(value) =>
+                              setRuleForm((current) => ({
+                                ...current,
+                                matchType: value as AutoAssignmentMatchType,
+                              }))
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {MATCH_TYPES.map((value) => (
+                                <SelectItem key={value} value={value}>
+                                  {{
+                                    CONTAINS: "Contiene",
+                                    STARTS_WITH: "Empieza con",
+                                    ENDS_WITH: "Termina con",
+                                    EXACT: "Coincidencia exacta",
+                                    REGEX: "Expresión regular",
+                                  }[value] ?? value}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </AccessibleField>
+                        <AccessibleField className="space-y-2">
+                          <Label>Prioridad</Label>
+                          <Input
+                            type="number"
+                            value={ruleForm.priority}
+                            onChange={(event) =>
+                              setRuleForm((current) => ({
+                                ...current,
+                                priority: event.target.value,
+                              }))
+                            }
+                          />
+                        </AccessibleField>
+                        <AccessibleField className="space-y-2">
+                          <Label>Cuenta</Label>
+                          <Select
+                            value={ruleForm.accountId}
+                            onValueChange={(value) => {
+                              setRuleForm((current) => ({
+                                ...current,
+                                accountId: value,
+                                accountEnvelopeId: NONE,
+                              }))
+                              if (value !== NONE)
+                                void ensureEnvelopesLoaded(Number.parseInt(value, 10))
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={NONE}>Sin cuenta de destino</SelectItem>
+                              {accounts.map((account) => (
+                                <SelectItem key={account.id} value={String(account.id)}>
+                                  {account.name} ({account.currency})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </AccessibleField>
+                        <AccessibleField className="space-y-2">
+                          <Label>Sobre</Label>
+                          <Select
+                            value={ruleForm.accountEnvelopeId}
+                            onValueChange={(value) =>
+                              setRuleForm((current) => ({ ...current, accountEnvelopeId: value }))
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={NONE}>Sin sobre de destino</SelectItem>
+                              {selectedEnvelopes.map((envelope) => (
+                                <SelectItem
+                                  key={envelope.envelopeId}
+                                  value={String(envelope.envelopeId)}
+                                >
+                                  {envelope.categoryName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </AccessibleField>
+                        <AccessibleField className="space-y-2 md:col-span-2">
+                          <Label>Notas</Label>
+                          <Textarea
+                            rows={3}
+                            value={ruleForm.notes}
+                            onChange={(event) =>
+                              setRuleForm((current) => ({ ...current, notes: event.target.value }))
+                            }
+                          />
+                        </AccessibleField>
+                        <div className="flex items-center justify-between rounded-lg border px-3 py-2 md:col-span-2">
+                          <div>
+                            <p className="font-medium">Regla activa</p>
+                            <p className="text-sm text-muted-foreground">
+                              Las reglas inactivas se conservan y no se usan para sugerir
+                              asignaciones.
+                            </p>
+                          </div>
+                          <Switch
+                            aria-label="Regla activa"
+                            checked={ruleForm.isActive}
+                            onCheckedChange={(checked) =>
+                              setRuleForm((current) => ({ ...current, isActive: checked }))
+                            }
+                          />
+                        </div>
+                        {ruleFormError && (
+                          <AccessibleFieldError className="text-sm text-destructive md:col-span-2">
+                            {ruleFormError}
+                          </AccessibleFieldError>
+                        )}
+                        <div className="flex gap-2 md:col-span-2 md:justify-end">
+                          <Button type="button" variant="outline" onClick={resetRuleForm}>
+                            Cancelar
+                          </Button>
+                          <Button type="button" onClick={() => void saveRule()} disabled={ruleBusy}>
+                            {editingRuleId ? "Guardar regla" : "Crear regla"}
+                          </Button>
+                        </div>
+                      </fieldset>
+                    )}
+                    {!loading && !loadErrors.rules && rules.length === 0 ? (
+                      <Alert>
+                        <AlertTitle>No hay reglas configuradas</AlertTitle>
+                        <AlertDescription>
+                          Crea reglas para descripciones habituales, como suscripciones, salarios o
+                          transferencias.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <ul aria-label="Reglas configuradas">
                         {rules.map((rule) => (
-                          <TableRow key={rule.id}>
-                            <TableCell className="min-w-48">
-                              <p className="font-medium">{rule.pattern}</p>
-                              {rule.notes && (
-                                <p className="text-xs text-muted-foreground">{rule.notes}</p>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{rule.matchType}</Badge>
-                            </TableCell>
-                            <TableCell className="min-w-64">
-                              {rule.accountEnvelopeLabel || rule.accountName || "Sin asignar"}
-                            </TableCell>
-                            <TableCell>{rule.priority}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
+                          <li key={rule.id} className={styles.rule}>
+                            <h3>{rule.pattern}</h3>
+                            {rule.notes && (
+                              <p className="mt-1 text-sm text-muted-foreground">{rule.notes}</p>
+                            )}
+                            <dl>
+                              <dt>Coincidencia</dt>
+                              <dd>{matchLabels[rule.matchType]}</dd>
+                              <dt>Destino</dt>
+                              <dd>{ruleDestination(rule)}</dd>
+                              <dt>Prioridad</dt>
+                              <dd>{rule.priority}</dd>
+                            </dl>
+                            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex items-center gap-2">
                                 <Switch
                                   aria-label={"Regla activa: " + rule.pattern}
                                   checked={rule.isActive}
-                                  onCheckedChange={(checked) =>
+                                  disabled={
+                                    togglingRule !== null || ruleBusy || loadErrors.rules || loading
+                                  }
+                                  onCheckedChange={(checked) => {
+                                    if (togglePending.current) return
+                                    togglePending.current = true
+                                    setTogglingRule(rule.id)
+                                    testRevision.current++
+                                    setTestResult(null)
                                     void toggleAutoAssignmentRuleStatus(rule.id, checked)
                                       .then((updated) =>
                                         setRules((current) =>
@@ -617,117 +686,136 @@ export function SettingsContent() {
                                           title: "No se actualizó el estado",
                                           description: messageOf(
                                             cause,
-                                            "No pudimos cambiar el estado de la regla. Vuelve a intentar.",
+                                            "Vuelve a consultar la regla antes de reintentar.",
                                           ),
                                           variant: "destructive",
                                         }),
                                       )
-                                  }
+                                      .finally(() => {
+                                        togglePending.current = false
+                                        setTogglingRule(null)
+                                      })
+                                  }}
                                 />
                                 <span className="text-sm">
-                                  {rule.isActive ? "Activo" : "Inactivo"}
+                                  {rule.isActive ? "Activa" : "Inactiva"}
                                 </span>
                               </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  aria-label={`Edit rule ${rule.pattern}`}
-                                  title={`Edit rule ${rule.pattern}`}
-                                  onClick={() => void openRuleForm(rule)}
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={
+                                  ruleBusy ||
+                                  loading ||
+                                  loadErrors.rules ||
+                                  loadErrors.accounts ||
+                                  togglingRule !== null
+                                }
+                                aria-label={`Editar regla ${rule.pattern}`}
+                                onClick={() => void openRuleForm(rule)}
+                              >
+                                <Edit2 aria-hidden="true" className="size-4" />
+                                Editar
+                              </Button>
+                            </div>
+                          </li>
                         ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Probar reglas</CardTitle>
-                <CardDescription>Comprueba las reglas activas con una descripción.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <AccessibleField className="space-y-2">
-                  <Label htmlFor="rule-test">Descripción del movimiento</Label>
-                  <Textarea
-                    id="rule-test"
-                    rows={4}
-                    value={testDescription}
-                    onChange={(event) => setTestDescription(event.target.value)}
-                    placeholder="Suscripción mensual de Spotify"
-                  />
-                </AccessibleField>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    if (!testDescription.trim())
-                      return toast({
-                        title: "Falta la descripción",
-                        description: "Introduce primero la descripción de un movimiento.",
-                        variant: "destructive",
-                      })
-                    setTestingRules(true)
-                    void testAutoAssignmentRule(testDescription)
-                      .then(setTestResult)
-                      .catch((cause) =>
-                        toast({
-                          title: "No se completó la prueba",
-                          description: messageOf(
-                            cause,
-                            "No pudimos probar las reglas activas. Vuelve a intentar.",
-                          ),
-                          variant: "destructive",
-                        }),
-                      )
-                      .finally(() => setTestingRules(false))
-                  }}
-                  disabled={testingRules}
-                >
-                  <ShieldCheck className="mr-2 h-4 w-4" />
-                  Probar reglas activas
-                </Button>
-                {testResult && (
-                  <div className="rounded-lg border p-4 text-sm">
-                    <p className="font-medium">
-                      {testResult.matched
-                        ? `Matched ${testResult.matches.length} rule${testResult.matches.length === 1 ? "" : "s"}`
-                        : "Ninguna regla activa coincide"}
-                    </p>
-                    {testResult.matchedRule && (
-                      <div className="mt-3 space-y-1">
-                        <p>
-                          <span className="text-muted-foreground">Patrón:</span>{" "}
-                          {testResult.matchedRule.pattern}
+                      </ul>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Probar reglas</CardTitle>
+                    <CardDescription>
+                      Simula una descripción. Esta prueba no crea movimientos ni modifica registros.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <AccessibleField className="space-y-2">
+                      <Label htmlFor="rule-test">Descripción del movimiento</Label>
+                      <Textarea
+                        id="rule-test"
+                        rows={4}
+                        value={testDescription}
+                        onChange={(event) => {
+                          testRevision.current++
+                          setTestDescription(event.target.value)
+                          setTestResult(null)
+                          setTestError(null)
+                        }}
+                        placeholder="Suscripción mensual de Spotify"
+                      />
+                    </AccessibleField>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (testPending.current || !testDescription.trim()) return
+                        const revision = ++testRevision.current
+                        testPending.current = true
+                        setTestingRules(true)
+                        setTestResult(null)
+                        setTestError(null)
+                        void testAutoAssignmentRule(testDescription.trim())
+                          .then((result) => {
+                            if (revision === testRevision.current) setTestResult(result)
+                          })
+                          .catch(() => {
+                            if (revision === testRevision.current)
+                              setTestError("No pudimos probar las reglas. Vuelve a intentar.")
+                          })
+                          .finally(() => {
+                            testPending.current = false
+                            setTestingRules(false)
+                          })
+                      }}
+                      disabled={
+                        testingRules ||
+                        !testDescription.trim() ||
+                        loading ||
+                        loadErrors.rules ||
+                        ruleBusy ||
+                        togglingRule !== null
+                      }
+                    >
+                      <ShieldCheck className="mr-2 h-4 w-4" />
+                      Probar reglas activas
+                    </Button>
+                    {testError && (
+                      <Feedback tone="error" title="Prueba no disponible">
+                        {testError}
+                      </Feedback>
+                    )}
+                    {testResult && (
+                      <div role="status" className={`${styles.hint} text-sm`}>
+                        <p className="font-medium">
+                          {testResult.matched
+                            ? `${testResult.matches.length} ${testResult.matches.length === 1 ? "regla coincide" : "reglas coinciden"}`
+                            : "Ninguna regla activa coincide"}
                         </p>
-                        <p>
-                          <span className="text-muted-foreground">Destino:</span>{" "}
-                          {testResult.matchedRule.accountEnvelopeLabel ||
-                            testResult.matchedRule.accountName ||
-                            "Sin asignar"}
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">Prioridad:</span>{" "}
-                          {testResult.matchedRule.priority}
-                        </p>
+                        <p className="mt-2">Descripción probada: {testResult.description}</p>
+                        {testResult.matchedRule && (
+                          <div className="mt-3 space-y-1">
+                            <p>
+                              <span>Regla seleccionada:</span> {testResult.matchedRule.pattern}
+                            </p>
+                            <p>
+                              <span>Destino:</span> {ruleDestination(testResult.matchedRule)}
+                            </p>
+                            <p>
+                              <span>Prioridad:</span> {testResult.matchedRule.priority}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+          )}
+        </div>
+      )}
     </div>
   )
 }

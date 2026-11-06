@@ -231,6 +231,7 @@ const getErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
 async function request<T>(path: string, options?: RequestOptions): Promise<T> {
   const response = await fetch(buildUrl(path, options?.query), {
     method: options?.method ?? "GET",
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Accept: "application/json",
       ...(options?.body ? { "Content-Type": "application/json" } : {}),
@@ -296,8 +297,18 @@ const mapExchangeRateLookup = (raw: unknown): ExchangeRateLookup => {
 }
 
 const mapAutoAssignmentRule = (raw: unknown): AutoAssignmentRule => {
+  if (!raw || typeof raw !== "object")
+    throw new Error("Regla no disponible. Actualiza los ajustes.")
   const item = raw as Record<string, unknown>
-  return {
+  if (
+    typeof item.priority !== "number" ||
+    !["CONTAINS", "STARTS_WITH", "ENDS_WITH", "EXACT", "REGEX"].includes(
+      String(item.matchType ?? item.match_type),
+    ) ||
+    ![true, false, 0, 1].includes((item.isActive ?? item.is_active) as boolean | number)
+  )
+    throw new Error("Regla no disponible. Actualiza los ajustes.")
+  const result = {
     id: toNumber(item.id),
     userId: toNumber(item.userId ?? item.user_id),
     pattern: toStringValue(item.pattern),
@@ -336,6 +347,15 @@ const mapAutoAssignmentRule = (raw: unknown): AutoAssignmentRule => {
     createdAt: toStringValue(item.createdAt ?? item.created_at),
     updatedAt: toStringValue(item.updatedAt ?? item.updated_at),
   }
+  if (
+    !Number.isSafeInteger(result.id) ||
+    result.id <= 0 ||
+    !Number.isSafeInteger(result.priority) ||
+    !result.pattern ||
+    !["CONTAINS", "STARTS_WITH", "ENDS_WITH", "EXACT", "REGEX"].includes(result.matchType)
+  )
+    throw new Error("Regla no disponible. Actualiza los ajustes.")
+  return result
 }
 
 const mapCashDenomination = (raw: unknown): CashDenomination => {
@@ -571,7 +591,15 @@ export async function fetchAutoAssignmentRules(userId = SETTINGS_USER_ID) {
     query: { userId },
   })
 
-  return Array.isArray(data) ? data.map(mapAutoAssignmentRule) : []
+  if (!Array.isArray(data))
+    throw new Error("No pudimos verificar las reglas. Actualiza los ajustes.")
+  const rules = data.map(mapAutoAssignmentRule)
+  if (
+    new Set(rules.map((rule) => rule.id)).size !== rules.length ||
+    rules.some((rule) => rule.userId !== userId)
+  )
+    throw new Error("No pudimos verificar las reglas. Actualiza los ajustes.")
+  return rules
 }
 
 export async function createAutoAssignmentRule(
@@ -670,11 +698,26 @@ export async function testAutoAssignmentRule(description: string, userId = SETTI
     },
   })
 
+  if (
+    !data ||
+    typeof data.description !== "string" ||
+    typeof data.matched !== "boolean" ||
+    !Array.isArray(data.matches)
+  )
+    throw new Error("El resultado de la prueba no está disponible.")
+  const matches = data.matches.map(mapAutoAssignmentRule)
+  const matchedRule = data.matchedRule ? mapAutoAssignmentRule(data.matchedRule) : null
+  if (
+    data.matched !== matches.length > 0 ||
+    data.matched !== (matchedRule !== null) ||
+    (matchedRule && !matches.some((rule) => rule.id === matchedRule.id))
+  )
+    throw new Error("El resultado de la prueba no está disponible.")
   return {
     description: data.description,
     matched: data.matched,
-    matchedRule: data.matchedRule ? mapAutoAssignmentRule(data.matchedRule) : null,
-    matches: Array.isArray(data.matches) ? data.matches.map(mapAutoAssignmentRule) : [],
+    matchedRule,
+    matches,
   } satisfies AutoAssignmentRuleTestResult
 }
 
