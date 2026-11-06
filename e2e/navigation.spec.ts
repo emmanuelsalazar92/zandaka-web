@@ -97,7 +97,7 @@ for (const width of [360, 390, 1440]) {
             // so geometry and screenshots cannot accidentally audit the loading-only header.
             if (route === "/envelopes")
               await expect(
-                page.getByRole("combobox", { name: "Cuenta de los sobres" }),
+                page.getByRole("button", { name: "Cuenta de los sobres", exact: true }),
               ).toBeVisible()
             if (route === "/reconciliation")
               await expect(
@@ -108,7 +108,11 @@ for (const width of [360, 390, 1440]) {
                 page.getByRole("button", { name: "Finalizar", exact: true }),
               ).toBeVisible()
             if (route === "/settings")
-              await expect(page.getByRole("tab", { name: "Perfil", exact: true })).toBeVisible()
+              await expect(
+                page
+                  .getByRole("navigation", { name: "Secciones de ajustes" })
+                  .getByRole("link", { name: "Perfil y preferencias", exact: true }),
+              ).toBeVisible()
             await page.evaluate((size) => {
               document.documentElement.style.fontSize = `${size}%`
             }, scale)
@@ -146,11 +150,20 @@ for (const width of [360, 390, 1440]) {
       await related.focus()
       await expect(related).toBeFocused()
       await related.press("Enter")
-      await expect(page).toHaveURL(new RegExp(target + "$"))
+      await expect(page).toHaveURL(
+        (url) => url.pathname === target && url.searchParams.get("returnTo") === origin,
+      )
       await expect(page.locator("#main-content")).toBeFocused()
-      await page.getByRole("link", { name: "Volver a Ajustes", exact: true }).click()
-      await expect(page).toHaveURL(/\/settings$/)
+      const returnLabel =
+        origin === "/accounts"
+          ? "Volver a Cuentas"
+          : origin === "/envelopes"
+            ? "Volver a Sobres"
+            : "Volver a Presupuestos"
+      await page.getByRole("link", { name: returnLabel, exact: true }).click()
+      await expect(page).toHaveURL((url) => url.pathname === origin && !url.search)
     }
+    await page.goto("/settings")
     if (width < 768)
       await page.getByRole("button", { name: "Abrir navegación", exact: true }).click()
     const sidebar = page.locator('[data-sidebar="sidebar"]').filter({ visible: true })
@@ -204,17 +217,19 @@ for (const state of ["empty", "error", "loading"] as const) {
     await expect(
       page.getByText(
         state === "empty"
-          ? "No hay cuentas activas"
+          ? "Primero, una cuenta"
           : state === "error"
-            ? "No pudimos cargar los sobres"
-            : "Cargando sobres…",
+            ? "Cuentas por confirmar"
+            : "Cargando cuentas…",
         { exact: true },
       ),
     ).toBeVisible()
     await expect(page.getByRole("heading", { level: 1, name: "Sobres" })).toBeVisible()
     await expect(page.getByRole("link", { name: "Gestionar categorías" })).toBeVisible()
     await page.getByRole("link", { name: "Gestionar categorías" }).click()
-    await expect(page).toHaveURL(/\/categories$/)
+    await expect(page).toHaveURL(
+      (url) => url.pathname === "/categories" && url.searchParams.get("returnTo") === "/envelopes",
+    )
     const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
     expect(axe.violations.map((v) => v.id)).toEqual([])
   })
