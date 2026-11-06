@@ -1,0 +1,232 @@
+.page {
+  min-width: 0;
+  container-type: inline-size;
+  overflow-wrap: anywhere;
+}
+.hero {
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  background: linear-gradient(115deg, var(--brand-deep), var(--hero-end));
+  color: var(--hero-foreground);
+}
+.heroTop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+}
+.heroCaption {
+  color: var(--hero-caption);
+  font-size: 0.8rem;
+  line-height: 1.65;
+}
+.amount {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.heroAmount {
+  font-size: clamp(1.8rem, 5cqi, 3.5rem);
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -0.055em;
+  margin-block: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+.heroChoices {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+.heroChoices button {
+  color: inherit;
+  border: 1px solid currentColor;
+  background: transparent;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  min-height: 2.75rem;
+  font-size: 0.875rem;
+}
+.heroChoices button[aria-pressed="true"] {
+  background: white;
+  color: var(--brand-deep);
+}
+.hero button:focus-visible,
+.hero a:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 4px;
+}
+.heroLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: inherit;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+  margin-top: 0.75rem;
+}
+.title {
+  font-size: 1.25rem;
+  letter-spacing: -0.025em;
+  font-weight: 650;
+}
+.caption {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.65;
+  font-weight: 400;
+  margin-top: 0.25rem;
+}
+.heading,
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+}
+.heading > *,
+.toolbar > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.toolbar {
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.toolbar > div {
+  flex: 1 1 12rem;
+}
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+}
+.actions > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  padding-block: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+.row > * {
+  min-width: 0;
+}
+.rowName {
+  font-weight: 600;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+.rowAmount {
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.groups {
+  display: grid;
+  gap: 2rem;
+}
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+.body > * {
+  min-width: 0;
+}
+.context {
+  background: var(--marea-teal);
+  color: var(--marea-teal-ink);
+  border-radius: 1.5rem;
+  padding: 1.25rem;
+  min-width: 0;
+}
+.context .caption {
+  color: inherit;
+}
+.contextList li {
+  border-bottom: 1px solid currentColor;
+  padding-block: 0.75rem;
+  min-width: 0;
+}
+.context a {
+  display: block;
+  min-height: 2.75rem;
+  padding-block: 0.3rem;
+  font-size: 0.875rem;
+}
+.context a:hover {
+  text-decoration: underline;
+}
+.bar {
+  height: 0.3rem;
+  background: var(--border);
+  border-radius: 1rem;
+  margin-top: 0.5rem;
+}
+.bar span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  border-radius: inherit;
+}
+.status {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+.inlineForm {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.inlineForm > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.page[data-density="compact"] .row {
+  padding-block: 0.75rem;
+}
+.density {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+@container (min-width: 36rem) {
+  .hero {
+    padding: 2rem;
+  }
+  .row {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: center;
+  }
+  .row > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+@container (min-width: 62rem) {
+  .heroTop {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    align-items: end;
+  }
+  .body {
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+  }
+}

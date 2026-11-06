@@ -37,7 +37,7 @@ export function ReconciliationContent() {
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const id = dashboardAccountId(params.get("accountId"))
-    if (params.get("source") === "dashboard" && id) setAccount(id)
+    if (["dashboard", "account-context"].includes(params.get("source") ?? "") && id) setAccount(id)
   }, [])
   const [notice, setNotice] = React.useState<{ title: string; description: string } | null>(null)
   const createTrigger = React.useRef<HTMLButtonElement>(null),

@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { canDeactivateContextAccount } from "@/lib/account-context"
 
 type AccountDeactivateDialogProps = {
   open: boolean
@@ -19,6 +20,8 @@ type AccountDeactivateDialogProps = {
   loading: boolean
   error: string | null
   onConfirm: () => void
+  uncertain?: boolean
+  returnFocus?: () => void
 }
 
 export function AccountDeactivateDialog({
@@ -29,19 +32,28 @@ export function AccountDeactivateDialog({
   loading,
   error,
   onConfirm,
+  uncertain = false,
+  returnFocus,
 }: AccountDeactivateDialogProps) {
   const account = accounts.find((item) => item.id === deactivateId)
   const isActive = account?.active ?? true
-  const isBlocked = isActive && (account?.activeEnvelopesCount || 0) > 0
+  const isBlocked = !account || !canDeactivateContextAccount(account)
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent data-testid="deactivate-form">
+      <AlertDialogContent
+        data-testid="deactivate-form"
+        onCloseAutoFocus={(event) => {
+          if (returnFocus) {
+            event.preventDefault()
+            returnFocus()
+          }
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{isActive ? "Desactivar" : "Activar"} cuenta</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta acción permitirá {isActive ? "deactivate" : "activate"} la cuenta. Puedes revertir
-            este cambio cuando lo necesites.
+            La cuenta dejará de aparecer entre las activas. Sus movimientos históricos se conservan.
           </AlertDialogDescription>
           {isBlocked ? (
             <AccessibleFieldError className="text-sm text-error">
@@ -58,7 +70,7 @@ export function AccountDeactivateDialog({
             type="button"
             data-testid="deactivate-submit"
             onClick={onConfirm}
-            disabled={loading || isBlocked}
+            disabled={loading || isBlocked || uncertain}
           >
             {loading ? "Procesando…" : "Confirmar"}
           </Button>

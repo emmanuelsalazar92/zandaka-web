@@ -16,6 +16,8 @@ Hay dos repositorios y dos imágenes: zandaka-web y zandaka-api. Ambos trabajan 
 
 ## Integración continua
 
+ZA-102 adopta [Cuentas y Sobres Marea](accounts-envelopes.md): saldos por moneda, contexto de cuenta, distribución positiva, búsqueda/densidad, actividad filtrada y creación integrada de institución/categoría. Solo web, sin nuevos endpoints, DB o recálculos. Trabajo del 6 de noviembre en commit local, sin push ni deploy; la compatibilidad API de ZA-99 incluida en esta web sigue vigente. No sustituye la entrega real de testing registrada arriba.
+
 ZA-99 completa [Resumen Marea](dashboard.md): gastos y actividad comparten período, las incidencias llevan a cuenta/sobre exactos y el saldo conserva su alcance registrado. Requiere API del mismo bloque con el filtro opcional type=EXPENSE en monthly-expenses. Sin nuevos requisitos de DB. Implementación del 6 de noviembre solo en commits locales, sin push ni deploy; no sustituye la última entrega de testing registrada arriba.
 
 CI se ejecuta para pull requests, pushes a main/staging, etiquetas de versión y ejecución manual. Primero pasan formato, lint, tipos, tests y build. La publicación de la imagen es un trabajo dependiente de quality y reutiliza docker-image.yml. El workflow reutilizable no se ejecuta por separado en cada push.

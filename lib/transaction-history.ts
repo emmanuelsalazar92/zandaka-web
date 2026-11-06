@@ -15,6 +15,16 @@ export const emptyHistoryFilters = {
 export type HistoryFilters = typeof emptyHistoryFilters
 export const historyPageSizes = [10, 25, 50, 100]
 
+export function accountContextHistoryFilters(params: URLSearchParams): HistoryFilters | null {
+  if (params.get("source") !== "account-context") return null
+  if (params.getAll("accountId").length !== 1 || params.getAll("categoryId").length > 1) return null
+  const accountId = dashboardAccountId(params.get("accountId"))
+  const categoryId = params.has("categoryId") ? dashboardAccountId(params.get("categoryId")) : "ALL"
+  return accountId && categoryId
+    ? { ...emptyHistoryFilters, accountId, envelopeId: categoryId }
+    : null
+}
+
 /** Dashboard links deliberately scope either a month or one account/category. */
 export function dashboardHistoryFilters(params: URLSearchParams): HistoryFilters | null {
   if (params.get("source") !== "dashboard") return null

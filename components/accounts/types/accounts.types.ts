@@ -12,12 +12,13 @@ export type AccountUi = {
   name: string
   institution: string
   currency: string
-  balance: number
+  balance: number | null
   active: boolean
-  hasActiveEnvelopes: boolean
-  activeEnvelopesCount: number
+  hasActiveEnvelopes: boolean | null
+  activeEnvelopesCount: number | null
   allowOverdraft: boolean
   type: string | null
+  institutionId?: number | null
 }
 
 export type AccountFormData = {

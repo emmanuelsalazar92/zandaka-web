@@ -12,8 +12,8 @@
   --study-brand: #245bdb;
   --study-brand-soft: #e7efff;
   --study-brand-ink: #163f9d;
-  --study-teal: #d5f1eb;
-  --study-teal-ink: #075751;
+  --study-teal: var(--marea-teal);
+  --study-teal-ink: var(--marea-teal-ink);
   --study-negative: #a83028;
   --study-negative-bg: #fff0ed;
   color: var(--study-ink);
@@ -25,8 +25,8 @@
   --study-brand: #9bbaff;
   --study-brand-soft: #223354;
   --study-brand-ink: #bed2ff;
-  --study-teal: #173d3a;
-  --study-teal-ink: #9be7dc;
+  --study-teal: var(--marea-teal);
+  --study-teal-ink: var(--marea-teal-ink);
   --study-negative: #ffa396;
   --study-negative-bg: #3c2525;
 }

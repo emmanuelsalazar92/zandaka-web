@@ -11,6 +11,8 @@
   --marea-ink: #16283a;
   --marea-muted: #566372;
   --marea-line: #d6dde5;
+  --marea-teal: #d5f1eb;
+  --marea-teal-ink: #075751;
   /* Background & Surface Colors */
   --background: #f4f7fb;
   --foreground: #172b46;
@@ -93,6 +95,8 @@
   --marea-ink: #f4f5f7;
   --marea-muted: #b9c0ca;
   --marea-line: #3c424a;
+  --marea-teal: #173d3a;
+  --marea-teal-ink: #9be7dc;
   /* Background & Surface Colors */
   --control-border: #6882a3;
   --elevation-surface: 0 2px 8px #00000024;

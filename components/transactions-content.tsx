@@ -51,6 +51,7 @@ import {
 import {
   emptyHistoryFilters,
   dashboardHistoryFilters,
+  accountContextHistoryFilters,
   reconciliationHistoryFilters,
   historyFilterError,
   type HistoryFilters,
@@ -115,7 +116,10 @@ export function TransactionsContent() {
   const [fromReconciliation, setFromReconciliation] = React.useState(false)
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    const initial = reconciliationHistoryFilters(params) ?? dashboardHistoryFilters(params)
+    const initial =
+      reconciliationHistoryFilters(params) ??
+      dashboardHistoryFilters(params) ??
+      accountContextHistoryFilters(params)
     if (initial) {
       setDraftFilters(initial)
       setFilters(initial)

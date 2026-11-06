@@ -180,11 +180,11 @@ for (const variant of ["marea", "faro"] as const)
     })
   }
 
-// Actual pre-ZA-111 route, not a reconstruction. Transport uses the very same fixture
-// as both proposals; this captures the before state without accessing the real API.
+// The original ZA-111 evidence remains historical. This regression now renders the
+// adopted ZA-102 screen with that same fictional data, without accessing a real API.
 for (const width of [360, 390, 1440])
   for (const theme of ["light", "dark"] as const)
-    test(`before reference ${width}px ${theme}: actual Sobres with identical data`, async ({
+    test(`current Sobres ${width}px ${theme}: reference data after Marea adoption`, async ({
       page,
     }, info) => {
       await page.setViewportSize({ width, height: 1000 })
@@ -202,6 +202,9 @@ for (const width of [360, 390, 1440])
               type: "BANK",
               balance: context.balance,
               is_active: 1,
+              allow_overdraft: 0,
+              has_active_envelopes: context.rows.length > 0,
+              active_envelopes_count: context.rows.length,
             },
           ],
         }),
@@ -221,7 +224,7 @@ for (const width of [360, 390, 1440])
       await expect(page.getByText("Reserva de tranquilidad", { exact: true }).first()).toBeVisible()
       await expect(page.getByText("Un nuevo propósito", { exact: true })).toBeVisible()
       await page.screenshot({
-        path: info.outputPath(`before-${width}-${theme}.png`),
+        path: info.outputPath(`current-sobres-${width}-${theme}.png`),
         fullPage: true,
       })
       await info.attach("same-fictional-fixture", {

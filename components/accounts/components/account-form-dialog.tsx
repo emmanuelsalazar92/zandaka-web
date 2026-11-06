@@ -1,5 +1,6 @@
 import * as React from "react"
 
+import { InstitutionQuickCreate } from "@/components/accounts/components/institution-quick-create"
 import type { AccountFormData, InstitutionUi } from "@/components/accounts/types/accounts.types"
 import { AccessibleField } from "@/components/ui/accessible-field"
 import { Button } from "@/components/ui/button"
@@ -12,17 +13,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Feedback } from "@/components/ui/feedback"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
+import { Switch } from "@/components/ui/switch"
 
-type AccountFormDialogProps = {
+type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   title: string
@@ -38,8 +35,12 @@ type AccountFormDialogProps = {
   trigger?: React.ReactNode
   idPrefix?: string
   mode: "create" | "edit"
+  institutionsLoading?: boolean
+  institutionsError?: string | null
+  onInstitutionsReload?: () => void
+  onInstitutionCreated?: (institution: InstitutionUi) => void
+  returnFocus?: () => void
 }
-
 export function AccountFormDialog({
   open,
   onOpenChange,
@@ -56,110 +57,145 @@ export function AccountFormDialog({
   trigger,
   idPrefix = "account",
   mode,
-}: AccountFormDialogProps) {
-  const isCreateMode = mode === "create"
-
+  institutionsLoading = false,
+  institutionsError = null,
+  onInstitutionsReload,
+  onInstitutionCreated,
+  returnFocus,
+}: Props) {
+  const [quickBusy, setQuickBusy] = React.useState(false)
+  const busy = loading || quickBusy
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent data-testid="account-form">
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!busy) onOpenChange(value)
+      }}
+    >
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+      <DialogContent
+        data-testid="account-form"
+        className="marea-surface"
+        onCloseAutoFocus={(event) => {
+          if (returnFocus) {
+            event.preventDefault()
+            returnFocus()
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-institution`}>Institución</Label>
-            {isCreateMode ? (
-              <>
-                {loading ? (
-                  <div className="py-6 text-center text-muted-foreground">
-                    Cargando instituciones…
-                  </div>
-                ) : null}
-                {error ? <div className="py-6 text-center text-error">{error}</div> : null}
-                {!loading && !error ? (
-                  <Select
-                    value={formData.institutionId}
-                    onValueChange={(value) =>
-                      onFormDataChange({ ...formData, institutionId: value })
-                    }
-                  >
-                    <SelectTrigger
-                      id={`${idPrefix}-institution`}
-                      data-testid="select-institution"
-                      aria-label="Institución"
-                    >
-                      <SelectValue placeholder="Elige una institución" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {institutions.map((inst) => (
-                        <SelectItem key={inst.id} value={String(inst.id)}>
-                          {inst.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : null}
-              </>
-            ) : (
-              <Input
-                id={`${idPrefix}-institution`}
-                data-testid="select-institution"
-                aria-label="Institución"
-                value={formData.institutionId}
-                disabled
-              />
-            )}
-          </div>
-
-          <AccessibleField className="space-y-2">
+        <div className="space-y-4 py-2">
+          <AccessibleField className="min-w-0 space-y-2">
             <Label htmlFor={`${idPrefix}-name`}>Nombre de la cuenta</Label>
             <Input
               id={`${idPrefix}-name`}
-              placeholder="Por ejemplo, Cuenta principal"
               data-testid="account-name"
-              aria-label="Nombre de la cuenta"
               value={formData.name}
-              onChange={(e) => onFormDataChange({ ...formData, name: e.target.value })}
+              disabled={loading}
+              maxLength={255}
+              onChange={(event) => onFormDataChange({ ...formData, name: event.target.value })}
+              placeholder="Por ejemplo, Cuenta principal"
             />
           </AccessibleField>
-
-          <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-currency`}>Moneda (no se puede cambiar)</Label>
-            {isCreateMode ? (
-              <Select
-                value={formData.currency}
-                onValueChange={(value) => onFormDataChange({ ...formData, currency: value })}
-              >
-                <SelectTrigger
-                  id={`${idPrefix}-currency`}
-                  data-testid="select-currency"
-                  aria-label="Moneda"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CRC">CRC · Colón costarricense</SelectItem>
-                  <SelectItem value="USD">USD · Dólar estadounidense</SelectItem>
-                </SelectContent>
-              </Select>
+          <AccessibleField className="min-w-0 space-y-2">
+            <Label htmlFor={`${idPrefix}-institution`}>Institución</Label>
+            {mode === "create" ? (
+              <SearchableSelect
+                id={`${idPrefix}-institution`}
+                data-testid="select-institution"
+                value={formData.institutionId}
+                onValueChange={(institutionId) => onFormDataChange({ ...formData, institutionId })}
+                options={institutions
+                  .filter((row) => row.status === "Active")
+                  .map((row) => ({ value: String(row.id), label: row.name }))}
+                loading={institutionsLoading}
+                disabled={loading || institutionsLoading}
+                searchLabel="Buscar institución"
+                placeholder="Elige una institución"
+              />
             ) : (
-              <Input
+              <Input id={`${idPrefix}-institution`} value={formData.institutionId} disabled />
+            )}
+          </AccessibleField>
+          {mode === "create" && (
+            <>
+              {institutionsError && (
+                <Feedback tone="error" title="Instituciones por confirmar">
+                  <p>{institutionsError}</p>
+                  <Button type="button" variant="outline" onClick={onInstitutionsReload}>
+                    Consultar instituciones
+                  </Button>
+                </Feedback>
+              )}
+              {onInstitutionCreated && (
+                <InstitutionQuickCreate
+                  onCreated={onInstitutionCreated}
+                  onBusy={setQuickBusy}
+                  onReload={onInstitutionsReload ?? (() => {})}
+                />
+              )}
+            </>
+          )}
+          <AccessibleField className="min-w-0 space-y-2">
+            <Label htmlFor={`${idPrefix}-currency`}>Moneda de la cuenta</Label>
+            {mode === "create" ? (
+              <SearchableSelect
                 id={`${idPrefix}-currency`}
                 data-testid="select-currency"
-                aria-label="Moneda"
                 value={formData.currency}
-                disabled
+                onValueChange={(currency) => onFormDataChange({ ...formData, currency })}
+                disabled={busy}
+                options={[
+                  { value: "CRC", label: "CRC · Colón costarricense" },
+                  { value: "USD", label: "USD · Dólar estadounidense" },
+                ]}
               />
+            ) : (
+              <Input id={`${idPrefix}-currency`} value={formData.currency} disabled />
             )}
-          </div>
+          </AccessibleField>
+          <p className="text-xs text-muted-foreground">
+            La institución y la moneda se conservan después de crear la cuenta. No se agregan fondos
+            con este formulario.
+          </p>
+          {mode === "create" && (
+            <AccessibleField className="flex flex-wrap items-center gap-3">
+              <Switch
+                id={`${idPrefix}-overdraft`}
+                checked={formData.allowOverdraft}
+                onCheckedChange={(allowOverdraft) =>
+                  onFormDataChange({ ...formData, allowOverdraft })
+                }
+                disabled={busy}
+              />
+              <Label htmlFor={`${idPrefix}-overdraft`}>Permitir sobregiro</Label>
+            </AccessibleField>
+          )}
+          {error && (
+            <Feedback tone="error" title="Cuenta por revisar">
+              {error}
+            </Feedback>
+          )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={() => onOpenChange(false)}
+          >
             Cancelar
           </Button>
-          <Button onClick={onSubmit} data-testid="submit-create-account" disabled={submitDisabled}>
+          <Button
+            type="button"
+            data-testid="submit-create-account"
+            disabled={submitDisabled || busy || !formData.name.trim()}
+            loading={loading}
+            onClick={onSubmit}
+          >
             {submitLabel}
           </Button>
         </DialogFooter>

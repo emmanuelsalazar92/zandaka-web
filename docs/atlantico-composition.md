@@ -56,6 +56,8 @@ Adopción de Marea: conservar el saldo como protagonista cobalto, filas abiertas
 
 ## Registro del propietario
 
+ZA-102 adopta Marea en las rutas reales [Cuentas y Sobres](accounts-envelopes.md), con datos de la API existente, saldo protagonista, filas abiertas y contexto turquesa. Sus roles turquesa aprobados se centralizan como `--marea-teal` / `--marea-teal-ink` en globals.css; la referencia los consume mediante alias, conservando exactamente sus colores claros/oscuros. `/design-reference` permanece ficticia. La evidencia original de ZA-111 del 4 de noviembre se conserva como historia; la regresión de la ruta actual usa la misma fixture y etiqueta sus capturas como actuales, sin presentarlas como la UI anterior a la adopción.
+
 | Fecha      | Comentario                                                                                         | Decisión                                                    |
 | ---------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | 2026-11-03 | La interfaz se siente más elegante, pero demasiado blanca en claro y uniformemente azul en oscuro. | Elaborar dos composiciones completas dentro de Atlántico.   |

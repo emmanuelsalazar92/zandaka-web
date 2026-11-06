@@ -1,25 +1,17 @@
 "use client"
 
-import {
-  AlertTriangle,
-  ArrowRightLeft,
-  Landmark,
-  Layers3,
-  MinusCircle,
-  Plus,
-  TrendingDown,
-  Wallet,
-  XCircle,
-} from "lucide-react"
+import { RefreshCw, XCircle } from "lucide-react"
+import Link from "next/link"
 import * as React from "react"
 
-import { EmptyState } from "@/components/empty-state"
+import styles from "@/components/accounts/account-context.module.css"
+import { ContextControls } from "@/components/accounts/components/context-controls"
+import { useContextRead } from "@/components/accounts/hooks/use-context-read"
+import { LinkEnvelopeDialog } from "@/components/envelopes/link-envelope-dialog"
 import { PageHeader } from "@/components/page-header"
-import { AccessibleFieldError, AccessibleField } from "@/components/ui/accessible-field"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AccessibleField } from "@/components/ui/accessible-field"
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -27,909 +19,524 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback"
 import { Label } from "@/components/ui/label"
+import { SearchableSelect } from "@/components/ui/searchable-select"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { formatCurrency, formatSignedCurrency } from "@/lib/currency-formatter"
-import {
-  buildEnvelopeInsights,
-  summarizeEnvelopeInsights,
-  type EnvelopeInsight,
-  type EnvelopeInsightInput,
-  type EnvelopeVisualStatus,
-} from "@/lib/envelope-insights"
+  contextActivityLink,
+  contextDistribution,
+  contextRead,
+  contextWrite,
+  ContextWriteError,
+  parseContextAccounts,
+  parseContextEnvelopes,
+  selectContextRows,
+  type ContextEnvelope,
+} from "@/lib/account-context"
+import { formatCurrency } from "@/lib/currency-formatter"
+import { dashboardAccountId } from "@/lib/dashboard-period"
 import { categoryManagement } from "@/lib/navigation"
-import { readPublicError } from "@/lib/public-error"
 import { cn } from "@/lib/utils"
 
-type EnvelopeRow = EnvelopeInsightInput
-
-type AccountSummary = {
-  id: number
-  name: string
-  currency: string
-  active: boolean
-  institution: string | null
-  type: string | null
-  balance: number
-}
-
-type CategoryOption = {
-  id: number
-  name: string
-  parentId: number | null
-}
-
-const API_BASE_URL = "/api"
-
-const percentFormatter = new Intl.NumberFormat("es-CR", {
-  style: "percent",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 1,
-})
-
-function formatShare(share: number) {
-  return percentFormatter.format(share)
-}
-
-function statusBadgeClassName(status: EnvelopeVisualStatus) {
-  if (status === "positive") return "border-primary/20 bg-primary/5 text-primary"
-  if (status === "critical") return "border-error/35 bg-error/10 text-error"
-  return "border-muted bg-muted/50 text-muted-foreground"
-}
-
-function statusLabel(status: EnvelopeVisualStatus) {
-  if (status === "positive") return "Saldo positivo"
-  if (status === "critical") return "Saldo negativo"
-  return "Sin saldo"
-}
-
-function barClassName(status: EnvelopeVisualStatus) {
-  if (status === "positive") return "bg-primary/80"
-  if (status === "critical") return "bg-error/80"
-  return "bg-muted-foreground/35"
-}
-
-function normalizeErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback
-}
-
-function MetricCard({
-  title,
-  value,
-  description,
-  icon: Icon,
-  tone = "default",
-}: {
-  title: string
-  value: string
-  description: string
-  icon: React.ComponentType<{ className?: string }>
-  tone?: "default" | "warning" | "critical" | "success"
-}) {
+const loadAccounts = async (signal: AbortSignal) =>
+  parseContextAccounts(await contextRead("/reports/account-balances?isActive=true", signal))
+export function EnvelopesContent() {
+  const accounts = useContextRead("accounts", loadAccounts)
+  const [accountId, setAccountId] = React.useState("")
+  const [query, setQuery] = React.useState("")
+  const [order, setOrder] = React.useState("desc")
+  const [filter, setFilter] = React.useState("ALL")
+  const [density, setDensity] = React.useState<"comfortable" | "compact">("comfortable")
+  const [notice, setNotice] = React.useState<string | null>(null)
+  const [candidate, setCandidate] = React.useState<ContextEnvelope | null>(null)
+  const [busy, setBusy] = React.useState(false)
+  const [uncertain, setUncertain] = React.useState(false)
+  const [writeError, setWriteError] = React.useState<string | null>(null)
+  const lock = React.useRef(false)
+  const confirmed = React.useRef(false)
+  const trigger = React.useRef<HTMLButtonElement | null>(null)
+  const heading = React.useRef<HTMLHeadingElement>(null)
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.has("accountId"))
+      setAccountId(dashboardAccountId(params.get("accountId")) ?? "invalid")
+  }, [])
+  const selected = accountId
+    ? (accounts.data?.find((row) => String(row.id) === accountId) ?? null)
+    : (accounts.data?.[0] ?? null)
+  const selectedId = selected?.id ?? null
+  const currency = selected?.currency ?? ""
+  const loadEnvelopes = React.useCallback(
+    async (signal: AbortSignal) => {
+      if (selectedId === null) throw new Error("Cuenta no disponible")
+      return parseContextEnvelopes(
+        await contextRead(`/reports/envelope-balances?accountId=${selectedId}`, signal),
+        { id: selectedId, currency },
+      )
+    },
+    [selectedId, currency],
+  )
+  const envelopes = useContextRead(
+    selected ? `envelopes:${selected.id}:${selected.currency}` : null,
+    loadEnvelopes,
+  )
+  const rows = envelopes.data ?? []
+  const distribution = contextDistribution(rows)
+  const available = envelopes.data !== null
+  const visible = selectContextRows(
+    rows.filter(
+      (row) =>
+        filter === "ALL" ||
+        (filter === "negative" && row.balance !== null && row.balance < 0) ||
+        (filter === "zero" && row.balance === 0) ||
+        (filter === "positive" && row.balance !== null && row.balance > 0) ||
+        (filter === "pending" && row.balance === null),
+    ),
+    query,
+    order,
+  )
+  async function deactivate() {
+    if (lock.current || !candidate || candidate.balance !== 0 || uncertain) return
+    lock.current = true
+    setBusy(true)
+    setWriteError(null)
+    try {
+      await contextWrite(`/envelopes/${candidate.id}/deactivate`, "POST")
+      confirmed.current = true
+      setCandidate(null)
+      envelopes.reload()
+      accounts.reload()
+      setNotice("Sobre desactivado. Sus movimientos históricos se conservan.")
+    } catch (error) {
+      setWriteError(error instanceof Error ? error.message : "No pudimos desactivar el sobre.")
+      if (error instanceof ContextWriteError && error.uncertain) setUncertain(true)
+    } finally {
+      lock.current = false
+      setBusy(false)
+    }
+  }
+  const top =
+    distribution.positive !== null
+      ? rows
+          .filter((row) => row.balance !== null && row.balance > 0)
+          .sort((a, b) => b.balance! - a.balance!)
+          .slice(0, 3)
+      : []
   return (
     <div
       className={cn(
-        "rounded-xl border bg-muted/20 p-4",
-        tone === "warning" && "border-warning/20",
-        tone === "critical" && "border-error/20",
-        tone === "success" && "border-success/20",
+        "marea-surface min-w-0 space-y-6 rounded-2xl bg-background p-3 sm:p-5",
+        styles.page,
       )}
+      data-density={density}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
-        <Icon
-          className={cn(
-            "h-4 w-4 text-muted-foreground",
-            tone === "warning" && "text-warning",
-            tone === "critical" && "text-error",
-            tone === "success" && "text-success",
-          )}
-        />
-      </div>
-      <p className="text-xl font-semibold tracking-tight">{value}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-    </div>
-  )
-}
-
-function EnvelopeDistributionRow({
-  envelope,
-  accountCurrency,
-  onDeactivate,
-}: {
-  envelope: EnvelopeInsight
-  accountCurrency: string
-  onDeactivate: (envelopeId: number) => void
-}) {
-  const isDeactivateDisabled = envelope.balance !== 0 || !envelope.active
-  const deactivateTitle = !envelope.active
-    ? "El sobre ya está inactivo"
-    : envelope.balance !== 0
-      ? "El saldo debe ser cero para desactivar el sobre"
-      : "Desactivar sobre"
-
-  return (
-    <div className="group rounded-xl border border-border/80 bg-card/60 p-4 transition-colors hover:border-primary/25 hover:bg-muted/15">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
-        <div className="min-w-0 flex-1 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-base font-semibold">{envelope.category}</p>
-            <Badge variant="outline" className={statusBadgeClassName(envelope.statusVisual)}>
-              {statusLabel(envelope.statusVisual)}
-            </Badge>
-            {!envelope.active ? <Badge variant="secondary">Inactivo</Badge> : null}
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>{formatShare(envelope.percentageOfAccount)} del saldo de la cuenta</span>
-              <span>{formatCurrency(envelope.balance, accountCurrency)}</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted/60">
-              <div
-                className={cn(
-                  "h-full rounded-full transition-all",
-                  barClassName(envelope.statusVisual),
-                )}
-                style={{ width: `${envelope.barPercentage}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-4 xl:min-w-[280px] xl:justify-end">
-          <div className="text-right">
-            <AccessibleFieldError
-              className={cn(
-                "font-mono text-lg font-semibold",
-                envelope.statusVisual === "critical" && "text-error",
-                envelope.statusVisual === "empty" && "text-muted-foreground",
-              )}
-            >
-              {formatCurrency(envelope.balance, accountCurrency)}
-            </AccessibleFieldError>
-            <p className="text-xs text-muted-foreground">
-              {envelope.statusVisual === "critical"
-                ? "Revisa los movimientos de este sobre"
-                : envelope.statusVisual === "empty"
-                  ? "Sin fondos asignados"
-                  : "Participación del saldo; no representa una meta"}
-            </p>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              if (isDeactivateDisabled) return
-              onDeactivate(envelope.id)
-            }}
-            disabled={isDeactivateDisabled}
-            className={cn("shrink-0", isDeactivateDisabled && "opacity-50")}
-            title={deactivateTitle}
-            aria-label={`Desactivar sobre ${envelope.category}`}
-          >
-            <XCircle className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function LinkCategoryDialog({
-  isOpen,
-  onOpenChange,
-  selectedAccountLabel,
-  selectableCategories,
-  categoriesLoading,
-  categoriesError,
-  hasCategories,
-  formData,
-  setFormData,
-  handleLinkCategory,
-  isLinking,
-  linkError,
-  disabled,
-}: {
-  isOpen: boolean
-  onOpenChange: (open: boolean) => void
-  selectedAccountLabel: string
-  selectableCategories: CategoryOption[]
-  categoriesLoading: boolean
-  categoriesError: string | null
-  hasCategories: boolean
-  formData: { categoryId: string }
-  setFormData: React.Dispatch<React.SetStateAction<{ categoryId: string }>>
-  handleLinkCategory: () => Promise<void>
-  isLinking: boolean
-  linkError: string | null
-  disabled: boolean
-}) {
-  return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        onOpenChange(open)
-        if (!open) {
-          setFormData({ categoryId: "" })
-        }
-      }}
-    >
-      <DialogTrigger asChild>
-        <Button disabled={disabled}>
-          <Plus className="mr-2 h-4 w-4" />
-          Vincular categoría
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Vincular categoría a la cuenta</DialogTitle>
-          <DialogDescription>
-            Crea un sobre vinculando una categoría a {selectedAccountLabel}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <AccessibleField className="space-y-2">
-            <Label className="text-sm font-medium">Categoría</Label>
-            <Select
-              value={formData.categoryId}
-              onValueChange={(value) => setFormData({ categoryId: value })}
-              disabled={categoriesLoading || !hasCategories}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    categoriesLoading
-                      ? "Cargando categorías…"
-                      : !hasCategories
-                        ? "No hay categorías activas"
-                        : "Elige una categoría"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {selectableCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.id.toString()}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {categoriesError ? (
-              <AccessibleFieldError className="text-sm text-error">
-                {categoriesError}
-              </AccessibleFieldError>
-            ) : null}
-            {linkError ? (
-              <AccessibleFieldError className="text-sm text-error">
-                {linkError}
-              </AccessibleFieldError>
-            ) : null}
-          </AccessibleField>
-        </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => {
-              onOpenChange(false)
-              setFormData({ categoryId: "" })
-            }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={() => void handleLinkCategory()}
-            disabled={!formData.categoryId || isLinking}
-          >
-            {isLinking ? "Linking..." : "Vincular categoría"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-export function EnvelopesContent() {
-  const [envelopes, setEnvelopes] = React.useState<EnvelopeRow[]>([])
-  const [envelopesLoading, setEnvelopesLoading] = React.useState(false)
-  const [envelopesError, setEnvelopesError] = React.useState<string | null>(null)
-  const [accounts, setAccounts] = React.useState<AccountSummary[]>([])
-  const [accountsLoading, setAccountsLoading] = React.useState(false)
-  const [accountsError, setAccountsError] = React.useState<string | null>(null)
-  const [categories, setCategories] = React.useState<CategoryOption[]>([])
-  const [categoriesLoading, setCategoriesLoading] = React.useState(false)
-  const [categoriesError, setCategoriesError] = React.useState<string | null>(null)
-  const [selectedAccount, setSelectedAccount] = React.useState("")
-  const [isLinkOpen, setIsLinkOpen] = React.useState(false)
-  const [isLinking, setIsLinking] = React.useState(false)
-  const [linkError, setLinkError] = React.useState<string | null>(null)
-  const [deactivateId, setDeactivateId] = React.useState<number | null>(null)
-  const [isDeactivating, setIsDeactivating] = React.useState(false)
-  const [deactivateError, setDeactivateError] = React.useState<string | null>(null)
-  const [formData, setFormData] = React.useState({
-    categoryId: "",
-  })
-
-  React.useEffect(() => {
-    const fetchAccounts = async () => {
-      try {
-        setAccountsLoading(true)
-        setAccountsError(null)
-
-        const res = await fetch(`${API_BASE_URL}/reports/account-balances?isActive=true`, {
-          headers: { Accept: "application/json" },
-        })
-        if (!res.ok) throw new Error("No pudimos cargar las cuentas. Vuelve a intentar.")
-
-        const data = (await res.json()) as Array<{
-          id: number
-          name: string
-          currency: string
-          institution?: string | null
-          type?: string | null
-          balance?: number | null
-          is_active: number
-        }>
-
-        setAccounts(
-          data.map((account) => ({
-            id: account.id,
-            name: account.name,
-            currency: account.currency,
-            active: account.is_active === 1,
-            institution: account.institution ?? null,
-            type: account.type ?? null,
-            balance: typeof account.balance === "number" ? account.balance : 0,
-          })),
-        )
-      } catch (error) {
-        setAccountsError(
-          normalizeErrorMessage(error, "No pudimos cargar las cuentas. Vuelve a intentar."),
-        )
-      } finally {
-        setAccountsLoading(false)
-      }
-    }
-
-    void fetchAccounts()
-  }, [])
-
-  React.useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setCategoriesLoading(true)
-        setCategoriesError(null)
-        const res = await fetch(`${API_BASE_URL}/categories?activeOnly=true`, {
-          headers: { Accept: "application/json" },
-        })
-        if (!res.ok) throw new Error("No pudimos cargar las categorías. Vuelve a intentar.")
-
-        const data = (await res.json()) as Array<{
-          id: number
-          name: string
-          parentId?: number | null
-          parent_id?: number | null
-          parent?: { id?: number | null } | number | null
-        }>
-
-        setCategories(
-          data.map((category) => ({
-            id: category.id,
-            name: category.name,
-            parentId:
-              category.parentId ??
-              category.parent_id ??
-              (typeof category.parent === "object" && category.parent
-                ? (category.parent.id ?? null)
-                : (category.parent ?? null)),
-          })),
-        )
-      } catch (error) {
-        setCategoriesError(
-          normalizeErrorMessage(error, "No pudimos cargar las categorías. Vuelve a intentar."),
-        )
-      } finally {
-        setCategoriesLoading(false)
-      }
-    }
-
-    void fetchCategories()
-  }, [])
-
-  const activeAccounts = accounts.filter((account) => account.active)
-  const selectableCategories = categories.filter((category) => category.parentId !== null)
-  const hasCategories = selectableCategories.length > 0
-
-  React.useEffect(() => {
-    if (activeAccounts.length === 0) {
-      setSelectedAccount("")
-      return
-    }
-
-    setSelectedAccount((current) =>
-      activeAccounts.some((account) => account.id.toString() === current)
-        ? current
-        : activeAccounts[0].id.toString(),
-    )
-  }, [activeAccounts])
-
-  const selectedAccountId = Number.parseInt(selectedAccount, 10)
-  const isAccountSelected = !Number.isNaN(selectedAccountId)
-  const selectedAccountData =
-    activeAccounts.find((account) => account.id === selectedAccountId) ?? null
-
-  const fetchEnvelopes = React.useCallback(async (accountId: number) => {
-    try {
-      setEnvelopesLoading(true)
-      setEnvelopesError(null)
-
-      const res = await fetch(`${API_BASE_URL}/reports/envelope-balances?accountId=${accountId}`, {
-        headers: { Accept: "application/json" },
-      })
-      if (!res.ok) throw new Error("No pudimos cargar los saldos de los sobres. Vuelve a intentar.")
-
-      const data = (await res.json()) as Array<{
-        envelopeId: number
-        categoryId: number
-        categoryName: string
-        balance: number | null
-        currency: string
-      }>
-
-      setEnvelopes(
-        data.map((item) => ({
-          id: item.envelopeId,
-          accountId,
-          categoryId: item.categoryId,
-          category: item.categoryName,
-          balance: typeof item.balance === "number" ? item.balance : 0,
-          currency: item.currency,
-          active: true,
-        })),
-      )
-    } catch (error) {
-      setEnvelopesError(
-        normalizeErrorMessage(
-          error,
-          "No pudimos cargar los saldos de los sobres. Vuelve a intentar.",
-        ),
-      )
-      setEnvelopes([])
-    } finally {
-      setEnvelopesLoading(false)
-    }
-  }, [])
-
-  React.useEffect(() => {
-    if (!isAccountSelected) {
-      setEnvelopes([])
-      setEnvelopesError(null)
-      return
-    }
-
-    void fetchEnvelopes(selectedAccountId)
-  }, [fetchEnvelopes, isAccountSelected, selectedAccountId])
-
-  const handleLinkCategory = async () => {
-    if (Number.isNaN(selectedAccountId) || !formData.categoryId || isLinking) return
-
-    try {
-      setIsLinking(true)
-      setLinkError(null)
-
-      const res = await fetch(`${API_BASE_URL}/accounts/${selectedAccountId}/envelopes`, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          categoryId: Number.parseInt(formData.categoryId, 10),
-        }),
-      })
-
-      if (!res.ok) {
-        throw new Error(
-          await readPublicError(res, "No pudimos vincular la categoría. Vuelve a intentar."),
-        )
-      }
-
-      setIsLinkOpen(false)
-      setFormData({ categoryId: "" })
-      await fetchEnvelopes(selectedAccountId)
-    } catch (error) {
-      setLinkError(
-        normalizeErrorMessage(error, "No pudimos vincular la categoría. Vuelve a intentar."),
-      )
-    } finally {
-      setIsLinking(false)
-    }
-  }
-
-  const handleDeactivate = async () => {
-    if (!deactivateId || isDeactivating) return
-
-    const envelope = envelopes.find((item) => item.id === deactivateId)
-    if (!envelope) return
-    if (envelope.balance !== 0) {
-      setDeactivateError("El saldo del sobre debe ser cero para desactivarlo.")
-      return
-    }
-
-    try {
-      setIsDeactivating(true)
-      setDeactivateError(null)
-
-      const res = await fetch(`${API_BASE_URL}/envelopes/${deactivateId}/deactivate`, {
-        method: "POST",
-        headers: { Accept: "application/json" },
-      })
-
-      if (!res.ok) {
-        throw new Error(
-          await readPublicError(res, "No pudimos desactivar el sobre. Vuelve a intentar."),
-        )
-      }
-
-      if (!Number.isNaN(selectedAccountId)) {
-        await fetchEnvelopes(selectedAccountId)
-      }
-      setDeactivateId(null)
-    } catch (error) {
-      setDeactivateError(
-        normalizeErrorMessage(error, "No pudimos desactivar el sobre. Vuelve a intentar."),
-      )
-    } finally {
-      setIsDeactivating(false)
-    }
-  }
-
-  const selectedAccountLabel = selectedAccountData?.name ?? "esta cuenta"
-  const selectedAccountCurrency = selectedAccountData?.currency ?? "CRC"
-  const envelopeRows = envelopes.filter((envelope) => envelope.accountId === selectedAccountId)
-  const envelopeInsights = buildEnvelopeInsights(
-    envelopeRows,
-    selectedAccountData?.balance ?? 0,
-  ).sort((left, right) => right.balance - left.balance)
-  const summary = summarizeEnvelopeInsights(envelopeRows, selectedAccountData?.balance ?? 0)
-  const hasNegativeEnvelopes = summary.negativeEnvelopesCount > 0
-  const coverageTone =
-    summary.assignedPercentage < 0 || summary.assignedPercentage > 100 ? "warning" : "default"
-
-  if (accountsError) {
-    return (
-      <div className="space-y-6">
-        <EnvelopesPageHeader />
-        <EmptyState
-          icon={AlertTriangle}
-          title="No pudimos cargar los sobres"
-          description={accountsError}
-          actionLabel="Volver a intentar"
-          onAction={() => window.location.reload()}
-        />
-      </div>
-    )
-  }
-
-  if (accountsLoading) {
-    return (
-      <div className="space-y-6">
-        <EnvelopesPageHeader />
-        <div className="space-y-4">
-          <Card>
-            <CardContent className="py-10 text-center text-muted-foreground">
-              Cargando sobres…
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
-  if (activeAccounts.length === 0) {
-    return (
-      <div className="space-y-6">
-        <EnvelopesPageHeader />
-        <EmptyState
-          icon={Wallet}
-          title="No hay cuentas activas"
-          description="Activa o crea una cuenta para organizar sus sobres."
-        />
-      </div>
-    )
-  }
-
-  if (!isAccountSelected || !selectedAccountData) {
-    return (
-      <div className="space-y-6">
-        <EnvelopesPageHeader />
-        <EmptyState
-          icon={Layers3}
-          title="Elige una cuenta"
-          description="Elige una cuenta para ver cómo se distribuye su saldo entre sobres."
-        />
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-6">
-      <EnvelopesPageHeader>
-        <div className="flex min-w-0 max-w-full flex-wrap items-end gap-3">
-          <div className="w-full min-w-0 space-y-2 sm:w-64 sm:max-w-full">
-            <p className="text-sm font-medium">Cuenta</p>
-            <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-              <SelectTrigger className="w-full" aria-label="Cuenta de los sobres">
-                <SelectValue placeholder="Elige una cuenta" />
-              </SelectTrigger>
-              <SelectContent>
-                {activeAccounts.map((account) => (
-                  <SelectItem key={account.id} value={account.id.toString()}>
-                    {account.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="min-w-0 max-w-full">
-            <LinkCategoryDialog
-              isOpen={isLinkOpen}
-              onOpenChange={(open) => {
-                setIsLinkOpen(open)
-                if (!open) setLinkError(null)
-              }}
-              selectedAccountLabel={selectedAccountLabel}
-              selectableCategories={selectableCategories}
-              categoriesLoading={categoriesLoading}
-              categoriesError={categoriesError}
-              hasCategories={hasCategories}
-              formData={formData}
-              setFormData={setFormData}
-              handleLinkCategory={handleLinkCategory}
-              isLinking={isLinking}
-              linkError={linkError}
-              disabled={!isAccountSelected}
-            />
-          </div>
-        </div>
-      </EnvelopesPageHeader>
-
-      <Card className="overflow-hidden">
-        <CardHeader className="border-b border-border/60 bg-muted/10">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="text-2xl">{selectedAccountData.name}</CardTitle>
-                <Badge variant="outline">{selectedAccountData.currency}</Badge>
-                {selectedAccountData.type ? (
-                  <Badge variant="secondary">{selectedAccountData.type}</Badge>
-                ) : null}
-              </div>
-
-              <CardDescription className="flex flex-wrap items-center gap-4 text-sm">
-                <span className="inline-flex items-center gap-2">
-                  <Landmark className="h-4 w-4" />
-                  {selectedAccountData.institution || "Institución no disponible"}
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <Layers3 className="h-4 w-4" />
-                  {summary.activeEnvelopesCount} sobre activo
-                  {summary.activeEnvelopesCount === 1 ? "" : "s"}
-                </span>
-              </CardDescription>
-            </div>
-
-            <div className="rounded-2xl border border-primary/15 bg-primary/5 px-5 py-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                Saldo de la cuenta
-              </p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight">
-                {formatCurrency(selectedAccountData.balance, selectedAccountCurrency)}
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="grid gap-4 p-6 md:grid-cols-2 xl:grid-cols-5">
-          <MetricCard
-            title="Distribución en sobres"
-            value={`${summary.assignedPercentage.toFixed(1)}%`}
-            description="Saldo de sobres comparado con el saldo de la cuenta."
-            icon={ArrowRightLeft}
-            tone={coverageTone}
-          />
-          <MetricCard
-            title="Saldo sin asignar"
-            value={formatSignedCurrency(summary.availableDelta, selectedAccountCurrency)}
-            description="Diferencia entre el saldo de la cuenta y la suma de sus sobres."
-            icon={MinusCircle}
-            tone={summary.availableDelta === 0 ? "success" : "warning"}
-          />
-          <MetricCard
-            title="Sobre con mayor saldo"
-            value={
-              summary.largestEnvelope ? summary.largestEnvelope.category : "Todavía no hay sobres"
-            }
-            description={
-              summary.largestEnvelope
-                ? formatCurrency(summary.largestEnvelope.balance, selectedAccountCurrency)
-                : "Vincula una categoría para comenzar."
-            }
-            icon={Wallet}
-          />
-          <MetricCard
-            title="Menor saldo positivo"
-            value={
-              summary.smallestPositiveEnvelope
-                ? summary.smallestPositiveEnvelope.category
-                : "No hay sobres con saldo positivo"
-            }
-            description={
-              summary.smallestPositiveEnvelope
-                ? formatCurrency(summary.smallestPositiveEnvelope.balance, selectedAccountCurrency)
-                : "Todavía no hay sobres activos con saldo positivo."
-            }
-            icon={Layers3}
-          />
-          <MetricCard
-            title="Sobres con saldo negativo"
-            value={String(summary.negativeEnvelopesCount)}
-            description="Sobres por debajo de cero que requieren revisión."
-            icon={TrendingDown}
-            tone={summary.negativeEnvelopesCount > 0 ? "critical" : "success"}
-          />
-        </CardContent>
-      </Card>
-
-      {envelopesError ? (
-        <EmptyState
-          icon={AlertTriangle}
-          title="No pudimos cargar los sobres"
-          description={envelopesError}
-          actionLabel="Volver a intentar"
-          onAction={() => void fetchEnvelopes(selectedAccountId)}
-        />
-      ) : envelopesLoading ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Cargando distribución de sobres…
-          </CardContent>
-        </Card>
-      ) : envelopeInsights.length === 0 ? (
-        <EmptyState
-          icon={Layers3}
-          title="Todavía no hay sobres vinculados"
-          description={`No hay sobres en ${selectedAccountLabel}. Vincula una categoría para comenzar.`}
+      <PageHeader
+        title="Sobres"
+        description="Tu dinero tiene un lugar y un propósito."
+        related={[categoryManagement]}
+        actionsLabel="Acciones de sobres"
+      >
+        <Button
+          variant="outline"
+          disabled={accounts.loading || envelopes.loading || busy}
+          onClick={() => {
+            accounts.reload()
+            envelopes.reload()
+          }}
         >
-          <div className="mt-4">
-            <LinkCategoryDialog
-              isOpen={isLinkOpen}
-              onOpenChange={(open) => {
-                setIsLinkOpen(open)
-                if (!open) setLinkError(null)
-              }}
-              selectedAccountLabel={selectedAccountLabel}
-              selectableCategories={selectableCategories}
-              categoriesLoading={categoriesLoading}
-              categoriesError={categoriesError}
-              hasCategories={hasCategories}
-              formData={formData}
-              setFormData={setFormData}
-              handleLinkCategory={handleLinkCategory}
-              isLinking={isLinking}
-              linkError={linkError}
-              disabled={!isAccountSelected}
-            />
-          </div>
-        </EmptyState>
+          <RefreshCw aria-hidden="true" className="size-4" />
+          Actualizar sobres
+        </Button>
+        {selected && (
+          <LinkEnvelopeDialog
+            key={selected.id}
+            account={selected}
+            envelopes={rows}
+            disabled={!available || envelopes.loading || busy}
+            onLinked={() => {
+              envelopes.reload()
+              accounts.reload()
+              setNotice("Categoría vinculada. El sobre está listo; no se han asignado fondos.")
+            }}
+          />
+        )}
+      </PageHeader>
+      {notice && <Feedback title={notice} />}
+      {accounts.loading ? (
+        <LoadingState>Cargando cuentas…</LoadingState>
+      ) : accounts.error ? (
+        <Feedback tone="error" title="Cuentas por confirmar">
+          <p>{accounts.error}</p>
+          <Button className="mt-3" variant="outline" onClick={accounts.reload}>
+            Consultar cuentas
+          </Button>
+        </Feedback>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribución de sobres</CardTitle>
-            <CardDescription>
-              Los sobres se ordenan por saldo para facilitar la revisión.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {envelopeInsights.map((envelope) => (
-              <EnvelopeDistributionRow
-                key={envelope.id}
-                envelope={envelope}
-                accountCurrency={selectedAccountCurrency}
-                onDeactivate={(envelopeId) => {
-                  setDeactivateId(envelopeId)
-                  setDeactivateError(null)
+        <>
+          {accounts.data?.length ? (
+            <AccessibleField className="min-w-0 space-y-2">
+              <Label htmlFor="envelopes-account">Cuenta de los sobres</Label>
+              <SearchableSelect
+                id="envelopes-account"
+                value={selected ? String(selected.id) : ""}
+                onValueChange={(value) => {
+                  setAccountId(value)
+                  setQuery("")
+                  setFilter("ALL")
+                  setNotice(null)
                 }}
+                options={accounts.data.map((row) => ({
+                  value: String(row.id),
+                  label: `${row.name} · ${row.institution} · ${row.currency}`,
+                }))}
+                disabled={busy}
+                searchLabel="Buscar cuenta de sobres"
+                placeholder="Elige una cuenta"
               />
-            ))}
-          </CardContent>
-        </Card>
+            </AccessibleField>
+          ) : null}
+          {!selected ? (
+            <EmptyState
+              title={accountId ? "La cuenta del enlace no está disponible" : "Primero, una cuenta"}
+              action={
+                <Button asChild variant="outline">
+                  <Link href="/accounts">Ir a Cuentas</Link>
+                </Button>
+              }
+            >
+              {accountId
+                ? "Elige otra cuenta explícitamente. No mostramos saldos de una cuenta diferente."
+                : "Añade una cuenta para empezar a organizar el dinero en sobres."}
+            </EmptyState>
+          ) : (
+            <>
+              <section
+                className={styles.hero}
+                aria-label="Saldo y distribución de sobres"
+                aria-busy={envelopes.loading}
+              >
+                <div className={styles.heroTop}>
+                  <div>
+                    <p className={styles.heroCaption}>
+                      {selected.institution} · {selected.currency}
+                    </p>
+                    <h2 className="mt-2 text-xl font-semibold">{selected.name}</h2>
+                    <p className={styles.heroCaption}>Saldo de los sobres activos</p>
+                    {envelopes.loading ? (
+                      <Skeleton className="my-4 h-14 w-64 max-w-full bg-white/20" />
+                    ) : (
+                      <p className={styles.heroAmount}>
+                        {!available || distribution.total === null
+                          ? "Por confirmar"
+                          : formatCurrency(distribution.total, selected.currency)}
+                      </p>
+                    )}
+                    <p className={styles.heroCaption}>
+                      {available ? `${rows.length} sobres activos. ` : ""}La distribución describe
+                      saldos, no metas ni suficiencia de fondos.
+                    </p>
+                    {available && distribution.negative.length > 0 && (
+                      <a
+                        className={styles.heroLink}
+                        href="#envelope-list-title"
+                        onClick={() => {
+                          setFilter("negative")
+                          setQuery("")
+                        }}
+                      >
+                        {distribution.negative.length}{" "}
+                        {distribution.negative.length === 1
+                          ? "sobre con saldo negativo"
+                          : "sobres con saldo negativo"}{" "}
+                        · Revisar
+                      </a>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold">Reparto de saldos positivos</h3>
+                    <p className={styles.heroCaption}>
+                      Base{" "}
+                      {available && distribution.positive !== null
+                        ? formatCurrency(distribution.positive, selected.currency)
+                        : "por confirmar"}
+                      . Negativos y ceros no forman parte del reparto.
+                    </p>
+                    {top.map((row) => (
+                      <div key={row.id} className="mt-4">
+                        <div className="flex flex-wrap justify-between gap-2 text-sm">
+                          <span>{row.name}</span>
+                          <strong>{distribution.share(row)?.toLocaleString("es-CR")}%</strong>
+                        </div>
+                        <div className={styles.bar} aria-hidden="true">
+                          <span
+                            style={{
+                              width: `${distribution.share(row)}%`,
+                              background: "var(--hero-foreground)",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {available && distribution.positive === 0 && (
+                      <p className={styles.heroCaption}>
+                        Aún no hay saldos positivos para representar.
+                      </p>
+                    )}
+                    {available && distribution.total === null && (
+                      <p className={styles.heroCaption}>
+                        Faltan saldos por confirmar. Los negativos conocidos siguen disponibles para
+                        revisión.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </section>
+              <ContextControls
+                prefix="envelopes"
+                query={query}
+                setQuery={setQuery}
+                order={order}
+                setOrder={setOrder}
+                density={density}
+                setDensity={setDensity}
+              >
+                <AccessibleField className="space-y-1">
+                  <Label htmlFor="envelopes-filter">Estado del saldo</Label>
+                  <SearchableSelect
+                    id="envelopes-filter"
+                    value={filter}
+                    onValueChange={setFilter}
+                    options={[
+                      { value: "ALL", label: "Todos los sobres" },
+                      { value: "negative", label: "Saldo negativo" },
+                      { value: "zero", label: "Sin saldo" },
+                      { value: "positive", label: "Saldo positivo" },
+                      { value: "pending", label: "Por confirmar" },
+                    ]}
+                  />
+                </AccessibleField>
+              </ContextControls>
+              <div className={styles.body}>
+                <section aria-labelledby="envelope-list-title" className="min-w-0 space-y-3">
+                  <div className={styles.heading}>
+                    <h2
+                      id="envelope-list-title"
+                      ref={heading}
+                      tabIndex={-1}
+                      className={styles.title}
+                    >
+                      Tus sobres
+                    </h2>
+                    <Button asChild variant="outline">
+                      <Link href={contextActivityLink(selected.id)}>Movimientos de la cuenta</Link>
+                    </Button>
+                  </div>
+                  <p role="status" className={styles.caption}>
+                    {envelopes.loading
+                      ? "Consultando distribución…"
+                      : !available
+                        ? "Distribución por confirmar."
+                        : `${visible.length} de ${rows.length} sobres. Saldo y porcentajes incluyen todos los sobres activos, aunque haya filtros.`}
+                  </p>
+                  {envelopes.loading ? (
+                    <LoadingState>Cargando sobres…</LoadingState>
+                  ) : envelopes.error ? (
+                    <Feedback tone="error" title="Saldos de sobres por confirmar">
+                      <p>{envelopes.error}</p>
+                      <Button className="mt-3" variant="outline" onClick={envelopes.reload}>
+                        Consultar sobres
+                      </Button>
+                    </Feedback>
+                  ) : visible.length === 0 ? (
+                    <EmptyState
+                      title={
+                        rows.length ? "Ningún sobre coincide" : "El primer propósito empieza aquí"
+                      }
+                      action={
+                        rows.length ? (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setQuery("")
+                              setFilter("ALL")
+                            }}
+                          >
+                            Quitar filtros
+                          </Button>
+                        ) : undefined
+                      }
+                    >
+                      {rows.length
+                        ? "Busca otro nombre o estado. No se ha cambiado la distribución."
+                        : "Vincula una categoría con el botón superior para crear un sobre. También puedes crear una categoría nueva dentro del flujo."}
+                    </EmptyState>
+                  ) : (
+                    <ul className={styles.list}>
+                      {visible.map((row) => {
+                        const share = distribution.share(row)
+                        return (
+                          <li key={row.id} className={styles.row} data-testid="envelope-row">
+                            <div>
+                              <h3 className={styles.rowName}>{row.name}</h3>
+                              <p
+                                className={cn(
+                                  styles.status,
+                                  row.balance !== null && row.balance < 0
+                                    ? "text-error"
+                                    : "text-muted-foreground",
+                                )}
+                              >
+                                {row.balance === null
+                                  ? "Saldo por confirmar"
+                                  : row.balance < 0
+                                    ? "Saldo negativo"
+                                    : row.balance === 0
+                                      ? "Sin saldo"
+                                      : "Saldo positivo"}
+                              </p>
+                              <p className={styles.caption}>
+                                {share === null
+                                  ? row.balance !== null && row.balance <= 0
+                                    ? "Fuera del reparto de saldos positivos"
+                                    : "Participación por confirmar"
+                                  : `${share.toLocaleString("es-CR")}% de los saldos positivos en ${row.currency}`}
+                              </p>
+                              {share !== null && (
+                                <div className={styles.bar} aria-hidden="true">
+                                  <span style={{ width: `${share}%` }} />
+                                </div>
+                              )}
+                            </div>
+                            <p
+                              className={cn(
+                                styles.rowAmount,
+                                row.balance !== null && row.balance < 0 && "text-error",
+                              )}
+                            >
+                              {row.balance === null
+                                ? "Por confirmar"
+                                : formatCurrency(row.balance, row.currency)}
+                            </p>
+                            <div>
+                              <div className={styles.actions}>
+                                <Button asChild variant="outline">
+                                  <Link
+                                    href={contextActivityLink(selected.id, row.categoryId)}
+                                    aria-label={`Movimientos del sobre ${row.name}`}
+                                  >
+                                    Ver movimientos
+                                  </Link>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  aria-label={`Desactivar sobre ${row.name}`}
+                                  disabled={row.balance !== 0 || busy}
+                                  onClick={(event) => {
+                                    trigger.current = event.currentTarget
+                                    confirmed.current = false
+                                    setCandidate(row)
+                                    setWriteError(null)
+                                    setUncertain(false)
+                                  }}
+                                >
+                                  <XCircle aria-hidden="true" className="size-4" />
+                                </Button>
+                              </div>
+                              {row.balance !== 0 && (
+                                <p className={styles.caption}>
+                                  {row.balance === null
+                                    ? "Confirma el saldo antes de desactivar."
+                                    : "El saldo debe ser cero para desactivar."}
+                                </p>
+                              )}
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </section>
+                <aside className={styles.context} aria-label="Contexto de la distribución">
+                  <h2 className={styles.title}>Una cuenta, una moneda.</h2>
+                  <p className={styles.caption}>
+                    {selected.name} · {selected.institution} · {selected.currency}
+                  </p>
+                  <dl className="mt-5 space-y-4">
+                    <div>
+                      <dt className="text-sm">Saldo registrado de la cuenta</dt>
+                      <dd className="mt-1 text-lg font-semibold tabular-nums">
+                        {selected.balance === null
+                          ? "Por confirmar"
+                          : formatCurrency(selected.balance, selected.currency)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm">Alcance de esta vista</dt>
+                      <dd className={styles.caption}>
+                        Solo sobres activos. El saldo de la cuenta puede incluir movimientos de
+                        sobres inactivos; por eso ambos alcances pueden diferir.
+                      </dd>
+                    </div>
+                  </dl>
+                  <p className="mt-5 text-sm">
+                    Un porcentaje mayor no significa una mejor situación financiera. Revisa
+                    compromisos y movimientos para decidir.
+                  </p>
+                  <p className="mt-4 text-sm">
+                    Vincular una categoría crea o reactiva su sobre. No mueve dinero; las
+                    transferencias y asignaciones se registran por separado.
+                  </p>
+                  <Button asChild variant="outline" className="mt-5">
+                    <Link href={`/reconciliation?source=account-context&accountId=${selected.id}`}>
+                      Revisar conciliación de la cuenta
+                    </Link>
+                  </Button>
+                </aside>
+              </div>
+            </>
+          )}
+        </>
       )}
-
-      {hasNegativeEnvelopes ? (
-        <Alert className="border-error/35 bg-error/5">
-          <AlertTriangle className="h-4 w-4 text-error" />
-          <AlertTitle className="text-error">Revisa los saldos negativos</AlertTitle>
-          <AlertDescription>
-            {summary.negativeEnvelopesCount} sobre
-            {summary.negativeEnvelopesCount === 1 ? "" : "s"} en {selectedAccountLabel}{" "}
-            {summary.negativeEnvelopesCount === 1 ? "is" : "are"} tienen saldo negativo. Revisa sus
-            movimientos y transferencias.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
       <AlertDialog
-        open={deactivateId !== null}
+        open={candidate !== null}
         onOpenChange={(open) => {
-          if (!open) {
-            setDeactivateId(null)
-            setDeactivateError(null)
-          }
+          if (!open && !lock.current) setCandidate(null)
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          className="marea-surface"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            if (confirmed.current || !trigger.current?.isConnected) heading.current?.focus()
+            else trigger.current.focus()
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>¿Desactivar el sobre?</AlertDialogTitle>
             <AlertDialogDescription>
-              Desactivar {envelopes.find((envelope) => envelope.id === deactivateId)?.category} de{" "}
-              {selectedAccountLabel}.
+              {candidate?.name} · {selected?.name}. El saldo debe ser cero; sus movimientos
+              históricos se conservarán.
             </AlertDialogDescription>
-            {deactivateError ? (
-              <AlertDialogDescription className="text-destructive">
-                {deactivateError}
-              </AlertDialogDescription>
-            ) : null}
           </AlertDialogHeader>
+          {writeError && (
+            <Feedback tone="error" title="Desactivación por revisar">
+              {writeError}
+            </Feedback>
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(event) => {
-                event.preventDefault()
-                void handleDeactivate()
-              }}
-              disabled={isDeactivating}
+            <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+            <Button
+              disabled={busy || uncertain || candidate?.balance !== 0}
+              loading={busy}
+              onClick={() => void deactivate()}
             >
-              {isDeactivating ? "Deactivating..." : "Confirmar"}
-            </AlertDialogAction>
+              Confirmar desactivación
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
-}
-
-function EnvelopesPageHeader({ children }: { children?: React.ReactNode }) {
-  return (
-    <PageHeader
-      title={<>Sobres</>}
-      description={<>Cómo se distribuye el dinero de la cuenta seleccionada.</>}
-      related={[categoryManagement]}
-      actionsLabel="Acciones de sobres"
-    >
-      {children}
-    </PageHeader>
   )
 }
