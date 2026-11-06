@@ -1,6 +1,6 @@
 # Staging y entregas por bloques
 
-**Última entrega registrada: [testing del 4 de noviembre de 2026](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/deployments/2026-11-04-testing.md). Web `ae5161f` y API `c7af11c`; ZA-90 preparada efectivamente. Los pushes posteriores no despliegan testing.**
+**Última entrega registrada: [testing del 5 de noviembre de 2026](deployments/2026-11-05-testing.md). Web `a64a2bb` y API `1ec71ac`; ZA-97 y ZA-90 preparadas y verificadas, historia conservada. Incluye corrección para HTTP LAN y comprobación funcional sobre la web publicada. Los pushes posteriores no despliegan testing.**
 
 La actualización de [marca Atlántico](brand.md) unifica sidebar, favicon, icono de inicio y logo de PDF/HTML. La API recibe solo el asset y documentación, sin cambios de contrato o DB. Promover ambas imágenes para ver la identidad uniforme; respetar `ZANDAKA_LOGO_PATH` y la prioridad de imágenes personalizadas del entorno. No requiere migraciones; la preparación de ZA-90 sigue siendo independiente. Publicar las imágenes no despliega testing.
 
@@ -10,7 +10,7 @@ ZA-106 rediseña el [historial de Movimientos](transaction-history.md) solo en w
 
 ZA-88 incorpora la [ficha completa de movimientos](transaction-detail.md) y requiere una API del mismo bloque con `GET /api/transactions/:id?userId=...`. Promover el par web/API compatible. No añade cambios de esquema ni recálculos; la preparación de DB de ZA-90 sigue siendo independiente. Con una API anterior, la ficha indica que no está disponible y conserva el historial.
 
-**Entrada operativa: [Desplegar un bloque en testing](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/deploy-testing.md), en `zandaka-api/docs/deploy-testing.md` del workspace. Incluye la preparación de DB de ZA-90 que debe acompañar a las imágenes web/API.**
+**Entrada operativa: [Desplegar un bloque en testing](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/deploy-testing.md), en `zandaka-api/docs/deploy-testing.md` del workspace. Incluye la verificación/preparación de DB de ZA-90 y ZA-97 que debe acompañar a las imágenes web/API.**
 
 Hay dos repositorios y dos imágenes: zandaka-web y zandaka-api. Ambos trabajan en la rama staging. Esta rama parte de las correcciones de precisión monetaria ya presentes; no deben perderse al integrar el rediseño.
 
@@ -54,4 +54,4 @@ El nuevo formulario usa el contrato existente POST /api/transactions. No requier
 
 ## Presupuestos Marea — ZA-97
 
-La nueva lista y el espacio de trabajo requieren API compatible y preparación explícita de budget_plan; transfer_request continúa siendo necesario para asignar. Presupuestos anteriores conserva sus rutas y contratos. Ver [flujo, recuperación y pruebas](budget-plans.md) y la guía operativa de la API. La [ampliación del desplegador y su aceptación Windows](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/testing-deployer-za97.md) ya se completaron en 192.168.31.118. Para el bloque usar un plan nuevo con perfil za90-za97. La tabla se verifica/prepara después del backup durante el deploy solicitado; no se preparó ninguna base del usuario al implementar o aceptar la herramienta.
+La nueva lista y el espacio de trabajo requieren API compatible y budget_plan preparada; transfer_request continúa siendo necesario para asignar. Presupuestos anteriores conserva sus rutas y contratos. Ver [flujo, recuperación y pruebas](budget-plans.md) y la guía operativa de la API. La [ampliación del desplegador y su aceptación Windows](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/testing-deployer-za97.md) se completaron en 192.168.31.118. Ambas tablas quedaron preparadas/verificadas en la entrega real del 5 de noviembre enlazada arriba; no se habían preparado al implementar o aceptar la herramienta. Para otro bloque usar un plan nuevo con perfil za90-za97 y verificar compatibilidad después del backup. Conservar tablas y recibos al revertir imágenes.
