@@ -30,6 +30,7 @@ export const formatSnapshotTimestamp = (value: string) => {
   if (!parsed) return "No disponible"
 
   return new Intl.DateTimeFormat(REPORTS_LOCALE, {
+    year: "numeric",
     month: "short",
     day: "numeric",
     hour: "numeric",

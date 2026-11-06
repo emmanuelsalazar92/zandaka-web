@@ -1,4 +1,4 @@
-import { decimalNumber } from "@/lib/money"
+import { assertMoney, decimalNumber } from "@/lib/money"
 import { publicErrorMessage } from "@/lib/public-error"
 import { SETTINGS_USER_ID } from "@/lib/settings-api"
 
@@ -32,6 +32,8 @@ export type ReportSnapshot = {
   totalCrc: number
   totalUsd: number
   exchangeRateUsed: number | null
+  ccssRuleSetId?: number | null
+  incomeTaxRuleSetId?: number | null
   exchangeRateId: number | null
   consolidatedAmount: number | null
   version: number
@@ -119,6 +121,7 @@ async function request<T>(path: string, options?: RequestOptions): Promise<T> {
       ...(options?.body ? { "Content-Type": "application/json" } : {}),
     },
     cache: "no-store",
+    signal: AbortSignal.timeout(15000),
     body: options?.body ? JSON.stringify(options.body) : undefined,
   })
 
@@ -150,17 +153,20 @@ async function request<T>(path: string, options?: RequestOptions): Promise<T> {
 }
 
 const mapReportSnapshot = (raw: unknown): ReportSnapshot => {
+  if (!raw || typeof raw !== "object") throw new Error("Versión de reporte no disponible.")
   const item = raw as Record<string, unknown>
-  return {
+  const result: ReportSnapshot = {
     id: toNumber(item.id),
     userId: toNumber(item.userId ?? item.user_id),
     reportMonth: toStringValue(item.reportMonth ?? item.report_month),
     generatedAt: toStringValue(item.generatedAt ?? item.generated_at),
     baseCurrency: toStringValue(item.baseCurrency ?? item.base_currency).toUpperCase(),
-    totalCrc: toNumber(item.totalCrc ?? item.total_crc),
-    totalUsd: toNumber(item.totalUsd ?? item.total_usd),
+    totalCrc: toNumber(item.totalCrc ?? item.total_crc, Number.NaN),
+    totalUsd: toNumber(item.totalUsd ?? item.total_usd, Number.NaN),
     exchangeRateUsed: toNullableNumber(item.exchangeRateUsed ?? item.exchange_rate_used),
     exchangeRateId: toNullableNumber(item.exchangeRateId ?? item.exchange_rate_id),
+    ccssRuleSetId: toNullableNumber(item.ccssRuleSetId ?? item.ccss_rule_set_id),
+    incomeTaxRuleSetId: toNullableNumber(item.incomeTaxRuleSetId ?? item.income_tax_rule_set_id),
     consolidatedAmount: toNullableNumber(item.consolidatedAmount ?? item.consolidated_amount),
     version: toNumber(item.version, 1),
     isLatest: toBoolean(item.isLatest ?? item.is_latest),
@@ -175,6 +181,20 @@ const mapReportSnapshot = (raw: unknown): ReportSnapshot => {
     createdAt: toStringValue(item.createdAt ?? item.created_at),
     updatedAt: toStringValue(item.updatedAt ?? item.updated_at),
   }
+  if (
+    !Number.isSafeInteger(result.id) ||
+    result.id <= 0 ||
+    !Number.isSafeInteger(result.version) ||
+    result.version <= 0 ||
+    !/^[A-Z]{3}$/.test(result.baseCurrency) ||
+    !/^\d{4}-(0[1-9]|1[0-2])$/.test(result.reportMonth)
+  )
+    throw new Error("Versión de reporte no disponible.")
+  assertMoney(result.totalCrc, "CRC")
+  assertMoney(result.totalUsd, "USD")
+  if (result.consolidatedAmount !== null)
+    assertMoney(result.consolidatedAmount, result.baseCurrency)
+  return result
 }
 
 export async function fetchReportSnapshots(userId = SETTINGS_USER_ID, includeArchived = false) {
@@ -182,7 +202,8 @@ export async function fetchReportSnapshots(userId = SETTINGS_USER_ID, includeArc
     query: { userId, includeArchived: includeArchived ? 1 : undefined },
   })
 
-  return Array.isArray(data) ? data.map(mapReportSnapshot) : []
+  if (!Array.isArray(data)) throw new Error("El archivo de reportes no está disponible.")
+  return data.map(mapReportSnapshot)
 }
 
 export async function fetchReportSnapshot(id: number) {

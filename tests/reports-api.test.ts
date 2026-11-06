@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { generateReportSnapshot } from "@/lib/reports-api"
+import { fetchReportSnapshots, generateReportSnapshot } from "@/lib/reports-api"
 
 describe("reports api", () => {
   afterEach(() => {
@@ -104,5 +104,23 @@ describe("reports api", () => {
         exchange_rate_id: 9,
       }),
     )
+  })
+  it("does not present a failed catalog contract as an empty archive", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ items: [] })),
+    )
+    await expect(fetchReportSnapshots()).rejects.toThrow()
+  })
+  it("rejects a snapshot with missing totals rather than inventing zero balances", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json([
+          { id: 1, user_id: 1, report_month: "2026-11", version: 1, base_currency: "CRC" },
+        ]),
+      ),
+    )
+    await expect(fetchReportSnapshots()).rejects.toThrow()
   })
 })

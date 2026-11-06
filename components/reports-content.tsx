@@ -5,6 +5,7 @@ import * as React from "react"
 
 import { PageHeader } from "@/components/page-header"
 import { GenerateReportDialog } from "@/components/reports/generate-report-dialog"
+import { formatReportMonth } from "@/components/reports/report-helpers"
 import {
   groupSnapshotsByMonth,
   selectDefaultSnapshot,
@@ -12,10 +13,10 @@ import {
 } from "@/components/reports/report-helpers"
 import { ReportPreviewPanel } from "@/components/reports/report-preview-panel"
 import { ReportsHistoryPanel } from "@/components/reports/reports-history-panel"
+import styles from "@/components/reports/reports.module.css"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
+import { formatCurrency } from "@/lib/currency-formatter"
 import {
   archiveReportSnapshot,
   fetchReportSnapshots,
@@ -88,6 +90,8 @@ const findStoredMonthEndRate = (
 }
 
 export function ReportsContent() {
+  const [comparisonId, setComparisonId] = React.useState("")
+  const [generationReady, setGenerationReady] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [reports, setReports] = React.useState<ReportSnapshot[]>([])
@@ -104,17 +108,25 @@ export function ReportsContent() {
   const loadReports = React.useCallback(async () => {
     try {
       setLoading(true)
+      setGenerationReady(false)
       setError(null)
 
-      const [snapshotData, profileData, exchangeRateData] = await Promise.all([
+      const [snapshots, profile, rates] = await Promise.allSettled([
         fetchReportSnapshots(),
         fetchUserSettings(),
         fetchExchangeRates(),
-      ])
-
+      ] as const)
+      if (snapshots.status === "rejected") throw snapshots.reason
+      const snapshotData = snapshots.value
       setReports(snapshotData)
-      setBaseCurrency(profileData.baseCurrency)
-      setExchangeRates(exchangeRateData)
+      const ready = profile.status === "fulfilled" && rates.status === "fulfilled"
+      setGenerationReady(ready)
+      if (profile.status === "fulfilled") setBaseCurrency(profile.value.baseCurrency)
+      if (rates.status === "fulfilled") setExchangeRates(rates.value)
+      if (!ready)
+        setError(
+          "Puedes consultar el historial. Actualiza para verificar perfil y cotizaciones antes de generar otra versión.",
+        )
 
       setSelectedReportId((current) => {
         if (current !== null && snapshotData.some((report) => report.id === current)) {
@@ -235,27 +247,40 @@ export function ReportsContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div
+      className={`marea-surface min-w-0 space-y-6 rounded-2xl bg-background p-3 sm:p-5 ${styles.page}`}
+    >
       <PageHeader
         title={<>Reportes</>}
         description={<>Una perspectiva clara de tus versiones históricas.</>}
         actionsLabel="Acciones de reportes"
       >
-        <Button type="button" onClick={() => setIsGenerateOpen(true)}>
+        <Button
+          type="button"
+          disabled={!generationReady || loading || generating}
+          onClick={() => setIsGenerateOpen(true)}
+        >
           <Plus className="h-4 w-4" />
           Generar reporte
         </Button>
       </PageHeader>
 
+      <Button
+        variant="outline"
+        disabled={loading || generating || archiveBusy}
+        onClick={() => void loadReports()}
+      >
+        Actualizar archivo
+      </Button>
       {error ? (
         <Alert>
-          <AlertTitle>Reportes no disponibles</AlertTitle>
+          <AlertTitle>Consulta de reportes</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
 
       {loading ? (
-        <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <div className={styles.layout}>
           <section className="rounded-2xl border bg-card p-5">
             <Skeleton className="mb-4 h-5 w-32" />
             <Skeleton className="h-[38rem] w-full rounded-xl" />
@@ -265,6 +290,8 @@ export function ReportsContent() {
             <Skeleton className="h-[38rem] w-full rounded-xl" />
           </section>
         </div>
+      ) : error && reports.length === 0 ? (
+        <p role="status">No se pudo verificar el archivo. Reintenta la consulta.</p>
       ) : reports.length === 0 ? (
         <div className="rounded-2xl border bg-card p-6">
           <Empty className="border border-dashed bg-muted/10">
@@ -291,13 +318,70 @@ export function ReportsContent() {
             groups={groupedReports}
             selectedReportId={selectedReportId}
             loading={loading}
-            onSelect={(report) => setSelectedReportId(report.id)}
+            onSelect={(report) => {
+              setSelectedReportId(report.id)
+              setComparisonId("")
+            }}
           />
-          <ReportPreviewPanel
-            report={selectedReport}
-            archiveBusy={archiveBusy}
-            onArchive={() => setIsArchiveDialogOpen(true)}
-          />
+          <div className="min-w-0 space-y-6">
+            {selectedReport && (
+              <section className="space-y-3" aria-label="Comparación de versiones">
+                <label htmlFor="compare-report" className="font-medium">
+                  Comparar con otra versión del mismo mes
+                </label>
+                <select
+                  id="compare-report"
+                  className="min-h-11 w-full rounded-xl border bg-card p-2"
+                  value={comparisonId}
+                  onChange={(event) => setComparisonId(event.target.value)}
+                >
+                  <option value="">Sin comparación</option>
+                  {reports
+                    .filter(
+                      (row) =>
+                        row.reportMonth === selectedReport.reportMonth &&
+                        row.id !== selectedReport.id,
+                    )
+                    .map((row) => (
+                      <option key={row.id} value={row.id}>
+                        {formatReportMonth(row.reportMonth)} · v{row.version} · {row.baseCurrency}
+                      </option>
+                    ))}
+                </select>
+                {reports
+                  .filter(
+                    (row) =>
+                      String(row.id) === comparisonId &&
+                      row.reportMonth === selectedReport.reportMonth &&
+                      row.id !== selectedReport.id,
+                  )
+                  .map((other) => (
+                    <div key={other.id} className={`${styles.context} grid gap-4 sm:grid-cols-2`}>
+                      {[selectedReport, other].map((row) => (
+                        <div key={row.id}>
+                          <h2 className="font-semibold">
+                            Versión {row.version} · #{row.id}
+                          </h2>
+                          <p>Original CRC: {formatCurrency(row.totalCrc, "CRC")}</p>
+                          <p>Original USD: {formatCurrency(row.totalUsd, "USD")}</p>
+                          <p>
+                            Consolidado {row.baseCurrency}:{" "}
+                            {row.consolidatedAmount === null
+                              ? "No disponible"
+                              : formatCurrency(row.consolidatedAmount, row.baseCurrency)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+              </section>
+            )}
+            <ReportPreviewPanel
+              report={selectedReport}
+              archiveBusy={archiveBusy}
+              onArchive={() => setIsArchiveDialogOpen(true)}
+            />
+          </div>
         </div>
       )}
 
@@ -310,21 +394,26 @@ export function ReportsContent() {
         onSubmit={handleGenerate}
       />
 
-      <AlertDialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
+      <AlertDialog
+        open={isArchiveDialogOpen}
+        onOpenChange={(open) => {
+          if (!archiveBusy) setIsArchiveDialogOpen(open)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Archivar el reporte?</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedReport
-                ? `Se archivará ${selectedReport.reportMonth} v${selectedReport.version} from the main report history without deleting the snapshot data.`
+                ? `Se archivará ${selectedReport.reportMonth} v${selectedReport.version} del historial principal, conservando los datos capturados.`
                 : "El reporte dejará de aparecer en el historial principal. Su información se conservará."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={archiveBusy}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleArchive()} disabled={archiveBusy}>
+            <Button onClick={() => void handleArchive()} disabled={archiveBusy}>
               Archivar reporte
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
