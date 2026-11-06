@@ -4,7 +4,7 @@
 
 Identidad visual: [logo Atlántico, assets y reproducción](docs/brand.md).
 
-**Para desplegar testing, empezar por la [guía operativa del backend](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/deploy-testing.md). ZA-97 requiere `budget_plan`, además de `transfer_request` de ZA-90. El worker SSH instalado necesita ampliación revisada para preparar ZA-97; promover imágenes no basta.**
+**Para desplegar testing, empezar por la [guía operativa del backend](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/deploy-testing.md). ZA-97 requiere `budget_plan`, además de `transfer_request` de ZA-90. La ampliación SSH y su aceptación Windows ya se completaron: usar un plan nuevo con perfil `za90-za97`. Promover imágenes no sustituye la preparación explícita de la DB dentro del deploy.**
 
 [Presupuestos Marea](docs/budget-plans.md): ingreso neto/comprobantes, planificación USD/CRC y asignación explícita de fondos existentes a sobres, con recuperación sin duplicación.
 
