@@ -64,6 +64,13 @@ const messageOf = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
 
 export function SettingsContent() {
+  const reviewNotice = React.useRef<(() => void) | null>(null)
+  const profileLock = React.useRef(false)
+  const ruleLock = React.useRef(false)
+  const [profileFeedback, setProfileFeedback] = React.useState<{
+    error: boolean
+    message: string
+  } | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [ready, setReady] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -103,6 +110,7 @@ export function SettingsContent() {
   const [editingRuleId, setEditingRuleId] = React.useState<number | null>(null)
   const [ruleFormOpen, setRuleFormOpen] = React.useState(false)
   const [ruleFormError, setRuleFormError] = React.useState<string | null>(null)
+  const [ruleReview, setRuleReview] = React.useState(false)
   const [ruleBusy, setRuleBusy] = React.useState(false)
   const [ruleForm, setRuleForm] = React.useState({
     pattern: "",
@@ -128,6 +136,9 @@ export function SettingsContent() {
       ] as const)
       const [profileData, accountData, ruleData] = results
       if (profileData.status === "fulfilled") {
+        setProfileFeedback((current) => (current?.error ? null : current))
+        reviewNotice.current?.()
+        reviewNotice.current = null
         setProfile(profileData.value)
         if (!profileDirty.current)
           setProfileForm({
@@ -137,6 +148,7 @@ export function SettingsContent() {
       }
       if (accountData.status === "fulfilled") setAccounts(accountData.value)
       if (ruleData.status === "fulfilled") {
+        setRuleReview(false)
         testRevision.current++
         setTestResult(null)
         setRules(ruleData.value)
@@ -183,6 +195,7 @@ export function SettingsContent() {
     (profileForm.name !== profile.name || profileForm.baseCurrency !== profile.baseCurrency)
 
   const resetRuleForm = () => {
+    setRuleReview(false)
     setEditingRuleId(null)
     setRuleFormOpen(false)
     setRuleFormError(null)
@@ -216,7 +229,7 @@ export function SettingsContent() {
   }
 
   const saveProfile = async () => {
-    if (savingProfile || loadErrors.profile || !profile) return
+    if (profileLock.current || loadErrors.profile || !profile) return
     if (!profileForm.name.trim() || !profileForm.baseCurrency.trim()) {
       return toast({
         title: "Perfil incompleto",
@@ -225,10 +238,16 @@ export function SettingsContent() {
       })
     }
     try {
+      profileLock.current = true
+      setProfileFeedback(null)
       setSavingProfile(true)
       const updated = await updateUserSettings({
         name: profileForm.name,
         baseCurrency: profileForm.baseCurrency,
+      })
+      setProfileFeedback({
+        error: false,
+        message: "Tu perfil quedó guardado. Puedes continuar con tus ajustes.",
       })
       profileDirty.current = false
       setProfile(updated)
@@ -238,18 +257,24 @@ export function SettingsContent() {
         description: `Moneda de presentación: ${updated.baseCurrency}.`,
       })
     } catch (cause) {
-      toast({
-        title: "No se actualizó el perfil",
+      setProfileFeedback({
+        error: true,
+        message:
+          "No pudimos confirmar el guardado. Conservamos tu borrador; actualiza y revisa el perfil antes de reintentar.",
+      })
+      reviewNotice.current = toast({
+        title: "Perfil por revisar",
         description: messageOf(cause, "No pudimos guardar tu perfil. Vuelve a intentar."),
         variant: "destructive",
-      })
+      }).dismiss
     } finally {
+      profileLock.current = false
       setSavingProfile(false)
     }
   }
 
   const saveRule = async () => {
-    if (ruleBusy || loadErrors.rules || loadErrors.accounts) return
+    if (ruleLock.current || ruleReview || loadErrors.rules || loadErrors.accounts) return
     const priority = rulePriority(ruleForm.priority)
     const accountId = ruleForm.accountId !== NONE ? Number.parseInt(ruleForm.accountId, 10) : null
     const accountEnvelopeId =
@@ -264,6 +289,7 @@ export function SettingsContent() {
       )
     }
     try {
+      ruleLock.current = true
       setRuleBusy(true)
       setRuleFormError(null)
       const payload = {
@@ -292,10 +318,20 @@ export function SettingsContent() {
       setTestResult(null)
       resetRuleForm()
     } catch (cause) {
+      const rejected =
+        cause instanceof Error &&
+        "status" in cause &&
+        typeof cause.status === "number" &&
+        cause.status >= 400 &&
+        cause.status < 500
+      setRuleReview(!rejected)
       setRuleFormError(
-        messageOf(cause, "No pudimos guardar la regla. Revisa los datos y vuelve a intentar."),
+        rejected
+          ? messageOf(cause, "Revisa los datos de la regla.")
+          : "No pudimos confirmar el guardado. Conservamos tu borrador; actualiza los ajustes y revisa las reglas antes de repetir.",
       )
     } finally {
+      ruleLock.current = false
       setRuleBusy(false)
     }
   }
@@ -353,6 +389,25 @@ export function SettingsContent() {
               hidden={section !== "profile"}
               className="space-y-4"
             >
+              {profileFeedback && (
+                <Feedback
+                  tone={profileFeedback.error ? "warning" : "success"}
+                  title={profileFeedback.error ? "Perfil por revisar" : "Perfil guardado"}
+                  action={
+                    profileFeedback.error ? (
+                      <Button
+                        variant="outline"
+                        disabled={loading || savingProfile}
+                        onClick={() => void loadAll()}
+                      >
+                        Consultar perfil guardado
+                      </Button>
+                    ) : undefined
+                  }
+                >
+                  {profileFeedback.message}
+                </Feedback>
+              )}
               {loadErrors.profile && (
                 <Feedback tone="error" title="Perfil no disponible">
                   Actualiza los ajustes para volver a consultar el perfil.
@@ -406,6 +461,7 @@ export function SettingsContent() {
                       <Button
                         type="button"
                         onClick={() => void saveProfile()}
+                        loading={savingProfile}
                         disabled={savingProfile || !hasProfileChanges}
                       >
                         Guardar perfil
@@ -629,7 +685,12 @@ export function SettingsContent() {
                           <Button type="button" variant="outline" onClick={resetRuleForm}>
                             Cancelar
                           </Button>
-                          <Button type="button" onClick={() => void saveRule()} disabled={ruleBusy}>
+                          <Button
+                            type="button"
+                            onClick={() => void saveRule()}
+                            loading={ruleBusy}
+                            disabled={ruleBusy || ruleReview}
+                          >
                             {editingRuleId ? "Guardar regla" : "Crear regla"}
                           </Button>
                         </div>

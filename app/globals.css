@@ -262,7 +262,14 @@
 [data-slot="textarea"],
 [data-slot="select-trigger"],
 [data-slot="badge"],
-[data-slot="table-row"] {
+[data-slot="table-row"],
+[data-slot="command-item"],
+[data-slot="tabs-trigger"],
+[data-slot="switch"],
+button[aria-pressed],
+nav a,
+summary {
+  transition-property: background-color, color, border-color, box-shadow;
   transition-duration: var(--motion-fast);
   transition-timing-function: var(--motion-ease);
 }
@@ -278,9 +285,8 @@
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation: none !important;
+    transition: none !important;
     scroll-behavior: auto !important;
   }
 }

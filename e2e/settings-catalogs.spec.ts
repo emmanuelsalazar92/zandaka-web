@@ -572,3 +572,33 @@ for (const section of ["profile", "cash", "payroll"]) {
     ).toEqual([])
   })
 }
+
+for (const moveFocus of [false, true])
+  test(`catalog delayed refresh restores focus without stealing user navigation ${moveFocus}`, async ({
+    page,
+  }) => {
+    await catalogFixture(page)
+    let reads = 0,
+      release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route("**/api/institutions", async (route) => {
+      if (route.request().method() === "GET" && ++reads > 1) await gate
+      await route.fallback()
+    })
+    await page.goto("/institutions")
+    const add = page.getByRole("button", { name: "Añadir institución", exact: true })
+    await add.click()
+    await page.getByLabel("Nombre de la institución").fill("Foco de prueba")
+    await page.getByRole("button", { name: "Guardar cambios", exact: true }).click()
+    await expect(page.getByRole("dialog")).toHaveCount(0)
+    await expect(page.locator("#main-content")).toBeFocused()
+    const navigation = page
+      .getByRole("navigation", { name: "Secciones de ajustes" })
+      .getByRole("link", { name: "Perfil y preferencias" })
+    if (moveFocus) await navigation.focus()
+    release()
+    await expect(add).toBeEnabled()
+    await expect(moveFocus ? navigation : add).toBeFocused()
+  })

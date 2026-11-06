@@ -15,15 +15,18 @@ export function Feedback({
   title,
   children,
   className,
+  action,
   ...props
 }: Omit<React.ComponentProps<"div">, "title"> & {
   tone?: keyof typeof tones
   title: React.ReactNode
+  action?: React.ReactNode
 }) {
   const { icon: Icon, className: color } = tones[tone]
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
+      aria-atomic="true"
       data-slot="feedback"
       className={cn("flex items-start gap-3 rounded-lg p-4 text-sm", color, className)}
       {...props}
@@ -32,6 +35,7 @@ export function Feedback({
       <div className="min-w-0 space-y-1">
         <p className="font-semibold">{title}</p>
         {children && <div className="leading-relaxed">{children}</div>}
+        {action && <div className="pt-2">{action}</div>}
       </div>
     </div>
   )
@@ -43,7 +47,12 @@ export function LoadingState({
   children?: React.ReactNode
 }) {
   return (
-    <div role="status" className="flex items-center gap-3 py-6 text-sm text-muted-foreground">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      className="flex items-center gap-3 py-6 text-sm text-muted-foreground"
+    >
       <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
       {children}
     </div>

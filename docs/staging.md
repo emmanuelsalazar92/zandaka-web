@@ -18,6 +18,8 @@ ZA-103 adopta [Ajustes y catálogos Marea](settings-catalogs.md): seis secciones
 
 ZA-104 completa [Reportes Marea](reports-marea.md): resumen histórico independiente del visor, archivo mensual, comparación de versiones y errores explícitos de consulta. Cambio web local sin nuevos requisitos de DB; conserva la API existente y necesita incluir ZA-110 en la futura entrega para los márgenes del HTML servido. Sin push ni deploy en este ticket.
 
+ZA-105 completa [feedback y microinteracciones](operation-feedback.md), con movimiento reducido, anuncios de carga y recuperación explícita. Solo web, commit local; sin push, deploy ni requisitos nuevos de API/DB.
+
 ## Integración continua
 
 ZA-102 adopta [Cuentas y Sobres Marea](accounts-envelopes.md): saldos por moneda, contexto de cuenta, distribución positiva, búsqueda/densidad, actividad filtrada y creación integrada de institución/categoría. Solo web, sin nuevos endpoints, DB o recálculos. Trabajo del 6 de noviembre en commit local, sin push ni deploy; la compatibilidad API de ZA-99 incluida en esta web sigue vigente. No sustituye la entrega real de testing registrada arriba.

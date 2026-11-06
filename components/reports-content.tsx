@@ -33,6 +33,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { Feedback, LoadingState } from "@/components/ui/feedback"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
 import { formatCurrency } from "@/lib/currency-formatter"
@@ -90,6 +91,12 @@ const findStoredMonthEndRate = (
 }
 
 export function ReportsContent() {
+  const reviewNotice = React.useRef<(() => void) | null>(null)
+  const generateLock = React.useRef(false)
+  const archiveLock = React.useRef(false)
+  const [generationReview, setGenerationReview] = React.useState<string | null>(null)
+  const [archiveReview, setArchiveReview] = React.useState<string | null>(null)
+  const [confirmation, setConfirmation] = React.useState<string | null>(null)
   const [comparisonId, setComparisonId] = React.useState("")
   const [generationReady, setGenerationReady] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
@@ -118,6 +125,10 @@ export function ReportsContent() {
       ] as const)
       if (snapshots.status === "rejected") throw snapshots.reason
       const snapshotData = snapshots.value
+      setGenerationReview(null)
+      reviewNotice.current?.()
+      reviewNotice.current = null
+      setArchiveReview(null)
       setReports(snapshotData)
       const ready = profile.status === "fulfilled" && rates.status === "fulfilled"
       setGenerationReady(ready)
@@ -164,6 +175,9 @@ export function ReportsContent() {
     usdToCrcRate: number | null
     notes: string | null
   }) => {
+    if (generateLock.current || generationReview || !generationReady) return
+    generateLock.current = true
+    setConfirmation(null)
     try {
       setGenerating(true)
       let payload = { ...input }
@@ -202,26 +216,35 @@ export function ReportsContent() {
       setReports(refreshed)
       setSelectedReportId(created.id)
       setIsGenerateOpen(false)
+      setConfirmation(
+        `Versión ${created.reportMonth} v${created.version} guardada. Puedes consultarla o descargarla.`,
+      )
       toast({
         title: "Reporte generado",
         description: `Versión ${created.reportMonth} v${created.version} está lista.`,
       })
     } catch (cause) {
-      toast({
-        title: "No se generó el reporte",
+      setGenerationReview(
+        "No pudimos confirmar la generación. Conservamos tus datos; cierra este diálogo y actualiza el archivo antes de repetir.",
+      )
+      reviewNotice.current = toast({
+        title: "Generación por revisar",
         description: messageOf(
           cause,
           "No pudimos guardar el reporte. Revisa los datos y vuelve a intentar.",
         ),
         variant: "destructive",
-      })
+      }).dismiss
     } finally {
+      generateLock.current = false
       setGenerating(false)
     }
   }
 
   const handleArchive = async () => {
-    if (!selectedReport) return
+    if (!selectedReport || archiveLock.current || archiveReview) return
+    archiveLock.current = true
+    setConfirmation(null)
 
     try {
       setArchiveBusy(true)
@@ -231,17 +254,24 @@ export function ReportsContent() {
       setReports(refreshed)
       setSelectedReportId(nextSelected?.id ?? null)
       setIsArchiveDialogOpen(false)
+      setConfirmation(
+        `Versión ${selectedReport.reportMonth} v${selectedReport.version} archivada. Sus datos históricos se conservan.`,
+      )
       toast({
         title: "Reporte archivado",
         description: `Versión ${selectedReport.reportMonth} v${selectedReport.version} se archivó.`,
       })
     } catch (cause) {
-      toast({
-        title: "No se archivó el reporte",
+      setArchiveReview(
+        "No pudimos confirmar el archivado. Cierra este diálogo y actualiza el archivo antes de repetir.",
+      )
+      reviewNotice.current = toast({
+        title: "Archivado por revisar",
         description: messageOf(cause, "No pudimos archivar el reporte. Vuelve a intentar."),
         variant: "destructive",
-      })
+      }).dismiss
     } finally {
+      archiveLock.current = false
       setArchiveBusy(false)
     }
   }
@@ -257,7 +287,7 @@ export function ReportsContent() {
       >
         <Button
           type="button"
-          disabled={!generationReady || loading || generating}
+          disabled={!generationReady || loading || generating || !!generationReview}
           onClick={() => setIsGenerateOpen(true)}
         >
           <Plus className="h-4 w-4" />
@@ -272,6 +302,22 @@ export function ReportsContent() {
       >
         Actualizar archivo
       </Button>
+      {confirmation && (
+        <Feedback tone="success" title="Operación confirmada">
+          {confirmation}
+        </Feedback>
+      )}
+      {generationReview && (
+        <Feedback tone="warning" title="Generación por revisar">
+          {generationReview}
+        </Feedback>
+      )}
+      {archiveReview && (
+        <Feedback tone="warning" title="Archivado por revisar">
+          {archiveReview}
+        </Feedback>
+      )}
+      {loading && <LoadingState>Consultando archivo de reportes…</LoadingState>}
       {error ? (
         <Alert>
           <AlertTitle>Consulta de reportes</AlertTitle>
@@ -391,6 +437,7 @@ export function ReportsContent() {
         baseCurrency={baseCurrency}
         exchangeRates={exchangeRates}
         generating={generating}
+        reviewMessage={generationReview}
         onSubmit={handleGenerate}
       />
 
@@ -409,9 +456,18 @@ export function ReportsContent() {
                 : "El reporte dejará de aparecer en el historial principal. Su información se conservará."}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {archiveReview && (
+            <Feedback tone="warning" title="Archivado por revisar">
+              {archiveReview}
+            </Feedback>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={archiveBusy}>Cancelar</AlertDialogCancel>
-            <Button onClick={() => void handleArchive()} disabled={archiveBusy}>
+            <Button
+              loading={archiveBusy}
+              onClick={() => void handleArchive()}
+              disabled={archiveBusy || !!archiveReview}
+            >
               Archivar reporte
             </Button>
           </AlertDialogFooter>

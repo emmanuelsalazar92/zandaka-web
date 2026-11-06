@@ -1224,13 +1224,18 @@ export function TransactionsContent() {
           {transactionsLoading ? (
             <TransactionTimelineSkeleton />
           ) : transactionsError ? (
-            <EmptyState
-              icon={AlertCircle}
+            <Feedback
+              tone="error"
               title="No pudimos cargar los movimientos"
-              description={transactionsError}
-              actionLabel="Volver a intentar"
-              onAction={retryTransactions}
-            />
+              action={
+                <Button variant="outline" onClick={retryTransactions}>
+                  Volver a intentar
+                </Button>
+              }
+            >
+              {transactionsError} Conservamos tus filtros; reintentar solo vuelve a consultar el
+              historial.
+            </Feedback>
           ) : transactions.length === 0 ? (
             <EmptyState
               icon={Search}

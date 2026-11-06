@@ -62,6 +62,18 @@ export function CatalogContent({ kind }: { kind: "institutions" | "categories" }
   const [notice, setNotice] = React.useState<string | null>(null)
   const [returnTo, setReturnTo] = React.useState(catalogReturn(null))
   const origin = React.useRef<HTMLElement | null>(null)
+  const [pendingFocus, setPendingFocus] = React.useState(false)
+  React.useEffect(() => {
+    if (!pendingFocus || catalog.loading || busy || editor) return
+    const main = document.getElementById("main-content")
+    if (
+      document.activeElement === main &&
+      origin.current?.isConnected &&
+      !origin.current.matches(":disabled")
+    )
+      origin.current.focus()
+    setPendingFocus(false)
+  }, [pendingFocus, catalog.loading, busy, editor])
   const writeLock = React.useRef(false)
   React.useEffect(() => {
     setReturnTo(catalogReturn(new URLSearchParams(window.location.search).get("returnTo")))
@@ -449,10 +461,12 @@ export function CatalogContent({ kind }: { kind: "institutions" | "categories" }
         <DialogContent
           onCloseAutoFocus={(event) => {
             event.preventDefault()
-            ;(origin.current?.isConnected
-              ? origin.current
-              : document.getElementById("main-content")
-            )?.focus()
+            const target = origin.current?.isConnected ? origin.current : null
+            if (target && !target.matches(":disabled")) target.focus()
+            else {
+              document.getElementById("main-content")?.focus()
+              setPendingFocus(!!target && catalog.loading)
+            }
           }}
         >
           <DialogHeader>

@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Feedback } from "@/components/ui/feedback"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -21,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { getAccountingDate } from "@/lib/date-only"
 import { tryDecimalInput } from "@/lib/money"
@@ -33,6 +33,7 @@ type GenerateReportDialogProps = {
   baseCurrency: string
   exchangeRates: ExchangeRate[]
   generating: boolean
+  reviewMessage?: string | null
   onSubmit: (input: {
     reportMonth: string
     baseCurrency: string
@@ -80,6 +81,7 @@ export function GenerateReportDialog({
   baseCurrency,
   exchangeRates,
   generating,
+  reviewMessage,
   onSubmit,
 }: GenerateReportDialogProps) {
   const [reportMonth, setReportMonth] = React.useState(currentMonthValue)
@@ -151,7 +153,12 @@ export function GenerateReportDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!generating) onOpenChange(next)
+      }}
+    >
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Generar reporte</DialogTitle>
@@ -162,115 +169,121 @@ export function GenerateReportDialog({
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <Label>Mes de referencia</Label>
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
-              <Select value={reportMonthPart} onValueChange={setReportMonthPart}>
-                <SelectTrigger className="w-full" aria-label="Mes del reporte">
-                  <SelectValue placeholder="Elige el mes" />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONTH_OPTIONS.map((month) => (
-                    <SelectItem key={month.value} value={month.value}>
-                      {month.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                id="report-year"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={4}
-                value={reportYear}
-                onChange={(event) =>
-                  setReportYear(event.target.value.replace(/\D/g, "").slice(0, 4))
-                }
-                placeholder="2026"
-                aria-label="Año del reporte"
-                required
-              />
+          <fieldset disabled={generating} className="min-w-0 space-y-4">
+            <div className="space-y-2">
+              <Label>Mes de referencia</Label>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
+                <Select value={reportMonthPart} onValueChange={setReportMonthPart}>
+                  <SelectTrigger className="w-full" aria-label="Mes del reporte">
+                    <SelectValue placeholder="Elige el mes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTH_OPTIONS.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  id="report-year"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  value={reportYear}
+                  onChange={(event) =>
+                    setReportYear(event.target.value.replace(/\D/g, "").slice(0, 4))
+                  }
+                  placeholder="2026"
+                  aria-label="Año del reporte"
+                  required
+                />
+              </div>
             </div>
-          </div>
 
-          <AccessibleField className="space-y-2">
-            <Label htmlFor="report-base-currency">Moneda de presentación</Label>
-            <Input id="report-base-currency" value={baseCurrency} disabled readOnly />
-            <p className="text-xs text-muted-foreground">
-              Corresponde a la moneda de tu perfil en Ajustes.
-            </p>
-          </AccessibleField>
-
-          <AccessibleField className="space-y-2">
-            <Label htmlFor="report-rate-mode">Origen de la cotización</Label>
-            <Select
-              value={rateMode}
-              onValueChange={(value) => setRateMode(value as "auto" | "stored" | "manual")}
-            >
-              <SelectTrigger id="report-rate-mode" className="w-full">
-                <SelectValue placeholder="Elige cómo obtener la cotización" />
-              </SelectTrigger>
-              <SelectContent>
-                {rateModeOptions(baseCurrency).map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </AccessibleField>
-
-          {rateMode === "stored" ? (
             <AccessibleField className="space-y-2">
-              <Label htmlFor="stored-rate">Cotización guardada</Label>
-              <Select value={selectedRateId} onValueChange={setSelectedRateId}>
-                <SelectTrigger id="stored-rate" className="w-full">
-                  <SelectValue placeholder="Elige una cotización guardada" />
+              <Label htmlFor="report-base-currency">Moneda de presentación</Label>
+              <Input id="report-base-currency" value={baseCurrency} disabled readOnly />
+              <p className="text-xs text-muted-foreground">
+                Corresponde a la moneda de tu perfil en Ajustes.
+              </p>
+            </AccessibleField>
+
+            <AccessibleField className="space-y-2">
+              <Label htmlFor="report-rate-mode">Origen de la cotización</Label>
+              <Select
+                value={rateMode}
+                onValueChange={(value) => setRateMode(value as "auto" | "stored" | "manual")}
+              >
+                <SelectTrigger id="report-rate-mode" className="w-full">
+                  <SelectValue placeholder="Elige cómo obtener la cotización" />
                 </SelectTrigger>
                 <SelectContent>
-                  {eligibleRates.map((rate) => (
-                    <SelectItem key={rate.id} value={String(rate.id)}>
-                      {rate.effectiveDate} • {rate.fromCurrency} → {rate.toCurrency} •{" "}
-                      {rate.rate.toFixed(4)}
+                  {rateModeOptions(baseCurrency).map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {eligibleRates.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  No hay cotizaciones guardadas para esta moneda. Puedes usar la consulta
-                  automática.
-                </p>
-              ) : null}
             </AccessibleField>
-          ) : null}
 
-          {rateMode === "manual" && baseCurrency === "CRC" ? (
+            {rateMode === "stored" ? (
+              <AccessibleField className="space-y-2">
+                <Label htmlFor="stored-rate">Cotización guardada</Label>
+                <Select value={selectedRateId} onValueChange={setSelectedRateId}>
+                  <SelectTrigger id="stored-rate" className="w-full">
+                    <SelectValue placeholder="Elige una cotización guardada" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eligibleRates.map((rate) => (
+                      <SelectItem key={rate.id} value={String(rate.id)}>
+                        {rate.effectiveDate} • {rate.fromCurrency} → {rate.toCurrency} •{" "}
+                        {rate.rate.toFixed(4)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {eligibleRates.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No hay cotizaciones guardadas para esta moneda. Puedes usar la consulta
+                    automática.
+                  </p>
+                ) : null}
+              </AccessibleField>
+            ) : null}
+
+            {rateMode === "manual" && baseCurrency === "CRC" ? (
+              <AccessibleField className="space-y-2">
+                <Label htmlFor="manual-rate">Cotización manual de USD a CRC</Label>
+                <Input
+                  id="manual-rate"
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  inputMode="decimal"
+                  value={manualRate}
+                  onChange={(event) => setManualRate(event.target.value)}
+                  placeholder="512.3400"
+                />
+              </AccessibleField>
+            ) : null}
+
             <AccessibleField className="space-y-2">
-              <Label htmlFor="manual-rate">Cotización manual de USD a CRC</Label>
-              <Input
-                id="manual-rate"
-                type="number"
-                min="0"
-                step="0.0001"
-                inputMode="decimal"
-                value={manualRate}
-                onChange={(event) => setManualRate(event.target.value)}
-                placeholder="512.3400"
+              <Label htmlFor="report-notes">Notas</Label>
+              <Textarea
+                id="report-notes"
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder="Nota opcional para esta versión del reporte"
               />
             </AccessibleField>
-          ) : null}
-
-          <AccessibleField className="space-y-2">
-            <Label htmlFor="report-notes">Notas</Label>
-            <Textarea
-              id="report-notes"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="Nota opcional para esta versión del reporte"
-            />
-          </AccessibleField>
-
+          </fieldset>
+          {reviewMessage && (
+            <Feedback tone="warning" title="Generación por revisar">
+              {reviewMessage}
+            </Feedback>
+          )}
           <DialogFooter>
             <Button
               type="button"
@@ -282,14 +295,15 @@ export function GenerateReportDialog({
             </Button>
             <Button
               type="submit"
+              loading={generating}
               disabled={
                 generating ||
+                !!reviewMessage ||
                 !reportMonth ||
                 (rateMode === "stored" && !selectedRateId) ||
                 (rateMode === "manual" && baseCurrency === "CRC" && !manualRate.trim())
               }
             >
-              {generating ? <Spinner className="h-4 w-4" /> : null}
               Generar reporte
             </Button>
           </DialogFooter>
