@@ -339,25 +339,23 @@ export function ReportsContent() {
       ) : error && reports.length === 0 ? (
         <p role="status">No se pudo verificar el archivo. Reintenta la consulta.</p>
       ) : reports.length === 0 ? (
-        <div className="rounded-2xl border bg-card p-6">
-          <Empty className="border border-dashed bg-muted/10">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <FileStack />
-              </EmptyMedia>
-              <EmptyTitle>Todavía no hay reportes</EmptyTitle>
-              <EmptyDescription>
-                Genera tu primera versión de saldos para consultarla y descargarla aquí.
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button type="button" onClick={() => setIsGenerateOpen(true)}>
-                <Plus className="h-4 w-4" />
-                Generar mi primer reporte
-              </Button>
-            </EmptyContent>
-          </Empty>
-        </div>
+        <Empty className="rounded-2xl border border-dashed bg-card p-3 md:p-5">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FileStack />
+            </EmptyMedia>
+            <EmptyTitle>Todavía no hay reportes</EmptyTitle>
+            <EmptyDescription>
+              Genera tu primera versión de saldos para consultarla y descargarla aquí.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button type="button" className="flex-wrap" onClick={() => setIsGenerateOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Generar mi primer reporte
+            </Button>
+          </EmptyContent>
+        </Empty>
       ) : (
         <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
           <ReportsHistoryPanel

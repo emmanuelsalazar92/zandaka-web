@@ -476,7 +476,7 @@ export default function ImportTransactionsPage() {
   }
 
   return (
-    <div className="marea-surface min-w-0 space-y-6 rounded-2xl bg-background p-3 sm:p-5">
+    <div className="marea-surface min-w-0 space-y-6 rounded-2xl bg-background p-3 [overflow-wrap:anywhere] sm:p-5">
       <p className="rounded-2xl bg-primary p-5 text-primary-foreground">
         1 · Pegar → 2 · Revisar y asignar → 3 · Confirmar resultados
       </p>
@@ -505,16 +505,16 @@ export default function ImportTransactionsPage() {
             Elige el formato del banco y pega los movimientos copiados
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-3 sm:px-3">
           <fieldset
             disabled={isImporting || Object.keys(results).length > 0}
             className="min-w-0 space-y-4"
           >
             <div className="flex flex-wrap items-end gap-4">
-              <AccessibleField className="w-64 space-y-2">
+              <AccessibleField className="w-64 min-w-0 max-w-full space-y-2">
                 <Label className="text-sm font-medium">Formato del banco</Label>
                 <Select value={bankFormat} onValueChange={(v) => setBankFormat(v as BankFormat)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full min-w-0 whitespace-normal [&_[data-slot=select-value]]:line-clamp-none [&_[data-slot=select-value]]:min-w-0">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -524,13 +524,13 @@ export default function ImportTransactionsPage() {
                 </Select>
               </AccessibleField>
               {bankFormat === "bac-credomatic" && (
-                <AccessibleField className="w-52 space-y-2">
+                <AccessibleField className="w-52 min-w-0 max-w-full space-y-2">
                   <Label className="text-sm font-medium">Moneda de BAC</Label>
                   <Select
                     value={bacCurrency}
                     onValueChange={(v) => setBacCurrency(v as CurrencyCode)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full min-w-0 whitespace-normal [&_[data-slot=select-value]]:line-clamp-none [&_[data-slot=select-value]]:min-w-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -540,10 +540,15 @@ export default function ImportTransactionsPage() {
                   </Select>
                 </AccessibleField>
               )}
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={handleProcess} disabled={!rawData.trim()}>
+              <div className="flex min-w-0 max-w-full flex-wrap gap-2 [overflow-wrap:anywhere]">
+                <Button
+                  aria-label="Procesar movimientos"
+                  className="flex-wrap"
+                  onClick={handleProcess}
+                  disabled={!rawData.trim()}
+                >
                   <FileUp className="mr-2 h-4 w-4" />
-                  Procesar movimientos
+                  Procesar
                 </Button>
                 <Button variant="outline" onClick={handleClear}>
                   Limpiar
@@ -556,8 +561,8 @@ export default function ImportTransactionsPage() {
               <Textarea
                 placeholder={
                   bankFormat === "grupo-mutual"
-                    ? "Paste transactions from Grupo Mutual...\n\nExample:\n15/03/2026\n11:22:40 PM\nPAGO INTERESES\n₡7,379.25\n₡25,307,671.77"
-                    : "Paste transactions from BAC Credomatic...\nChoose the BAC currency above first.\n\nExample:\n02/03/2026\t30100000\tCOMERCIAL LA GUARIA\t2,300.00\t0.00\t114,501.92"
+                    ? "Pega los movimientos de Grupo Mutual...\n\nEjemplo:\n15/03/2026\n11:22:40 PM\nPAGO INTERESES\n₡7,379.25\n₡25,307,671.77"
+                    : "Pega los movimientos de BAC Credomatic...\nPrimero elige la moneda de BAC arriba.\n\nEjemplo:\n02/03/2026\t30100000\tCOMERCIAL LA GUARIA\t2,300.00\t0.00\t114,501.92"
                 }
                 value={rawData}
                 onChange={(e) => setRawData(e.target.value)}

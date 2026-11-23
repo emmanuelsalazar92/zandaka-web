@@ -1,6 +1,8 @@
 .page {
   color: var(--marea-ink);
+  container-type: inline-size;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .intro {
   border-radius: 1.5rem;
@@ -154,13 +156,13 @@
 .rule dt {
   color: var(--marea-muted);
 }
-@media (max-width: 900px) {
+@container (max-width: 56rem) {
   .layout,
   .rules {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-@media (max-width: 600px) {
+@container (max-width: 38rem) {
   .navigation {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -192,7 +192,7 @@ export function DashboardContent() {
               value={month}
               min="1000-01"
               max="9999-12"
-              className="w-full sm:w-auto"
+              className="w-full max-w-full sm:w-auto"
               onChange={(event) => {
                 try {
                   dashboardMonthRange(event.target.value)
