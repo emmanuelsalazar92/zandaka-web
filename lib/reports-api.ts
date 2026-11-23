@@ -1,4 +1,4 @@
-import { assertMoney, decimalNumber } from "@/lib/money"
+import { currencyDigits, decimal, decimalNumber } from "@/lib/money"
 import { publicErrorMessage } from "@/lib/public-error"
 import { SETTINGS_USER_ID } from "@/lib/settings-api"
 
@@ -152,7 +152,19 @@ async function request<T>(path: string, options?: RequestOptions): Promise<T> {
   return payload as T
 }
 
-const mapReportSnapshot = (raw: unknown): ReportSnapshot => {
+/** Historical snapshots are read-only captures, not new monetary inputs. Preserve their scale. */
+const historicalAmount = (value: number, currency: string) => {
+  if (
+    decimal(value)
+      .mul(decimal(10).pow(currencyDigits(currency)))
+      .abs()
+      .gt(Number.MAX_SAFE_INTEGER)
+  )
+    throw new Error("Historical amount exceeds the supported range")
+  return decimalNumber(value)
+}
+
+const parseReportSnapshot = (raw: unknown): ReportSnapshot => {
   if (!raw || typeof raw !== "object") throw new Error("Versión de reporte no disponible.")
   const item = raw as Record<string, unknown>
   const result: ReportSnapshot = {
@@ -190,11 +202,21 @@ const mapReportSnapshot = (raw: unknown): ReportSnapshot => {
     !/^\d{4}-(0[1-9]|1[0-2])$/.test(result.reportMonth)
   )
     throw new Error("Versión de reporte no disponible.")
-  assertMoney(result.totalCrc, "CRC")
-  assertMoney(result.totalUsd, "USD")
+  historicalAmount(result.totalCrc, "CRC")
+  historicalAmount(result.totalUsd, "USD")
   if (result.consolidatedAmount !== null)
-    assertMoney(result.consolidatedAmount, result.baseCurrency)
+    historicalAmount(result.consolidatedAmount, result.baseCurrency)
   return result
+}
+
+const mapReportSnapshot = (raw: unknown): ReportSnapshot => {
+  try {
+    return parseReportSnapshot(raw)
+  } catch {
+    throw new Error(
+      "No pudimos leer esta versión del reporte. Actualiza la consulta para verificar sus datos.",
+    )
+  }
 }
 
 export async function fetchReportSnapshots(userId = SETTINGS_USER_ID, includeArchived = false) {

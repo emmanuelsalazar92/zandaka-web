@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { fetchReportSnapshots, generateReportSnapshot } from "@/lib/reports-api"
+import {
+  fetchReportSnapshot,
+  fetchReportSnapshots,
+  generateReportSnapshot,
+} from "@/lib/reports-api"
 
 describe("reports api", () => {
   afterEach(() => {
@@ -123,4 +127,44 @@ describe("reports api", () => {
     )
     await expect(fetchReportSnapshots()).rejects.toThrow()
   })
+
+  const legacy = {
+    id: 13,
+    user_id: 1,
+    report_month: "2026-07",
+    version: 1,
+    base_currency: "CRC",
+    total_crc: 1234.5600000001,
+    total_usd: 12.340000000001,
+    consolidated_amount: 7404.56012345,
+    exchange_rate_used: 500.1234,
+  }
+  it("reads legacy totals and stored conversion precision unchanged in archive and detail", async () => {
+    const before = structuredClone(legacy)
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => Response.json(url.includes("/reports/13") ? legacy : [legacy])),
+    )
+    const [archive] = await fetchReportSnapshots()
+    const detail = await fetchReportSnapshot(13)
+    for (const result of [archive, detail]) {
+      expect(result.totalCrc).toBe(legacy.total_crc)
+      expect(result.totalUsd).toBe(legacy.total_usd)
+      expect(result.consolidatedAmount).toBe(legacy.consolidated_amount)
+      expect(result.exchangeRateUsed).toBe(legacy.exchange_rate_used)
+    }
+    expect(legacy).toEqual(before)
+  })
+  it.each([NaN, Infinity, "invalid", null, undefined, Number.MAX_SAFE_INTEGER])(
+    "rejects invalid or unsafe historical totals without exposing technical validation: %s",
+    async (total) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => Response.json([{ ...legacy, total_crc: total }])),
+      )
+      await expect(fetchReportSnapshots()).rejects.toThrow(
+        "No pudimos leer esta versión del reporte. Actualiza la consulta para verificar sus datos.",
+      )
+    },
+  )
 })

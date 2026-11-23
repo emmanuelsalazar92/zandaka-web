@@ -31,7 +31,7 @@ export default async function RootLayout({
           <AppLayout defaultSidebarOpen={defaultSidebarOpen}>{children}</AppLayout>
           <Toaster />
         </ThemeProvider>
-        <Analytics />
+        {process.env.VERCEL === "1" ? <Analytics /> : null}
       </body>
     </html>
   )

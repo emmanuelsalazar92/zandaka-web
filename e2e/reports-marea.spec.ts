@@ -55,6 +55,40 @@ async function fixture(page: Page, fail = false, metadataFail = false) {
     return route.fallback()
   })
 }
+test("legacy fractional archive opens without changing stored totals or loading Vercel analytics in Docker", async ({
+  page,
+}) => {
+  const analyticsRequests: string[] = []
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/_vercel/insights/"))
+      analyticsRequests.push(request.url())
+  })
+  await fixture(page)
+  await page.route("**/api/reports?*", (route) =>
+    route.fulfill({
+      json: [
+        {
+          ...snapshot,
+          total_crc: 1000.00000001,
+          total_usd: 2.000000000001,
+          consolidated_amount: 2000.1234,
+        },
+      ],
+    }),
+  )
+  await page.goto("/reports")
+  const panel = page.getByRole("region", { name: "Versión histórica seleccionada" })
+  await expect(panel).toContainText("CRC 2 000,12")
+  await expect(panel).toContainText("CRC 1 000,00")
+  await expect(panel.getByRole("link", { name: "Descargar PDF" })).toBeVisible()
+  await expect(
+    page.frameLocator("iframe").getByRole("heading", { name: "Detalle conservado" }),
+  ).toBeVisible()
+  await page.waitForLoadState("networkidle")
+  expect(analyticsRequests).toEqual([])
+  await expect(page.locator('script[src*="/_vercel/insights/"]')).toHaveCount(0)
+})
+
 test("version selection and comparison are read-only and preserve the stored values", async ({
   page,
 }) => {
