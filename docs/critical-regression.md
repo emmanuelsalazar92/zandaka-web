@@ -54,6 +54,8 @@ Ampliar el texto al 200 % y revisar reflow en anchos pequeños no equivale a pro
 
 La prevención de duplicados de importación sigue limitada a la pestaña/sesión: no es idempotencia global de servidor. Transferencias y aplicación de presupuestos tienen sus propios recibos durables. Medición de rendimiento en el despliegue corresponde a ZA-109; telemetría y SQL a ZA-100/101.
 
+Actualización posterior del mismo día en ZA-108/109: [zoom nativo 200/400 % comprobado](usability-review.md) en ventana aislada, 44 combinaciones de rutas/temas/niveles, sin desbordamiento geométrico detectado. No cambia los resultados históricos de las corridas de este documento. La sesión con lector de pantalla sigue pendiente; no se declara validación humana completa.
+
 Los logs, resultados y trazas de esta ejecución se conservan en `operaciones/ZA-107` del workspace. El informe final de resultados diferencia la primera ejecución, las correcciones y la repetición sobre el build final; no transforma fallos iniciales en aprobaciones retrospectivas.
 
 ## Resultados registrados
@@ -65,7 +67,7 @@ Los logs, resultados y trazas de esta ejecución se conservan en `operaciones/ZA
 | Primera suite completa de navegador          | 527 aprobadas y 6 fallidas: tres defectos de geometría en ambos temas                                                      | `browser-results.json`            |
 | Repetición de módulos afectados              | 164 aprobadas y 5 fallidas: importación/tablet, reporte vacío y timeout de la nueva prueba por notificación con reloj fijo | `final-browser-results.json`      |
 | Matriz, importación y Reportes corregidos    | 23 aprobadas, sin fallos, omisiones o casos intermitentes                                                                  | `acceptance-browser-results.json` |
-| Último ajuste de botón/textos de importación | 12 aprobadas sobre el último build, sin fallos, omisiones o casos intermitentes                                        | `release-browser-results.json`    |
+| Último ajuste de botón/textos de importación | 12 aprobadas sobre el último build, sin fallos, omisiones o casos intermitentes                                            | `release-browser-results.json`    |
 
 Los 534 casos distintos de navegador quedan cubiertos por estas corridas sucesivas y la repetición de los afectados; no se presenta como una única suite completa aprobada sobre el último build. Ningún fallo inicial se eliminó, omitió o cambió a una expectativa de éxito. El test mixto cierra la notificación con su botón visible; no fuerza el clic a través de ella ni espera un temporizador congelado por la fixture.
 

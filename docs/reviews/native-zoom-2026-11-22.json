@@ -1,0 +1,767 @@
+{
+  "complete": true,
+  "baseline": {
+    "innerWidth": 1427,
+    "innerHeight": 788,
+    "outerWidth": 1442,
+    "outerHeight": 882,
+    "dpr": 1.25
+  },
+  "browser": "156.0.8078.4",
+  "method": "Native Chromium zoom via Windows keyboard shortcuts; CSS font-size/zoom untouched",
+  "results": [
+    {
+      "zoom": 200,
+      "colorScheme": "light",
+      "route": "/",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "light",
+      "route": "/transactions",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "light",
+      "route": "/transactions/import",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "light",
+      "route": "/accounts",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "light",
+      "route": "/envelopes",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "light",
+      "route": "/reconciliation",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "light",
+      "route": "/budgets",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "light",
+      "route": "/reports",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "light",
+      "route": "/settings",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "light",
+      "route": "/institutions",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "light",
+      "route": "/categories",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "dark",
+      "route": "/",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "dark",
+      "route": "/transactions",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "dark",
+      "route": "/transactions/import",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "dark",
+      "route": "/accounts",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "dark",
+      "route": "/envelopes",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "dark",
+      "route": "/reconciliation",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "dark",
+      "route": "/budgets",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "dark",
+      "route": "/reports",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "dark",
+      "route": "/settings",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "dark",
+      "route": "/institutions",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 200,
+      "colorScheme": "dark",
+      "route": "/categories",
+      "metrics": {
+        "innerWidth": 713,
+        "innerHeight": 394,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 2.5
+      },
+      "geometry": {
+        "viewport": 713,
+        "document": 706,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "light",
+      "route": "/",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "light",
+      "route": "/transactions",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "light",
+      "route": "/transactions/import",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "light",
+      "route": "/accounts",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "light",
+      "route": "/envelopes",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "light",
+      "route": "/reconciliation",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "light",
+      "route": "/budgets",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "light",
+      "route": "/reports",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "light",
+      "route": "/settings",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "light",
+      "route": "/institutions",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "light",
+      "route": "/categories",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "dark",
+      "route": "/",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "dark",
+      "route": "/transactions",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "dark",
+      "route": "/transactions/import",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "dark",
+      "route": "/accounts",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "dark",
+      "route": "/envelopes",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "dark",
+      "route": "/reconciliation",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "dark",
+      "route": "/budgets",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "dark",
+      "route": "/reports",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "dark",
+      "route": "/settings",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "dark",
+      "route": "/institutions",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    },
+    {
+      "zoom": 400,
+      "colorScheme": "dark",
+      "route": "/categories",
+      "metrics": {
+        "innerWidth": 356,
+        "innerHeight": 197,
+        "outerWidth": 1442,
+        "outerHeight": 882,
+        "dpr": 5
+      },
+      "geometry": {
+        "viewport": 356,
+        "document": 353,
+        "controls": []
+      }
+    }
+  ],
+  "visualEvidence": {
+    "reviewed": ["native-browser-200.jpg", "native-browser-400.jpg"],
+    "excluded": "Playwright page.screenshot images were cropped under native browser zoom; not evidence of UI clipping",
+    "scope": "44 geometric checks; two native OS window captures reviewed, no human usability session or screen-reader listening"
+  }
+}

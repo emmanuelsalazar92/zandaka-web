@@ -18,12 +18,17 @@ export const syntheticAccounts = [
 export async function installSyntheticAPI(
   page: Page,
   rate: "current" | "previous" | "missing" = "current",
+  options: { origin?: string; fixedClock?: boolean } = {},
 ) {
-  await page.clock.setFixedTime(new Date("2026-11-03T18:00:00-06:00"))
+  const origin = new URL(options.origin ?? "http://127.0.0.1:3212")
+  if (origin.protocol !== "http:" || origin.hostname !== "127.0.0.1")
+    throw new Error("Review fixtures are restricted to HTTP loopback")
+  if (options.fixedClock !== false)
+    await page.clock.setFixedTime(new Date("2026-11-03T18:00:00-06:00"))
   await page.route("**/*", async (route) => {
     const request = route.request(),
       url = new URL(request.url())
-    if (url.origin !== "http://127.0.0.1:3212") return route.abort("blockedbyclient")
+    if (url.origin !== origin.origin) return route.abort("blockedbyclient")
     if (url.pathname.startsWith("/_vercel/")) return route.fulfill({ status: 204 })
     if (!url.pathname.startsWith("/api/")) return route.continue()
     expect(request.method(), "Financial writes are forbidden in accessibility fixtures").toBe("GET")
