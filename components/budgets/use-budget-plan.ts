@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import * as React from "react"
 import { z } from "zod"
 
+import { useUsageTask } from "@/components/usage-analytics"
 import type { BudgetPlanDocument } from "@/lib/budget-plan"
 import {
   fundPlan,
@@ -99,6 +100,7 @@ export function useBudgetPlan(planId: string) {
         !!document.exchange.source ||
         !!document.exchange.buy ||
         !!document.exchange.sell)
+  const usage = useUsageTask("budget_save", dirty)
   const accept = React.useCallback((result: SavedBudgetPlan) => {
     if (!mounted.current) return
     setSaved(result)
@@ -213,7 +215,9 @@ export function useBudgetPlan(planId: string) {
   }, [dirty, pending])
   const perform = async (intent: Intent) => {
     if (busy || !id) return
+    if (intent.kind === "save") usage.submit()
     if (!cache({ id, baseRevision: intent.revision, document: intent.document, pending: intent })) {
+      if (intent.kind === "save") usage.error("local")
       setError(
         "No pudimos conservar el intento en esta pestaña. Habilita el almacenamiento del navegador antes de guardar o aplicar.",
       )
@@ -230,6 +234,7 @@ export function useBudgetPlan(planId: string) {
             ? await fundPlan(id, intent.revision, intent.requestId, intent.date)
             : await transitionPlan(id, intent.revision, intent.kind)
       cache({ id, baseRevision: result.revision, document: result.document, pending: null })
+      if (intent.kind === "save") usage.finish("completed")
       accept(result)
       if (planId === "new" && mounted.current) {
         sessionStorage.removeItem(key)
@@ -237,6 +242,10 @@ export function useBudgetPlan(planId: string) {
       }
     } catch (cause) {
       const uncertain = !(cause instanceof PlanApiError) || cause.uncertain
+      if (intent.kind === "save") {
+        if (uncertain) usage.finish("uncertain")
+        else usage.error("rejected")
+      }
       if (mounted.current) {
         setError(cause instanceof Error ? cause.message : "No pudimos confirmar la operación.")
         if (!uncertain) setPending(null)

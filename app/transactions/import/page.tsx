@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
+import { useUsageTask } from "@/components/usage-analytics"
 import {
   parseGrupoMutual,
   parseBacCredomatic,
@@ -128,6 +129,7 @@ export default function ImportTransactionsPage() {
   const [rawData, setRawData] = React.useState("")
   const [transactions, setTransactions] = React.useState<ParsedTransaction[]>([])
   const [isProcessed, setIsProcessed] = React.useState(false)
+  const usage = useUsageTask("import", isProcessed)
   const [isImporting, setIsImporting] = React.useState(false)
   const [importError, setImportError] = React.useState<string | null>(null)
   const [autoAssignmentRules, setAutoAssignmentRules] = React.useState<AutoAssignmentRule[]>([])
@@ -354,12 +356,15 @@ export default function ImportTransactionsPage() {
       return
     }
     lock.current = true
+    usage.submit()
 
     setIsImporting(true)
     setImportError(null)
 
     let successCount = 0
     let failedCount = 0
+    let uncertainCount = 0
+    let blockedCount = 0
 
     for (const transaction of importableTransactions) {
       if (results[transaction.id]) continue
@@ -370,6 +375,7 @@ export default function ImportTransactionsPage() {
           (row) => row.id !== transaction.id && importFingerprint(row) === key,
         )
         if (((receipt && receipt !== "rejected") || sibling) && !reviewed.has(transaction.id)) {
+          blockedCount += 1
           setResults((current) => ({
             ...current,
             [transaction.id]:
@@ -381,6 +387,7 @@ export default function ImportTransactionsPage() {
         }
         writeImportReceipt(key, "pending")
       } catch {
+        blockedCount += 1
         setResults((current) => ({
           ...current,
           [transaction.id]: "No se pudo verificar el registro de intentos. No se envió.",
@@ -415,6 +422,7 @@ export default function ImportTransactionsPage() {
             "No pudimos importar el movimiento. Revisa sus datos y vuelve a intentar.",
           )
           if (res.status < 500) writeImportReceipt(key, "rejected")
+          else uncertainCount += 1
           setResults((current) => ({
             ...current,
             [transaction.id]:
@@ -439,6 +447,7 @@ export default function ImportTransactionsPage() {
         setResults((current) => ({ ...current, [transaction.id]: `Importado · #${response.id}` }))
         successCount += 1
       } catch {
+        uncertainCount += 1
         setResults((current) => ({
           ...current,
           [transaction.id]: "Resultado incierto: revisa Movimientos antes de decidir.",
@@ -447,6 +456,10 @@ export default function ImportTransactionsPage() {
       }
     }
 
+    if (uncertainCount > 0) usage.finish("uncertain")
+    else if (successCount > 0)
+      usage.finish(failedCount > 0 || blockedCount > 0 ? "partial" : "completed")
+    else usage.error(blockedCount > 0 ? "local" : "rejected")
     lock.current = false
     setIsImporting(false)
 

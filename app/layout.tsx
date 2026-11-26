@@ -1,9 +1,9 @@
-import { Analytics } from "@vercel/analytics/next"
 import { cookies } from "next/headers"
 
 import { AppLayout } from "@/components/app-layout"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
+import { UsageAnalytics } from "@/components/usage-analytics"
 
 import type { Metadata } from "next"
 import type React from "react"
@@ -11,6 +11,7 @@ import type React from "react"
 import "./globals.css"
 
 export const metadata: Metadata = {
+  referrer: "no-referrer",
   title: "Zandaka — Tu dinero, con claridad",
   description: "Organiza tus cuentas, sobres y movimientos con claridad.",
 }
@@ -27,11 +28,14 @@ export default async function RootLayout({
   return (
     <html lang="es-CR" suppressHydrationWarning>
       <body className={`font-sans antialiased`} suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <AppLayout defaultSidebarOpen={defaultSidebarOpen}>{children}</AppLayout>
-          <Toaster />
-        </ThemeProvider>
-        {process.env.VERCEL === "1" ? <Analytics /> : null}
+        <UsageAnalytics
+          enabled={process.env.VERCEL === "1" && process.env.ZANDAKA_ANALYTICS_ENABLED === "true"}
+        >
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <AppLayout defaultSidebarOpen={defaultSidebarOpen}>{children}</AppLayout>
+            <Toaster />
+          </ThemeProvider>
+        </UsageAnalytics>
       </body>
     </html>
   )

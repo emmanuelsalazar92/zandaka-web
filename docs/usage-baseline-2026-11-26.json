@@ -1,0 +1,25 @@
+{
+  "ticket": "ZA-100",
+  "checkedOn": "2026-11-26",
+  "source": "unavailable",
+  "period": {
+    "from": "2026-11-26T06:00:00.000Z",
+    "to": "2026-11-27T06:00:00.000Z",
+    "displayTimezone": "America/Costa_Rica",
+    "note": "Intervalo de referencia; no es un día de observación completado."
+  },
+  "provider": "Vercel Web Analytics SDK 1.3.1",
+  "verifiedScope": "Checkout local; sin acceso al dashboard ni ingestión. Testing conocido usa Docker; no se consultó su estado remoto en este ticket.",
+  "views": null,
+  "tasks": null,
+  "errors": null,
+  "rates": null,
+  "uniqueUsers": null,
+  "sessions": null,
+  "mostVisitedPage": null,
+  "reason": "No hay una fuente de métricas reales verificada. Ausencia no equivale a cero tráfico.",
+  "syntheticValidationIsRealTraffic": false,
+  "databaseOpened": false,
+  "pushed": false,
+  "deployed": false
+}

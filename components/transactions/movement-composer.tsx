@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useUsageTask } from "@/components/usage-analytics"
 import { formatCurrency } from "@/lib/currency-formatter"
 import {
   emptyMovementLine,
@@ -68,6 +69,7 @@ export function MovementComposer({
   onRefreshAccounts: () => void
   onBusyChange: (busy: boolean) => void
 }) {
+  const usage = useUsageTask("movement")
   const [date, setDate] = React.useState(initialDate),
     [description, setDescription] = React.useState(initialDescription)
   const [lines, setLines] = React.useState<MovementLineDraft[]>([emptyMovementLine(1)])
@@ -147,6 +149,7 @@ export function MovementComposer({
   const submit = async () => {
     if (!ready || busyRef.current) return
     busyRef.current = true
+    usage.submit()
     setBusy(true)
     onBusyChange(true)
     setError(null)
@@ -178,7 +181,10 @@ export function MovementComposer({
           response.status >= 400 &&
           response.status < 500 &&
           ["VALIDATION_ERROR", "NOT_FOUND", "FORBIDDEN", "INACTIVE_RESOURCE"].includes(code ?? "")
-        if (!definite) setUncertain(true)
+        if (!definite) {
+          setUncertain(true)
+          usage.finish("uncertain")
+        } else usage.error("rejected")
         setError(
           definite
             ? publicErrorMessage(result, "Revisa los datos del movimiento.")
@@ -187,14 +193,17 @@ export function MovementComposer({
         return
       }
       if (!isMovementConfirmation(payload, result)) {
+        usage.finish("uncertain")
         setUncertain(true)
         setError(
           "No recibimos una confirmación válida. Revisa tus movimientos antes de volver a registrar la operación.",
         )
         return
       }
+      usage.finish("completed")
       onCreated()
     } catch {
+      usage.finish("uncertain")
       if (mounted.current) {
         setUncertain(true)
         setError(

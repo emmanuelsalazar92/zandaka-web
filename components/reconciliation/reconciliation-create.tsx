@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useUsageTask } from "@/components/usage-analytics"
 import { getAccountingDate } from "@/lib/date-only"
 import { subtractMoney } from "@/lib/money"
 import {
@@ -60,6 +61,7 @@ export function ReconciliationCreate({
   onReview: () => void
   onReturnFocus: () => void
 }) {
+  const usage = useUsageTask("reconciliation")
   const [date, setDate] = React.useState(getAccountingDate),
     [countMethod, setMethod] = React.useState<ReconciliationCountMethod>(
       account.type === "CASH" ? "DENOMINATION_COUNT" : "MANUAL_TOTAL",
@@ -130,6 +132,7 @@ export function ReconciliationCreate({
     event.preventDefault()
     if (!ready || busyRef.current || uncertain) return
     busyRef.current = true
+    usage.submit()
     setBusy(true)
     setError(null)
     try {
@@ -155,16 +158,19 @@ export function ReconciliationCreate({
           ))
       )
         throw new Error("Count receipt mismatch")
+      usage.finish("completed")
       if (mounted.current) onCreated(result)
     } catch (error) {
       if (!mounted.current) return
-      if (definitiveReconciliationError(error))
+      if (definitiveReconciliationError(error)) {
+        usage.error("rejected")
         setError(
           error instanceof ReconciliationApiError && error.code === "CONFLICT"
             ? "Ya puede existir una conciliación abierta para esta cuenta. Revisa el historial antes de crear otra."
             : "No se pudo registrar. Revisa los datos o actualiza la comparación; tu borrador se conserva.",
         )
-      else {
+      } else {
+        usage.finish("uncertain")
         setUncertain(true)
         setError(
           "No pudimos confirmar si se registró. Revisa el historial antes de intentarlo de nuevo; no reenviaremos este borrador.",
