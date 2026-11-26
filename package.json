@@ -2,6 +2,9 @@
   "name": "zandaka",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=26.13.1 <27"
+  },
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
@@ -13,7 +16,7 @@
     "test": "vitest",
     "test:ci": "vitest run",
     "test:e2e": "playwright test",
-    "prepare": "husky install"
+    "prepare": "husky"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -54,7 +57,7 @@
     "embla-carousel-react": "8.5.1",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
-    "next": "16.0.10",
+    "next": "16.4.6",
     "next-themes": "^0.4.6",
     "react": "19.2.0",
     "react-day-picker": "9.8.0",
@@ -71,16 +74,16 @@
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.64.1",
-    "@tailwindcss/postcss": "^4.1.9",
+    "@tailwindcss/postcss": "4.3.5",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
-    "@types/node": "^22",
+    "@types/node": "26.6.11",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@typescript-eslint/eslint-plugin": "^8.53.0",
     "@typescript-eslint/parser": "^8.53.0",
-    "@vitejs/plugin-react": "^4.7.0",
+    "@vitejs/plugin-react": "6.3.0",
     "eslint": "^9.36.0",
     "eslint-config-next": "16.0.10",
     "eslint-config-prettier": "^10.1.8",
@@ -89,15 +92,16 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-unused-imports": "^4.2.0",
     "husky": "^9.1.7",
-    "jsdom": "^26.1.0",
+    "jsdom": "31.0.1",
     "lint-staged": "^16.2.1",
     "postcss": "^8.5",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.6.14",
-    "tailwindcss": "^4.1.9",
+    "tailwindcss": "4.3.5",
     "tw-animate-css": "1.3.3",
     "typescript": "^5",
-    "vitest": "^2.1.9"
+    "vite": "8.4.0",
+    "vitest": "5.1.2"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim
+FROM node:26.13.1-bookworm-slim
 
 ARG API_INTERNAL_URL=http://backend:3000
 

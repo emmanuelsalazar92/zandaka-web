@@ -18,12 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version-file: .node-version
           cache: "npm"
 
       - name: Install dependencies
@@ -50,11 +50,12 @@ jobs:
         run: npx playwright install --with-deps --only-shell chromium
 
       - name: Browser layout regression
+        id: browser-tests
         run: npm run test:e2e
 
       - name: Upload browser test evidence
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && (steps.browser-tests.outcome == 'success' || steps.browser-tests.outcome == 'failure') && hashFiles('playwright-report/**', 'test-results/**') != '' }}
+        uses: actions/upload-artifact@v7
         with:
           name: browser-layout-report
           path: |

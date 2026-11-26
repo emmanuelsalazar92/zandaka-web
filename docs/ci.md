@@ -1,5 +1,7 @@
 # CI/CD Quality Gates
 
+Local development, CI and Docker use Node.js 26 LTS. Select the exact version in `.node-version` before running `npm ci`. GitHub Actions themselves use their own Node 24 runtime. To change the application runtime, update `.node-version`, the Docker base image and the Node requirement in `package.json` together.
+
 This project enforces quality gates locally (Git hooks) and in CI (GitHub Actions). A pull request should not be merged unless all checks pass.
 
 ## What each gate does and how to fix it
