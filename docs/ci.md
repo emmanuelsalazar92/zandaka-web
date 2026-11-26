@@ -32,3 +32,15 @@ This project enforces quality gates locally (Git hooks) and in CI (GitHub Action
 
 - Pre-commit: runs Prettier + ESLint on staged files only.
 - Pre-push: runs `typecheck` and `test:ci`.
+
+## ESLint compatibility (ZA-138)
+
+Web uses ESLint 9 with the Next.js core Web Vitals and TypeScript presets, so `npm ci` reports ESLint 9's end of support. The API runs ESLint 10 independently. Before upgrading Web, check the peer ranges of the full preset dependency tree. As of November 26, 2026, even `eslint-config-next@16.4.6` depends on `eslint-plugin-import@2.32.0`, which declares support through ESLint 9. Replacing the import plugin in our local config alone leaves the preset's dependency in place.
+
+The trial with the newer preset found 33 reports of `react-hooks/set-state-in-effect` across 23 files. Review the reports according to what each effect does:
+
+- Values derived from props, selection, or route state belong in render when they can be calculated directly. Reset drafts at the event or component boundary when their identity changes.
+- Effects that load remote data or subscribe to external state need to preserve cancellation and the order of updates. A browser subscription such as `matchMedia` can use `useSyncExternalStore`.
+- Dialog, budget, and transaction state needs targeted regression coverage before changing when user edits reset. Document any justified exception at the affected call site.
+
+Use `npm ci`, production lint, the Git hooks, and the matching CI job to validate a future preset upgrade.
