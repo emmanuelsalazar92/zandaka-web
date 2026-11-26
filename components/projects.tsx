@@ -1,0 +1,486 @@
+"use client"
+
+import { Archive, ArrowLeft, ArrowRight, FolderOpen, Plus } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import * as React from "react"
+
+import { PageHeader } from "@/components/page-header"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Feedback, LoadingState } from "@/components/ui/feedback"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  changeProject,
+  createProject,
+  getProject,
+  listProjects,
+  ProjectRequestError,
+  type Project,
+  type ProjectAction,
+  type ProjectPage,
+  type ProjectView,
+} from "@/lib/project-api"
+import { secureUuid } from "@/lib/uuid"
+
+const controls = "min-h-11"
+const surface = "marea-surface mx-auto max-w-5xl space-y-6 rounded-2xl bg-background p-4 sm:p-7"
+
+const states = (project: Project) => (project.finalizedAt ? "Finalizado" : "Activo")
+const displayDate = (date: string) =>
+  new Intl.DateTimeFormat("es-CR", {
+    dateStyle: "medium",
+    timeZone: "America/Costa_Rica",
+  }).format(new Date(date))
+
+function readMessage(error: unknown) {
+  if (error instanceof ProjectRequestError) {
+    if (error.status === 404) return "Este proyecto no está disponible."
+    if (error.status === 503 && error.code === "FEATURE_NOT_READY")
+      return "Proyectos aún no está habilitado en este entorno."
+  }
+  return "No pudimos consultar Proyectos. Intenta de nuevo."
+}
+
+type ReadState<T> = { value: T } | { error: string }
+function useProjectRead<T>(load: (signal: AbortSignal) => Promise<T>) {
+  const [read, setRead] = React.useState<ReadState<T> | null>(null)
+  const [version, setVersion] = React.useState(0)
+  const refresh = () => {
+    setRead(null)
+    setVersion((n) => n + 1)
+  }
+  React.useEffect(() => {
+    const controller = new AbortController()
+    load(controller.signal).then(
+      (value) => {
+        if (!controller.signal.aborted) setRead({ value })
+      },
+      (error: unknown) => {
+        if (!controller.signal.aborted) setRead({ error: readMessage(error) })
+      },
+    )
+    return () => controller.abort()
+  }, [load, version])
+  return { read, setRead, refresh }
+}
+
+const actions = {
+  rename: ["Editar título", "El título aparecerá en la lista y el detalle.", "Guardar título"],
+  finalize: [
+    "Finalizar proyecto",
+    "Registraremos la fecha de cierre. Podrás reabrir el proyecto si aparece un gasto más adelante.",
+    "Finalizar",
+  ],
+  reopen: ["Reabrir proyecto", "El proyecto volverá a Activo y podrás editarlo.", "Reabrir"],
+  archive: [
+    "Archivar proyecto",
+    "Lo encontrarás en Archivados y conservará su estado actual.",
+    "Archivar",
+  ],
+  restore: [
+    "Restaurar proyecto",
+    "Volverá a la lista principal con su estado actual.",
+    "Restaurar",
+  ],
+  create: ["Nuevo proyecto", "Elige un título que te ayude a reconocerlo.", "Crear proyecto"],
+} as const
+type DialogAction = keyof typeof actions
+
+function ProjectDialog({
+  action,
+  project,
+  onClose,
+  onSaved,
+  onRefresh,
+  returnFocus,
+}: {
+  action: DialogAction
+  project?: Project
+  onClose: () => void
+  onSaved: (project: Project) => void
+  onRefresh?: () => void
+  returnFocus: () => void
+}) {
+  const [title, setTitle] = React.useState(project?.title ?? "")
+  const [busy, setBusy] = React.useState(false)
+  const [error, setError] = React.useState("")
+  const [needsReview, setNeedsReview] = React.useState(false)
+  const [retryTitle, setRetryTitle] = React.useState<string>()
+  const pending = React.useRef(false)
+  const creationKey = React.useRef<string | undefined>(undefined)
+  const titleId = React.useId()
+  const editingTitle = action === "create" || action === "rename"
+  const [heading, info, submitLabel] = actions[action]
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault()
+    if (pending.current || needsReview || (editingTitle && !title.trim())) return
+    pending.current = true
+    setBusy(true)
+    setError("")
+    try {
+      if (action === "create") {
+        creationKey.current ??= secureUuid()
+        onSaved(await createProject(title.trim(), creationKey.current))
+      } else if (project) {
+        onSaved(await changeProject(project, action, title.trim()))
+      }
+    } catch (cause) {
+      if (cause instanceof ProjectRequestError && cause.status === 409) {
+        setNeedsReview(true)
+        setError("El proyecto cambió mientras lo tenías abierto. Actualiza antes de continuar.")
+      } else if (!(cause instanceof ProjectRequestError) || cause.status >= 500) {
+        if (action === "create") {
+          setRetryTitle(title.trim())
+          setError(
+            "No pudimos confirmar el resultado. Puedes reintentar esta misma creación sin duplicarla.",
+          )
+        } else {
+          setNeedsReview(true)
+          setError(
+            "No pudimos confirmar el resultado. Actualiza para comprobar el estado del proyecto.",
+          )
+        }
+      } else {
+        setError("No pudimos guardar. Revisa el título o vuelve a abrir el proyecto.")
+      }
+    } finally {
+      pending.current = false
+      setBusy(false)
+    }
+  }
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !pending.current) onClose()
+      }}
+    >
+      <DialogContent
+        className="marea-surface min-w-0"
+        showCloseButton={!busy}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          returnFocus()
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>{heading}</DialogTitle>
+          <DialogDescription>{info}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="min-w-0 space-y-5">
+          {editingTitle && (
+            <div className="space-y-2">
+              <Label htmlFor={titleId}>Título del proyecto</Label>
+              <Input
+                id={titleId}
+                required
+                maxLength={120}
+                value={title}
+                className={controls}
+                onChange={(event) => setTitle(event.target.value)}
+                readOnly={busy || !!retryTitle}
+              />
+            </div>
+          )}
+          {error && (
+            <Feedback tone="error" title="Revisa el resultado">
+              {error}
+            </Feedback>
+          )}
+          <DialogFooter>
+            <Button
+              className={controls}
+              variant="outline"
+              type="button"
+              onClick={onClose}
+              disabled={busy}
+            >
+              Cancelar
+            </Button>
+            {needsReview && onRefresh ? (
+              <Button className={controls} type="button" onClick={onRefresh}>
+                Actualizar proyecto
+              </Button>
+            ) : (
+              <Button
+                className={controls}
+                disabled={busy || needsReview || (editingTitle && !title.trim())}
+              >
+                {busy ? "Guardando…" : retryTitle ? "Reintentar creación" : submitLabel}
+              </Button>
+            )}
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ProjectRows({
+  page,
+  view,
+  onPage,
+}: {
+  page: ProjectPage
+  view: ProjectView
+  onPage: (page: number) => void
+}) {
+  const pages = Math.max(1, Math.ceil(page.total / page.pageSize))
+  if (!page.items.length && page.page === 1) {
+    return (
+      <div className="rounded-2xl border border-dashed p-6">
+        <h2 className="font-semibold">
+          {view === "visible" ? "Aún no tienes proyectos" : "No hay proyectos archivados"}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {view === "visible"
+            ? "Crea uno para darle un lugar propio a una obra, una compra grande o una temporada de regalos."
+            : "Los proyectos que archives aparecerán aquí."}
+        </p>
+      </div>
+    )
+  }
+  return (
+    <>
+      <ul className="divide-y border-y">
+        {page.items.map((project) => (
+          <li key={project.id}>
+            <Link
+              href={`/projects/${project.id}`}
+              className="group flex min-h-16 items-center gap-4 rounded-sm py-3 hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="font-medium [overflow-wrap:anywhere]">{project.title}</p>
+                <p className="text-sm text-muted-foreground">
+                  {states(project)}
+                  {project.finalizedAt ? " · " + displayDate(project.finalizedAt) : ""}
+                </p>
+              </div>
+              <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {(pages > 1 || page.page > 1) && (
+        <nav aria-label="Páginas de proyectos" className="flex flex-wrap items-center gap-3">
+          <Button
+            className={controls}
+            variant="outline"
+            onClick={() => onPage(page.page - 1)}
+            disabled={page.page <= 1}
+          >
+            Anterior
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            {page.page} de {Math.max(page.page, pages)}
+          </span>
+          <Button
+            className={controls}
+            variant="outline"
+            onClick={() => onPage(page.page + 1)}
+            disabled={page.page >= pages}
+          >
+            Siguiente
+          </Button>
+        </nav>
+      )}
+    </>
+  )
+}
+
+export function ProjectsList() {
+  const [view, setView] = React.useState<ProjectView>("visible")
+  const [page, setPage] = React.useState(1)
+  const [create, setCreate] = React.useState(false)
+  const router = useRouter()
+  const createTrigger = React.useRef<HTMLButtonElement>(null)
+  const load = React.useCallback(
+    (signal: AbortSignal) => listProjects(view, page, signal),
+    [view, page],
+  )
+  const { read, refresh } = useProjectRead(load)
+  const result = read && "value" in read ? read.value : null
+  const error = read && "error" in read ? read.error : null
+  function move(nextView: ProjectView, nextPage: number) {
+    setView(nextView)
+    setPage(nextPage)
+    refresh()
+  }
+  return (
+    <div className={surface}>
+      <PageHeader
+        title="Proyectos"
+        description="Organiza el seguimiento de una obra, un lote o una ocasión especial."
+      >
+        <Button
+          className={controls}
+          ref={createTrigger}
+          disabled={!result}
+          onClick={() => setCreate(true)}
+        >
+          <Plus aria-hidden="true" />
+          Nuevo proyecto
+        </Button>
+      </PageHeader>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Vista de proyectos">
+        <Button
+          className={controls}
+          variant={view === "visible" ? "default" : "outline"}
+          aria-pressed={view === "visible"}
+          onClick={() => {
+            if (view !== "visible") move("visible", 1)
+          }}
+        >
+          <FolderOpen aria-hidden="true" />
+          En la lista
+        </Button>
+        <Button
+          className={controls}
+          variant={view === "archived" ? "default" : "outline"}
+          aria-pressed={view === "archived"}
+          onClick={() => {
+            if (view !== "archived") move("archived", 1)
+          }}
+        >
+          <Archive aria-hidden="true" />
+          Archivados
+        </Button>
+      </div>
+      {!read && <LoadingState>Cargando proyectos…</LoadingState>}
+      {error && (
+        <Feedback tone="error" title="Proyectos no disponible">
+          {error}{" "}
+          <Button className={controls} variant="outline" onClick={refresh}>
+            Actualizar
+          </Button>
+        </Feedback>
+      )}
+      {result && <ProjectRows page={result} view={view} onPage={(value) => move(view, value)} />}
+      {create && (
+        <ProjectDialog
+          action="create"
+          returnFocus={() => createTrigger.current?.focus()}
+          onClose={() => setCreate(false)}
+          onSaved={(project) => {
+            setCreate(false)
+            router.push(`/projects/${project.id}`)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+export function ProjectDetail({ id }: { id: string }) {
+  const [action, setAction] = React.useState<ProjectAction>()
+  const heading = React.useRef<HTMLHeadingElement>(null)
+  const actionTrigger = React.useRef<HTMLButtonElement>(null)
+  const load = React.useCallback((signal: AbortSignal) => getProject(id, signal), [id])
+  const { read, setRead, refresh } = useProjectRead(load)
+  const project = read && "value" in read ? read.value : null
+  const error = read && "error" in read ? read.error : null
+  const available: ProjectAction[] = project?.archivedAt
+    ? ["restore"]
+    : project?.finalizedAt
+      ? ["reopen", "archive"]
+      : ["rename", "finalize", "archive"]
+  return (
+    <div className={surface}>
+      <Button variant="ghost" className={controls} asChild>
+        <Link href="/projects">
+          <ArrowLeft aria-hidden="true" />
+          Proyectos
+        </Link>
+      </Button>
+      <PageHeader title={project?.title ?? "Proyecto"} />
+      {!read && <LoadingState>Cargando proyecto…</LoadingState>}
+      {error && (
+        <Feedback tone="error" title="Proyecto no disponible">
+          {error}{" "}
+          <Button className={controls} variant="outline" onClick={refresh}>
+            Actualizar
+          </Button>
+        </Feedback>
+      )}
+      {project && (
+        <>
+          <section
+            className="space-y-4 rounded-2xl border bg-card p-5"
+            aria-labelledby="project-status"
+          >
+            <h2 ref={heading} tabIndex={-1} id="project-status" className="text-lg font-semibold">
+              Estado del proyecto
+            </h2>
+            <dl className="flex flex-wrap gap-x-8 gap-y-3">
+              <div>
+                <dt className="text-sm text-muted-foreground">Estado</dt>
+                <dd>
+                  {states(project)}
+                  {project.archivedAt ? " · Archivado" : ""}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Creado</dt>
+                <dd>{displayDate(project.createdAt)}</dd>
+              </div>
+              {project.finalizedAt && (
+                <div>
+                  <dt className="text-sm text-muted-foreground">Fecha de cierre</dt>
+                  <dd>{displayDate(project.finalizedAt)}</dd>
+                </div>
+              )}
+            </dl>
+          </section>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Acciones del proyecto">
+            {available.map((item) => (
+              <Button
+                key={item}
+                className={controls}
+                variant={
+                  item === "rename" || item === "restore" || item === "reopen"
+                    ? "default"
+                    : "outline"
+                }
+                onClick={(event) => {
+                  actionTrigger.current = event.currentTarget
+                  setAction(item)
+                }}
+              >
+                {actions[item][0]}
+              </Button>
+            ))}
+          </div>
+          {action && (
+            <ProjectDialog
+              action={action}
+              project={project}
+              returnFocus={() => {
+                if (actionTrigger.current?.isConnected) actionTrigger.current.focus()
+                else heading.current?.focus()
+              }}
+              onClose={() => setAction(undefined)}
+              onSaved={(value) => {
+                setRead({ value })
+                setAction(undefined)
+              }}
+              onRefresh={() => {
+                setAction(undefined)
+                refresh()
+              }}
+            />
+          )}
+        </>
+      )}
+    </div>
+  )
+}

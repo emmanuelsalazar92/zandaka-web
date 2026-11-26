@@ -167,7 +167,11 @@ for (const width of [360, 390, 1440]) {
     if (width < 768)
       await page.getByRole("button", { name: "Abrir navegación", exact: true }).click()
     const sidebar = page.locator('[data-sidebar="sidebar"]').filter({ visible: true })
-    await expect(sidebar.getByRole("link")).toHaveCount(8)
+    await expect(sidebar.getByRole("link")).toHaveCount(9)
+    await expect(sidebar.getByRole("link", { name: "Proyectos", exact: true })).toHaveAttribute(
+      "href",
+      "/projects",
+    )
     await expect(sidebar.getByRole("link", { name: "Instituciones", exact: true })).toHaveCount(0)
     await expect(sidebar.getByRole("link", { name: "Categorías", exact: true })).toHaveCount(0)
     await expect(sidebar.getByRole("link", { name: "Ajustes", exact: true })).toHaveAttribute(

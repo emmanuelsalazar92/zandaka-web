@@ -11,6 +11,7 @@ import {
   Moon,
   Sun,
   PiggyBank,
+  FolderOpen,
   Settings2,
 } from "lucide-react"
 import Image from "next/image"
@@ -50,6 +51,7 @@ const NAV_ICONS = {
   "/envelopes": Mail,
   "/reconciliation": CheckSquare,
   "/budgets": PiggyBank,
+  "/projects": FolderOpen,
   "/reports": BarChart3,
 } as const
 const NAV_ITEMS = taskDestinations.map((item) => ({ ...item, icon: NAV_ICONS[item.href] }))

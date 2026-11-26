@@ -1,0 +1,7 @@
+# Proyectos · ZA-115
+
+El módulo se abre desde Proyectos en el menú principal. La lista muestra activos y finalizados por defecto y ofrece una vista Archivados. Desde el detalle se puede renombrar un proyecto activo, finalizarlo, reabrirlo, archivarlo y restaurarlo. La fecha de cierre se muestra en la zona contable de Costa Rica. Restaurar un proyecto finalizado conserva su cierre. Para cambiar su título, restaurar primero si está archivado y reabrir después.
+
+Una revisión concurrente solicita actualizar antes de actuar de nuevo. Si se pierde la respuesta de creación, Reintentar creación usa la misma clave y el mismo título mientras el diálogo permanezca abierto. Si se cierra ese diálogo o se recarga la página, consultar la lista antes de iniciar otra creación. Los cambios de estado se comprueban actualizando antes de repetirlos cuando el resultado es incierto.
+
+Este ticket entrega el ciclo de vida. ZA-116 incorpora vínculos con movimientos, ZA-117 agregados y gráficos, y ZA-118 PDF. La Web usa el proxy de la API y necesita la imagen que implementa el contrato. Si el entorno todavía no prepara la tabla project, muestra que la función no está habilitada. La guía de la API describe preparación, comprobación y reversión. El recorrido e2e/projects.spec.ts verifica diálogo con teclado, pérdida de respuesta en creación, título largo a 390 px, cierre, archivo, recarga y restauración con API sintética.

@@ -6,6 +6,7 @@ export const taskDestinations = [
   { href: "/envelopes", label: "Sobres" },
   { href: "/reconciliation", label: "Conciliación" },
   { href: "/budgets", label: "Presupuestos" },
+  { href: "/projects", label: "Proyectos" },
   { href: "/reports", label: "Reportes" },
 ] as const
 
