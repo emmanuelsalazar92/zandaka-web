@@ -76,3 +76,9 @@ ZA-111 complementa estos componentes con [dos composiciones completas de Sobres]
 Cambios solo en `zandaka-web`, branch `staging`. No hay cambios de esquema, aritmética, permisos ni endpoints del backend. CI y publicación de imágenes siguen el flujo de staging existente; el deploy de testing se decide por bloque. Evidencia de esta entrega en `auditoria-uiux-2026-11-03/ZA-83` del workspace de auditoría.
 
 ZA-105 completa el [contrato de feedback y microinteracciones](operation-feedback.md): movimiento reducido estático, anuncios de carga, recuperación persistente y bloqueo de envíos simultáneos. Los resultados financieros no se animan ni se consideran confirmados por mostrar una notificación.
+
+## Gráficos
+
+`ChartContainer` comparte los colores y nombres de las series con la leyenda y el tooltip de Recharts 3. Usa las mismas claves para la configuración y el `dataKey` de cada serie. El quinto argumento del formateador del tooltip contiene todas las series del punto activo, incluidos los valores cero.
+
+Al incorporar gráficos en Proyectos, da al gráfico un título accesible, indica la moneda de cada serie y acompaña el gráfico con cifras legibles. Usa un estado vacío cuando todavía no haya movimientos. Verifica con datos sintéticos que se pueda consultar cada punto con teclado y que las etiquetas se lean a ancho móvil.

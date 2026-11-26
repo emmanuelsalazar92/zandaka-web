@@ -37,11 +37,11 @@ const intentSchema = z.object({
   kind: z.enum(["save", "finalize", "reopen", "fund"]),
   revision: z.number().int().min(0),
   document: planDocumentSchema,
-  requestId: z.string().uuid(),
+  requestId: z.guid(),
   date: z.string().regex(/^20\d{2}-\d{2}-\d{2}$/),
 })
 const cacheSchema = z.object({
-  id: z.string().uuid(),
+  id: z.guid(),
   baseRevision: z.number().int().min(0),
   document: planDocumentSchema,
   pending: intentSchema.nullable(),
@@ -127,7 +127,7 @@ export function useBudgetPlan(planId: string) {
       try {
         const selectedId = planId === "new" ? (cached?.id ?? secureUuid()) : planId
         if (cached && cached.id !== selectedId) cached = null
-        if (!z.string().uuid().safeParse(selectedId).success)
+        if (!z.guid().safeParse(selectedId).success)
           throw new Error("No encontramos este presupuesto.")
         let result: SavedBudgetPlan | null = null
         if (planId !== "new" || cached?.pending || (cached?.baseRevision ?? 0) > 0) {

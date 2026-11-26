@@ -72,7 +72,6 @@ El nuevo formulario usa el contrato existente POST /api/transactions. No requier
 
 La nueva lista y el espacio de trabajo requieren API compatible y budget_plan preparada; transfer_request continúa siendo necesario para asignar. Presupuestos anteriores conserva sus rutas y contratos. Ver [flujo, recuperación y pruebas](budget-plans.md) y la guía operativa de la API. La [ampliación del desplegador y su aceptación Windows](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/testing-deployer-za97.md) se completaron en 192.168.31.118. Ambas tablas quedaron preparadas/verificadas en la entrega real del 5 de noviembre enlazada arriba; no se habían preparado al implementar o aceptar la herramienta. Para otro bloque usar un plan nuevo con perfil za90-za97 y verificar compatibilidad después del backup. Conservar tablas y recibos al revertir imágenes.
 
-
 ## Medición de uso — ZA-100
 
 Ver [catálogo, privacidad, línea base y activación](usage-analytics.md). Solo la web cambia su runtime; no hay cambios de API o DB. La medición exige VERCEL=1 y opt-in explícito ZANDAKA_ANALYTICS_ENABLED=true, después de verificar proveedor y plan. Mantenerla apagada en Docker; no fingir Vercel ni crear endpoints o servicios de pago al desplegar. La línea base real sigue no disponible. Retirar opt-in desactiva la medición sin tocar datos financieros.

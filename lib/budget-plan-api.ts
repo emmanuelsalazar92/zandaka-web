@@ -88,7 +88,7 @@ const decimalInput = z
   .regex(/^(?:|(?:0|[1-9]\d{0,9})(?:\.\d{1,6})?)$/)
 const month = z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/)
 const lineSchema = z.object({
-  id: z.string().uuid(),
+  id: z.guid(),
   name: z.string().min(1).max(80),
   group: z.union([z.literal(50), z.literal(30), z.literal(20)]),
   kind: z.enum(["fixed", "percent", "subscription"]),
@@ -129,13 +129,13 @@ export const planDocumentSchema = z.object({
   lines: z.array(lineSchema).max(200),
 })
 const receiptSchema = z.object({
-  requestId: z.string().uuid(),
+  requestId: z.guid(),
   date: z.string(),
   revision: z.number().int().positive(),
   postedAt: z.string(),
   transactions: z.array(
     z.object({
-      lineId: z.string().uuid(),
+      lineId: z.guid(),
       transactionId: z.number().int().positive(),
       amount: moneyText,
       currency: z.enum(["USD", "CRC"]),
@@ -146,7 +146,7 @@ const receiptSchema = z.object({
   ),
 })
 const savedSchema = z.object({
-  id: z.string().uuid(),
+  id: z.guid(),
   userId: z.literal(1),
   revision: z.number().int().positive(),
   status: z.enum(["draft", "finalized", "funded"]),
