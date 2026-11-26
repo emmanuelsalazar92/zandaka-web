@@ -5,6 +5,8 @@ coverage
 playwright-report
 test-results
 e2e
+e2e-usage
 playwright.config.ts
+playwright.usage.config.ts
 .env*
 !.env.example
