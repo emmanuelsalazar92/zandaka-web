@@ -28,6 +28,15 @@ for (const width of [360, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: 1000 })
       await page.emulateMedia({ colorScheme, reducedMotion: "reduce" })
       await installSyntheticAPI(page)
+      const runtimeErrors: string[] = []
+      page.on("pageerror", (error) => runtimeErrors.push(error.message))
+      page.on("console", (message) => {
+        if (
+          /^(error|warning)$/.test(message.type()) &&
+          /hydrat|react error #(?:418|423|425)/i.test(message.text())
+        )
+          runtimeErrors.push(message.text())
+      })
       const evidence: unknown[] = []
       for (const route of routes) {
         await page.goto(route)
@@ -119,6 +128,7 @@ for (const width of [360, 390, 768, 1440]) {
             fullPage: true,
           })
       }
+      expect(runtimeErrors, "client runtime and hydration").toEqual([])
       await info.attach("cross-module-reflow", {
         body: JSON.stringify(evidence, null, 2),
         contentType: "application/json",
