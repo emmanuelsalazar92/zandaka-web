@@ -4,18 +4,28 @@ import { formatPlanMoney as money, planDecimal } from "@/lib/budget-plan-view"
 import { formatIsoDateOnly } from "@/lib/date-only"
 import { decimal } from "@/lib/money"
 
+import { PlanMonthStartActions, useMonthStart } from "./plan-month-start-actions"
 
 export function PlanMonthStart({
   document,
   calculation,
   options,
   receipt,
+  planId,
+  revision,
+  draftChanged,
 }: {
   document: BudgetPlanDocument
   calculation: PlanCalculation
   options: PlanOptions
   receipt: PlanReceipt | null
+  planId: string
+  revision: number
+  draftChanged: boolean
 }) {
+  const { data, unavailable, refresh, update } = useMonthStart(planId, revision)
+  const fx = draftChanged ? null : data?.steps.find((step) => step.kind === "fx")?.evidence
+  const executedRate = fx?.current && fx.rate !== null ? fx.rate : null
   const plan = calculation.issues.length === 0 ? calculation : null
   const accountLabel = (id: number | null, currency?: string) => {
     const account = options.accounts.find((item) => item.id === id)
@@ -111,15 +121,29 @@ export function PlanMonthStart({
         <li>
           <h3 className="font-semibold">Conversión USD a CRC</h3>
           <p className="text-sm">
-            {hasConversion && incomeAccount !== "Por confirmar"
-              ? "Por verificar"
-              : plan?.convertUsd === "0"
-                ? "Sin conversión prevista"
-                : "Pendiente"}
+            {fx?.current
+              ? "Confirmado"
+              : fx
+                ? "Por revisar"
+                : hasConversion && incomeAccount !== "Por confirmar"
+                  ? "Por verificar"
+                  : plan?.convertUsd === "0"
+                    ? "Sin conversión prevista"
+                    : "Pendiente"}
           </p>
           <p className="text-sm text-muted-foreground">
-            Origen del ingreso · {incomeAccount}. Cuenta de abono en CRC · Por confirmar.
+            Origen del ingreso · {incomeAccount}. Cuenta de abono en CRC ·{" "}
+            {fx?.current && fx.movements[1]
+              ? (fx.movements[1].accountName ?? `Cuenta #${fx.movements[1].accountId}`)
+              : "Por confirmar"}
+            .
           </p>
+          {fx?.current && fx.movements[1] && (
+            <p className="text-sm">
+              Conversión registrada · {money(fx.movements[0].amount, "USD")} →{" "}
+              {money(fx.movements[1].amount, "CRC")}.
+            </p>
+          )}
           <dl className="mt-2 grid gap-2 text-sm @sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground">Tasa de compra de planificación</dt>
@@ -131,7 +155,13 @@ export function PlanMonthStart({
             </div>
             <div>
               <dt className="text-muted-foreground">Tasa ejecutada</dt>
-              <dd>{plan?.convertUsd === "0" ? "No aplica" : "Por verificar"}</dd>
+              <dd>
+                {executedRate !== null
+                  ? `${Number(executedRate).toLocaleString("es-CR", { maximumFractionDigits: 6 })} CRC por USD`
+                  : plan?.convertUsd === "0"
+                    ? "No aplica"
+                    : "Por verificar"}
+              </dd>
             </div>
           </dl>
         </li>
@@ -186,6 +216,25 @@ export function PlanMonthStart({
           </dl>
         </li>
       </ol>
+      {data && (
+        <PlanMonthStartActions
+          key={data.revision}
+          data={data}
+          options={options}
+          dirty={draftChanged}
+          refresh={refresh}
+          update={update}
+          expectedCredit={plan?.conversionCrc ?? null}
+        />
+      )}
+      {unavailable && (
+        <p className="text-sm text-muted-foreground">
+          Los vínculos de inicio de mes no están disponibles.{" "}
+          <button type="button" className="text-primary underline" onClick={refresh}>
+            Volver a consultar
+          </button>
+        </p>
+      )}
     </section>
   )
 }

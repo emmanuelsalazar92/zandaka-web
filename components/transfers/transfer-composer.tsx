@@ -128,6 +128,7 @@ export function TransferComposer({
   onConfirmed,
   onPendingChange,
   onRefreshAccounts,
+  budgetStep,
 }: {
   accounts: TransferAccount[]
   accountsLoading: boolean
@@ -140,15 +141,26 @@ export function TransferComposer({
   onConfirmed: () => void
   onPendingChange: (pending: boolean) => void
   onRefreshAccounts: () => void
+  budgetStep?: {
+    planId: string
+    revision: number
+    step: string
+    from: { accountId: number; envelopeId: number }
+    to: { accountId: number; envelopeId: number }
+    planned: string
+  }
 }) {
+  const scope = budgetStep
+    ? `${budgetStep.planId}.${budgetStep.revision}.${budgetStep.step}`
+    : undefined
   const [draft, setDraft] = React.useState<TransferDraft>({
     date: initialDate || getAccountingDate(),
     description: initialDescription,
-    fromAccount: "",
-    fromEnvelope: "",
-    toAccount: "",
-    toEnvelope: "",
-    amount: "",
+    fromAccount: budgetStep ? String(budgetStep.from.accountId) : "",
+    fromEnvelope: budgetStep ? String(budgetStep.from.envelopeId) : "",
+    toAccount: budgetStep ? String(budgetStep.to.accountId) : "",
+    toEnvelope: budgetStep ? String(budgetStep.to.envelopeId) : "",
+    amount: budgetStep?.planned ?? "",
   })
   const [pending, setPending] = React.useState<PendingTransfer | null>(null)
   const [recoveryError, setRecoveryError] = React.useState(false)
@@ -165,7 +177,7 @@ export function TransferComposer({
   React.useEffect(() => {
     mountedRef.current = true
     try {
-      const saved = readPendingTransfer(userId)
+      const saved = readPendingTransfer(userId, scope)
       setPending(saved)
       if (saved) requestAnimationFrame(() => titleRef.current?.focus())
       if (saved)
@@ -188,7 +200,7 @@ export function TransferComposer({
       for (const entry of cache.values()) entry.controller.abort()
       cache.clear()
     }
-  }, [userId])
+  }, [userId, scope])
   const load = React.useCallback<LoadOptions>((accountId) => {
     const existing = options.current.get(accountId)
     if (existing) return existing.promise
@@ -256,7 +268,7 @@ export function TransferComposer({
         ...record!,
         payload: { ...record!.payload, requestId: transferRequestId() },
       }
-      savePendingTransfer(current)
+      savePendingTransfer(current, scope)
     } catch {
       setError(
         "No pudimos conservar el intento de transferencia en esta pestaña. La operación no se envió. Revisa el almacenamiento del navegador y vuelve a intentar.",
@@ -268,11 +280,22 @@ export function TransferComposer({
     setPending(current)
     onPendingChange(true)
     try {
-      const response = await fetch("/api/transfers", {
-        method: "POST",
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify(current.payload),
-      }).catch(() => {
+      const { userId: owner, ...transfer } = current.payload
+      const response = await fetch(
+        budgetStep
+          ? `/api/budget-plans/${budgetStep.planId}/month-start/transfer`
+          : "/api/transfers",
+        {
+          method: "POST",
+          headers: { Accept: "application/json", "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(20_000),
+          body: JSON.stringify(
+            budgetStep
+              ? { userId: owner, revision: budgetStep.revision, step: budgetStep.step, transfer }
+              : current.payload,
+          ),
+        },
+      ).catch(() => {
         throw Error(
           "La conexión se interrumpió. Reintenta para confirmar el resultado sin duplicar la transferencia.",
         )
@@ -293,14 +316,19 @@ export function TransferComposer({
             ["VALIDATION_ERROR", "FORBIDDEN", "NOT_FOUND", "INACTIVE_RESOURCE"].includes(
               code ?? "",
             )) ||
+          (budgetStep && response.status === 409 && code === "CONFLICT") ||
           (response.status === 503 && code === "FEATURE_NOT_READY")
         ) {
-          clearPendingTransfer(userId)
+          clearPendingTransfer(userId, scope)
           setPending(null)
           onPendingChange(false)
           refresh()
         }
-        throw Error(message)
+        throw Error(
+          budgetStep && response.status === 409
+            ? "Actualiza el presupuesto y revisa los movimientos antes de volver a intentarlo."
+            : message,
+        )
       }
       const result = await response.json().catch(() => {
         throw Error(
@@ -312,7 +340,7 @@ export function TransferComposer({
         throw Error(
           "No recibimos una confirmación válida. Reintenta para recuperar el resultado sin duplicar la transferencia.",
         )
-      clearPendingTransfer(userId)
+      clearPendingTransfer(userId, scope)
       setPending(null)
       onPendingChange(false)
       onConfirmed()
@@ -361,7 +389,7 @@ export function TransferComposer({
                   : {}),
               }))
             }}
-            disabled={accountsLoading || !hydrated}
+            disabled={!!budgetStep || accountsLoading || !hydrated}
             placeholder={accountsLoading ? "Cargando cuentas…" : "Elige una cuenta"}
             searchLabel={`Buscar cuenta de ${source ? "origen" : "destino"}`}
           />
@@ -381,7 +409,7 @@ export function TransferComposer({
               setError(null)
               setDraft((d) => ({ ...d, [envelopeKey]: value }))
             }}
-            disabled={!draft[accountKey] || values.loading || !hydrated}
+            disabled={!!budgetStep || !draft[accountKey] || values.loading || !hydrated}
             placeholder={
               values.loading
                 ? "Cargando sobres…"
@@ -449,25 +477,27 @@ export function TransferComposer({
                   onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
                 />
               </AccessibleField>
-              <AccessibleField className="min-w-0 space-y-2">
-                <Label htmlFor="transfer-type">Tipo</Label>
-                <Select
-                  value="TRANSFER"
-                  onValueChange={(value) =>
-                    onTypeChange(value as "INCOME" | "EXPENSE" | "ADJUSTMENT")
-                  }
-                >
-                  <SelectTrigger id="transfer-type" className="w-full min-w-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="INCOME">Ingreso</SelectItem>
-                    <SelectItem value="EXPENSE">Gasto</SelectItem>
-                    <SelectItem value="TRANSFER">Transferencia</SelectItem>
-                    <SelectItem value="ADJUSTMENT">Ajuste</SelectItem>
-                  </SelectContent>
-                </Select>
-              </AccessibleField>
+              {!budgetStep && (
+                <AccessibleField className="min-w-0 space-y-2">
+                  <Label htmlFor="transfer-type">Tipo</Label>
+                  <Select
+                    value="TRANSFER"
+                    onValueChange={(value) =>
+                      onTypeChange(value as "INCOME" | "EXPENSE" | "ADJUSTMENT")
+                    }
+                  >
+                    <SelectTrigger id="transfer-type" className="w-full min-w-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="INCOME">Ingreso</SelectItem>
+                      <SelectItem value="EXPENSE">Gasto</SelectItem>
+                      <SelectItem value="TRANSFER">Transferencia</SelectItem>
+                      <SelectItem value="ADJUSTMENT">Ajuste</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </AccessibleField>
+              )}
             </div>
             <AccessibleField className="space-y-2">
               <Label htmlFor="transfer-description">Descripción</Label>
@@ -512,8 +542,9 @@ export function TransferComposer({
                 }}
               />
               <p id="transfer-amount-help" className="text-sm text-muted-foreground">
-                Escribe el importe sin signo ni separadores de miles. Usa punto decimal; por
-                ejemplo, 1234.56.
+                {budgetStep
+                  ? `Importe previsto ${formatCurrency(Number(budgetStep.planned), "CRC")}. Revisa el importe real y usa punto decimal.`
+                  : "Escribe el importe sin signo ni separadores de miles. Usa punto decimal, por ejemplo, 1234.56."}
               </p>
               <AccessibleFieldError className="text-sm text-error">
                 {state.amountError}

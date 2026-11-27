@@ -658,6 +658,9 @@ export function BudgetPlanWorkspace({ planId }: { planId: string }) {
                 calculation={c}
                 options={plan.options}
                 receipt={saved?.receipt ?? null}
+                planId={plan.id}
+                revision={saved?.revision ?? 0}
+                draftChanged={plan.dirty || !!plan.pending || !!plan.recovery || plan.busy}
               />
             )}
             <div className={styles.sectionTitle}>

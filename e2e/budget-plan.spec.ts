@@ -7,6 +7,7 @@ import { exampleSavedPlan, planId, planOptions } from "../tests/fixtures/budget-
 
 import { installSyntheticAPI } from "./fixtures"
 
+import type { MonthStart } from "../lib/budget-month-start"
 import type { BudgetPlanDocument } from "../lib/budget-plan"
 import type { FundingPreview } from "../lib/budget-plan-api"
 
@@ -493,6 +494,200 @@ test("the month-start guide follows the draft and stays read-only", async ({ pag
   await tab.click()
   await expect(guide).toBeVisible()
   expect(state.bodies).toHaveLength(0)
+})
+
+test("month-start reviews the actual conversion and recovers the same transfer after a lost response", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  const initial = exampleSavedPlan()
+  const doc = initial.document
+  initial.document = {
+    ...doc,
+    exchange: { ...doc.exchange, buy: "434", margin: "0" },
+    lines: [{ ...doc.lines[0], amount: "260400", targetEnvelopeId: 32 }],
+  }
+  initial.calculation = calculateBudgetPlan(initial.document)
+  const existing = await fixture(page, "success", initial)
+  const data: MonthStart = {
+    planId,
+    revision: initial.revision,
+    detachedCount: 0,
+    steps: [
+      {
+        key: "fx",
+        kind: "fx",
+        label: "Conversión USD a CRC",
+        planned: "600",
+        currency: "USD",
+        fromAccountId: 1,
+        fromEnvelopeId: null,
+        toAccountId: null,
+        toEnvelopeId: null,
+        evidence: null,
+      },
+    ],
+  }
+  const movements = [
+    {
+      id: 71,
+      date: "2026-11-01",
+      accountId: 1,
+      accountName: "Reserva USD",
+      envelopeId: 11,
+      amount: "600",
+      currency: "USD",
+    },
+    {
+      id: 72,
+      date: "2026-11-01",
+      accountId: 2,
+      accountName: "Pagos CRC",
+      envelopeId: 21,
+      amount: "262000",
+      currency: "CRC",
+    },
+  ] as const
+  await page.route(/\/api\/transactions\/(71|72)\?/, (route) => {
+    const movement = route.request().url().includes("/71?") ? movements[0] : movements[1]
+    const expense = movement.id === 71
+    return route.fulfill({
+      json: {
+        id: movement.id,
+        userId: 1,
+        type: expense ? "EXPENSE" : "INCOME",
+        description: expense ? "Salida bancaria" : "Abono bancario",
+        date: movement.date,
+        createdAt: null,
+        correction: { available: false, reason: "NO_AUDITED_CORRECTION_FLOW" },
+        lines: [
+          {
+            id: movement.id,
+            accountId: movement.accountId,
+            accountName: movement.accountName,
+            accountCurrency: movement.currency,
+            institutionName: "Banco de ejemplo",
+            envelopeId: movement.envelopeId,
+            categoryName: "Disponible",
+            envelopeActive: true,
+            amount: Number(movement.amount) * (expense ? -1 : 1),
+          },
+        ],
+      },
+    })
+  })
+  await page.route(/\/api\/reports\/envelope-balances\?/, (route) => {
+    const accountId = Number(new URL(route.request().url()).searchParams.get("accountId"))
+    return route.fulfill({
+      json: planOptions.envelopes
+        .filter((e) => e.accountId === accountId)
+        .map((e) => ({ envelopeId: e.id, categoryName: e.categoryName })),
+    })
+  })
+  let links = 0
+  let posts = 0
+  let original: unknown
+  await page.route(/\/api\/budget-plans\/[^/]+\/month-start(?:\?|\/)/, async (route) => {
+    const req = route.request()
+    if (req.method() === "GET") return route.fulfill({ json: data })
+    if (req.method() === "PUT") {
+      links++
+      const body = req.postDataJSON()
+      expect(body.movementIds).toEqual([71, 72])
+      data.steps[0].evidence = { current: true, rate: "436.666667", movements: [...movements] }
+      data.steps.push({
+        key: "transfer:3",
+        kind: "transfer",
+        label: "Traslado de fondos en CRC",
+        planned: "260400",
+        currency: "CRC",
+        fromAccountId: 2,
+        fromEnvelopeId: 21,
+        toAccountId: 3,
+        toEnvelopeId: 31,
+        evidence: null,
+      })
+      return route.fulfill({ json: data })
+    }
+    posts++
+    const body = req.postDataJSON()
+    const t = body.transfer
+    if (posts === 1) {
+      original = body
+      data.steps[1].evidence = {
+        current: true,
+        rate: null,
+        movements: [
+          { ...movements[1], id: 80, amount: String(t.amount), date: t.date },
+          {
+            ...movements[1],
+            id: 80,
+            accountId: 3,
+            accountName: "Tarjeta CRC",
+            envelopeId: 31,
+            amount: String(t.amount),
+            date: t.date,
+          },
+        ],
+      }
+      return route.abort("failed")
+    }
+    expect(body).toEqual(original)
+    return route.fulfill({
+      json: {
+        transaction: {
+          id: 80,
+          userId: 1,
+          type: "TRANSFER",
+          description: t.description,
+          date: t.date,
+        },
+        lines: [
+          { ...t.from, amount: -t.amount },
+          { ...t.to, amount: t.amount },
+        ],
+      },
+    })
+  })
+  await open(page)
+  const tab = page.getByRole("tab", { name: "Revisar sobres", exact: true })
+  await tab.click()
+  const link = page.getByRole("button", { name: "Vincular movimiento", exact: true })
+  await link.click()
+  await page.getByRole("button", { name: "Cerrar", exact: true }).last().click()
+  expect(links).toBe(0)
+  await link.click()
+  let dialog = page.getByRole("dialog")
+  await dialog.getByLabel("ID de salida en USD").fill("71")
+  await dialog.getByLabel("ID de entrada en CRC").fill("72")
+  await dialog.getByRole("button", { name: "Revisar movimientos" }).click()
+  await expect(
+    dialog.getByText("Los importes reales difieren del plan.", { exact: false }),
+  ).toBeVisible()
+  expect(links).toBe(0)
+  await dialog.getByRole("button", { name: "Confirmar vínculo" }).click()
+  await expect(page.getByText(/Conversión registrada.*262/)).toBeVisible()
+  expect(links).toBe(1)
+  await page.getByRole("button", { name: "Preparar transferencia" }).click()
+  dialog = page.getByRole("dialog")
+  await expect(dialog.getByLabel("Importe en CRC")).toHaveValue("260400")
+  await dialog.getByRole("button", { name: "Cancelar", exact: true }).click()
+  expect(posts).toBe(0)
+  await page.getByRole("button", { name: "Preparar transferencia" }).click()
+  await dialog.getByRole("button", { name: "Guardar transferencia" }).click()
+  await expect(dialog.getByText("Transferencia por confirmar", { exact: true })).toBeVisible()
+  await page.reload()
+  await tab.click()
+  await page.getByRole("button", { name: "Recuperar transferencia" }).click()
+  await dialog.getByRole("button", { name: "Reintentar transferencia" }).click()
+  await expect(
+    page.getByRole("link", { name: "Movimiento #80", exact: true }).first(),
+  ).toBeVisible()
+  await expect(page.getByRole("button", { name: "Recuperar transferencia" })).toHaveCount(0)
+  await page.getByRole("link", { name: "Movimiento #71", exact: true }).click()
+  await expect(page.getByRole("dialog").getByText("Salida bancaria", { exact: true })).toBeVisible()
+  expect(posts).toBe(2)
+  expect(existing.bodies).toHaveLength(0)
 })
 
 test("applying is explicit, single-shot and leaves a persistent receipt", async ({ page }) => {

@@ -72,8 +72,8 @@ interface TransactionLine {
 }
 
 const API_BASE_URL = "/api"
-export function TransactionsContent() {
-  const [detailId, setDetailId] = React.useState<number | null>(null)
+export function TransactionsContent({ initialMovementId }: { initialMovementId?: number } = {}) {
+  const [detailId, setDetailId] = React.useState<number | null>(initialMovementId ?? null)
   const detailTrigger = React.useRef<HTMLButtonElement | null>(null)
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [hasPendingTransfer, setHasPendingTransfer] = React.useState(false)

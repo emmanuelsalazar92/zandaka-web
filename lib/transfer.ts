@@ -27,7 +27,8 @@ export type PendingTransfer = {
   toLabel: string
   currency: string
 }
-const storageKey = (userId: number) => `zandaka.transfer.pending.v1.${userId}`
+const storageKey = (userId: number, scope?: string) =>
+  `zandaka.transfer.pending.v1.${userId}${scope ? `.${scope}` : ""}`
 
 export function transferState(
   draft: TransferDraft,
@@ -94,15 +95,15 @@ export function transferState(
 export function transferRequestId(): string {
   return secureUuid()
 }
-export function pendingTransferExists(userId: number): boolean {
+export function pendingTransferExists(userId: number, scope?: string): boolean {
   try {
-    return Boolean(window.sessionStorage.getItem(storageKey(userId)))
+    return Boolean(window.sessionStorage.getItem(storageKey(userId, scope)))
   } catch {
     return false
   }
 }
-export function readPendingTransfer(userId: number): PendingTransfer | null {
-  const raw = window.sessionStorage.getItem(storageKey(userId))
+export function readPendingTransfer(userId: number, scope?: string): PendingTransfer | null {
+  const raw = window.sessionStorage.getItem(storageKey(userId, scope))
   if (!raw) return null
   if (raw.length > 16384) throw Error("Invalid pending transfer")
   const value = JSON.parse(raw) as PendingTransfer,
@@ -135,11 +136,11 @@ export function readPendingTransfer(userId: number): PendingTransfer | null {
     throw Error("Invalid pending transfer")
   return value
 }
-export function savePendingTransfer(record: PendingTransfer): void {
-  window.sessionStorage.setItem(storageKey(record.payload.userId), JSON.stringify(record))
+export function savePendingTransfer(record: PendingTransfer, scope?: string): void {
+  window.sessionStorage.setItem(storageKey(record.payload.userId, scope), JSON.stringify(record))
 }
-export function clearPendingTransfer(userId: number): void {
-  window.sessionStorage.removeItem(storageKey(userId))
+export function clearPendingTransfer(userId: number, scope?: string): void {
+  window.sessionStorage.removeItem(storageKey(userId, scope))
 }
 
 /** Never dismiss an uncertain attempt on a malformed or unrelated 2xx response. */

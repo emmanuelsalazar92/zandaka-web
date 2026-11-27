@@ -29,6 +29,16 @@ La identidad mantiene el contrato actual `userId=1`; el módulo no incorpora log
 
 Los orígenes y destinos provienen de las cuentas y sobres seleccionados en el plan. Se muestra un dato pendiente cuando falta una referencia o cuando el cálculo es inválido. Un recibo validado confirma cada asignación por ID de línea y de movimiento. La conversión bancaria, su tasa ejecutada y los pagos externos quedan por verificar. Visitar la guía no escribe datos ni modifica el flujo de verificación y asignación. Este cambio de presentación no requiere preparación de base de datos.
 
+## Confirmar movimientos de inicio de mes
+
+En **Revisar sobres**, elige **Vincular movimiento** para consultar la ficha por ID. Puedes buscar esos IDs en Movimientos. Para una conversión hecha en el banco, selecciona la salida en USD y la entrada en CRC. La revisión muestra cuentas, sobres, importes reales y diferencias frente a lo previsto. Al confirmar, la tasa ejecutada se calcula como CRC recibidos ÷ USD entregados. Para un pago externo, selecciona el gasto del sobre correspondiente.
+
+Después de vincular la conversión, puedes revisar el traslado en CRC entre el sobre que recibió el abono y el sobre que abastece las asignaciones en otra cuenta. **Preparar transferencia** abre el compositor con origen, destino e importe previsto. Revisa el importe real antes de guardar. Si se pierde la respuesta, **Recuperar transferencia** reintenta los mismos datos e identifica el mismo movimiento. La acción **Asignar a sobres** conserva el flujo y el recibo de fondeo existente.
+
+Guardar cambios del presupuesto o volver a borrador marca los vínculos de la revisión anterior **Por revisar**. Puedes revisar los movimientos existentes y confirmar sus vínculos en la nueva revisión. Cada comprobante abre la ficha exacta del movimiento. Cambiar de pestaña, abrir un borrador o cerrar la revisión sin confirmar solo hace lecturas.
+
+ZA-120 requiere las imágenes compatibles de web y API y la preparación explícita de `budget_month_start`. La guía de solo lectura sigue disponible si el almacenamiento de vínculos aún no se preparó.
+
 ## Panel del listado
 
 El listado en /budgets usa el mismo ancho, márgenes y superficie Marea de Conciliación. El panel reúne las acciones, el acceso histórico, los estados de carga y error, las filas y la paginación. La prueba visual compara ambas rutas en claro y oscuro a 390 y 1440 px.
