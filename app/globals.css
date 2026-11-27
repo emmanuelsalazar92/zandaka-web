@@ -213,6 +213,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    --app-header-height: 4rem;
+    scroll-padding-block-start: calc(var(--app-header-height) + 0.5rem);
+  }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "cv11", "ss01";

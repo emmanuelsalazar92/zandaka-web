@@ -630,7 +630,7 @@ export function BudgetDetailContent({ budgetId }: BudgetDetailContentProps) {
         </TabsList>
 
         <TabsContent value="planning" className="space-y-4">
-          <div className="sticky top-4 z-10 rounded-xl border bg-background/95 p-4 shadow-sm backdrop-blur">
+          <div className="sticky top-[calc(var(--app-header-height)+1rem)] z-10 rounded-xl border bg-background/95 p-4 shadow-sm backdrop-blur">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex flex-wrap gap-3">
                 <div className="rounded-lg bg-muted px-3 py-2">

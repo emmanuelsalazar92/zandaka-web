@@ -151,7 +151,25 @@ function AppHeader() {
   const pathname = usePathname()
   const { resolvedTheme, setTheme } = useTheme()
   const { state, isMobile, openMobile } = useSidebar()
+  const headerRef = React.useRef<HTMLElement>(null)
   const previousPath = React.useRef(pathname)
+
+  React.useLayoutEffect(() => {
+    const header = headerRef.current
+    if (!header) return
+
+    const root = document.documentElement
+    const updateHeight = () => {
+      root.style.setProperty("--app-header-height", `${header.getBoundingClientRect().height}px`)
+    }
+    updateHeight()
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateHeight)
+    observer?.observe(header, { box: "border-box" })
+    return () => {
+      observer?.disconnect()
+      root.style.removeProperty("--app-header-height")
+    }
+  }, [])
 
   React.useEffect(() => {
     if (previousPath.current !== pathname) {
@@ -168,8 +186,9 @@ function AppHeader() {
 
   return (
     <header
+      ref={headerRef}
       aria-label="Herramientas de Zandaka"
-      className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-card px-4 py-2 md:px-7"
+      className="sticky top-0 z-30 flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-card px-4 py-2 md:px-7"
     >
       <SidebarTrigger
         className="-ml-1 size-11 text-muted-foreground"
