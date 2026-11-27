@@ -65,7 +65,7 @@ export function BudgetPlansList() {
     return () => controller.abort()
   }, [page, reload])
   return (
-    <div className={`marea-surface ${styles.page}`}>
+    <div className={`marea-surface rounded-2xl bg-background p-3 sm:p-5 ${styles.page}`}>
       <PageHeader
         title="Presupuestos"
         description="Prepara el mes y distribuye tu dinero a sobres."

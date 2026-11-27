@@ -184,6 +184,46 @@ async function open(page: Page) {
   await page.goto(`/budgets/plans/${planId}`)
   await expect(page.getByRole("heading", { name: "Tu distribución", exact: true })).toBeVisible()
 }
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`budget list uses the shared panel ${colorScheme}`, async ({ page }, info) => {
+    await page.emulateMedia({ colorScheme })
+    await fixture(page)
+    const panel = page.getByRole("main").locator(".marea-surface").first()
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto("/reconciliation")
+      await expect(page.getByRole("heading", { name: "Conciliación", exact: true })).toBeVisible()
+      const reference = (await panel.boundingBox())!
+      await page.goto("/budgets")
+      const row = panel.getByRole("link", { name: /noviembre de 2026/i })
+      await expect(row).toBeVisible()
+      await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${colorScheme}\\b`))
+      await page.screenshot({ path: info.outputPath(`presupuestos-${width}.png`) })
+      const list = (await panel.boundingBox())!
+      expect(list.x).toBe(reference.x)
+      expect(list.width).toBe(reference.width)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
+      expect
+        .soft(await panel.evaluate((element) => getComputedStyle(element).backgroundColor))
+        .not.toBe("rgba(0, 0, 0, 0)")
+      await expect(panel.getByRole("link", { name: "Nuevo presupuesto" })).toHaveAttribute(
+        "href",
+        "/budgets/plans/new",
+      )
+      await expect(
+        panel.getByRole("link", { name: "Consultar presupuestos anteriores" }),
+      ).toHaveAttribute("href", "/budgets/legacy")
+      await expect(panel.getByRole("link", { name: "Gestionar categorías" })).toBeVisible()
+      await expect(panel.getByRole("button", { name: "Actualizar" })).toBeEnabled()
+      await expect(panel.getByText("Página 1 de 1")).toBeVisible()
+      await row.click()
+      await expect(
+        page.getByRole("heading", { name: "Tu distribución", exact: true }),
+      ).toBeVisible()
+    }
+  })
+}
 async function prepared(page: Page) {
   await page.getByRole("tab", { name: "Revisar sobres", exact: true }).click()
   await page.getByRole("button", { name: "Verificar fondos guardados", exact: true }).click()

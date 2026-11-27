@@ -23,6 +23,10 @@ Una respuesta de escritura perdida o inválida muestra **Resultado por confirmar
 
 La identidad mantiene el contrato actual `userId=1`; el módulo no incorpora login. El servidor es la autoridad de saldos, fechas, pertenencia y revisión. La previsualización no garantiza disponibilidad futura: al confirmar se vuelve a validar y el lote es atómico. No hay conversión bancaria, envío de dinero externo ni ejecución programada implícita.
 
+## Panel del listado
+
+El listado en /budgets usa el mismo ancho, márgenes y superficie Marea de Conciliación. El panel reúne las acciones, el acceso histórico, los estados de carga y error, las filas y la paginación. La prueba visual compara ambas rutas en claro y oscuro a 390 y 1440 px.
+
 ## Precisión y accesibilidad
 
 Los cálculos usan Decimal con 60 dígitos de precisión y cadenas de resultados. El formateo a dos decimales es el último paso de presentación. Los pagos a sobres se liquidan a centavos HALF_UP; el porcentaje conserva precisión intermedia y su explicación muestra el valor anterior. La reserva y el libre pueden tener más precisión que su etiqueta de pantalla. El [contrato API](https://github.com/emmanuelsalazar92/zandaka-api/blob/staging/docs/budget-plans.md) documenta las fórmulas y los límites.
