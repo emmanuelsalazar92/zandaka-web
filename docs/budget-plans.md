@@ -39,6 +39,14 @@ Guardar cambios del presupuesto o volver a borrador marca los vínculos de la re
 
 ZA-120 requiere las imágenes compatibles de web y API y la preparación explícita de `budget_month_start`. La guía de solo lectura sigue disponible si el almacenamiento de vínculos aún no se preparó.
 
+## Seguimiento por sobre · ZA-121
+
+Abre **Seguimiento** en un presupuesto guardado para consultar el mes contable, con filas en CRC y USD por separado. **Planeado** usa la revisión guardada. **Asignado** usa el recibo de esa revisión e indica cuándo se registró, incluso si se hizo después de terminar el mes. **Gastado** suma los débitos de gasto del sobre durante el mes.
+
+**Falta asignar** muestra la parte positiva del plan menos lo asignado. **Restante del plan** resta el gasto al plan y puede ser negativo. **Exceso sobre lo asignado** indica cuánto del gasto supera la asignación confirmada. Un sobre con gasto y sin plan aparece como **Sin plan**. Si el recibo de un plan aplicado no se puede verificar, se muestran los gastos y la asignación como **Por verificar**. Los ingresos, traslados y ajustes quedan fuera del gasto bruto. El registro de presupuestos aún no dispone de un vínculo explícito entre un gasto y su devolución.
+
+**Ver gastos** lleva al período y al sobre exactos en Movimientos y admite sobres hoy inactivos. La ficha de un movimiento sigue mostrando todas sus líneas. Este cambio usa una lectura agregada y no requiere preparar tablas nuevas.
+
 ## Panel del listado
 
 El listado en /budgets usa el mismo ancho, márgenes y superficie Marea de Conciliación. El panel reúne las acciones, el acceso histórico, los estados de carga y error, las filas y la paginación. La prueba visual compara ambas rutas en claro y oscuro a 390 y 1440 px.

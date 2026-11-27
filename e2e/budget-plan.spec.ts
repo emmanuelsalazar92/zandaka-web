@@ -708,6 +708,159 @@ test("applying is explicit, single-shot and leaves a persistent receipt", async 
   await expect(guide.getByText("Por verificar", { exact: true })).toHaveCount(2)
   await expect(page.getByRole("button", { name: "Asignar a sobres", exact: true })).toHaveCount(0)
 })
+
+test("tracking separates planned, assigned and spent and opens the exact envelope history", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.emulateMedia({ colorScheme: "dark" })
+  const plan = exampleSavedPlan()
+  const state = await fixture(page, "success", plan)
+  const data = {
+    planId,
+    revision: plan.revision,
+    month: "2026-11",
+    from: "2026-11-01",
+    to: "2026-11-30",
+    fundingStatus: "confirmed",
+    fundingDate: "2026-12-02",
+    unmappedCount: 0,
+    rows: [
+      {
+        envelopeId: 22,
+        accountId: 2,
+        accountName: "Pagos CRC",
+        categoryName: "Casa",
+        currency: "CRC",
+        active: true,
+        hasPlan: true,
+        planned: "100",
+        assigned: "80",
+        spent: "90",
+      },
+      {
+        envelopeId: 32,
+        accountId: 3,
+        accountName: "Tarjeta CRC",
+        categoryName: "Personal",
+        currency: "CRC",
+        active: false,
+        hasPlan: false,
+        planned: null,
+        assigned: "0",
+        spent: "7",
+      },
+      {
+        envelopeId: 12,
+        accountId: 1,
+        accountName: "Reserva USD",
+        categoryName: "Meta USD",
+        currency: "USD",
+        active: true,
+        hasPlan: true,
+        planned: "20",
+        assigned: "20",
+        spent: "0",
+      },
+    ],
+  }
+  let reads = 0
+  await page.route(/\/api\/budget-plans\/[^/]+\/tracking\?/, (route) => {
+    reads++
+    return route.fulfill({ json: data })
+  })
+  await open(page)
+  expect(reads).toBe(0)
+  await page.getByRole("tab", { name: "Seguimiento" }).click()
+  const panel = page.getByRole("tabpanel", { name: "Seguimiento" })
+  const house = panel
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: "Casa", exact: true }) })
+  for (const [name, amount] of [
+    ["Planeado", "100"],
+    ["Asignado", "80"],
+    ["Gastado", "90"],
+    ["Falta asignar", "20"],
+    ["Restante del plan", "10"],
+    ["Exceso sobre lo asignado", "10"],
+  ]) {
+    await expect(
+      house
+        .locator("dl > div")
+        .filter({ has: page.getByText(name, { exact: true }) })
+        .locator("dd"),
+    ).toHaveText(formatPlanMoney(amount, "CRC"))
+  }
+  await expect(panel.getByText("Asignación registrada el 02/12/2026.")).toBeVisible()
+  await expect(panel.getByText("Tarjeta CRC · Inactivo")).toBeVisible()
+  await expect(panel.getByText("Sin plan")).toBeVisible()
+  await expect(panel.getByRole("heading", { name: "Dólares · USD" })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
+  const a11y = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  expect(a11y.violations.map((v) => v.id)).toEqual([])
+  expect(reads).toBe(1)
+  const detailed = page.waitForRequest(
+    (req) =>
+      new URL(req.url()).searchParams.get("accountEnvelopeId") === "32" &&
+      req.url().includes("/api/transactions?"),
+  )
+  await panel.getByRole("link", { name: "Ver gastos de Personal, Tarjeta CRC" }).click()
+  const query = new URL((await detailed).url()).searchParams
+  expect([query.get("from"), query.get("to"), query.get("accountId"), query.get("type")]).toEqual([
+    "2026-11-01",
+    "2026-11-30",
+    "3",
+    "EXPENSE",
+  ])
+  expect(state.bodies).toHaveLength(0)
+})
+
+test("a historical funded plan keeps its tracking visible when the receipt cannot be verified", async ({
+  page,
+}) => {
+  const plan = exampleSavedPlan()
+  plan.status = "funded"
+  await fixture(page, "success", plan)
+  await page.route(/\/api\/budget-plans\/[^/]+\/tracking\?/, (route) =>
+    route.fulfill({
+      json: {
+        planId,
+        revision: plan.revision,
+        month: "2026-11",
+        from: "2026-11-01",
+        to: "2026-11-30",
+        fundingStatus: "unverified",
+        fundingDate: null,
+        unmappedCount: 0,
+        rows: [
+          {
+            envelopeId: 22,
+            accountId: 2,
+            accountName: "Pagos CRC",
+            categoryName: "Casa",
+            currency: "CRC",
+            active: true,
+            hasPlan: true,
+            planned: "100",
+            assigned: null,
+            spent: "0",
+          },
+        ],
+      },
+    }),
+  )
+  await page.goto("/budgets")
+  await page.getByRole("link", { name: /noviembre de 2026/i }).click()
+  await expect(page.getByRole("heading", { name: "Tu distribución", exact: true })).toBeVisible()
+  await page.getByRole("tab", { name: "Revisar sobres" }).click()
+  await expect(page.getByText("Recibo por verificar", { exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Asignar a sobres", exact: true })).toHaveCount(0)
+  await page.getByRole("tab", { name: "Seguimiento" }).click()
+  await expect(page.getByText("Asignación por verificar", { exact: true })).toBeVisible()
+  const panel = page.getByRole("tabpanel", { name: "Seguimiento" })
+  await expect(panel.getByText("Por verificar", { exact: true })).toBeVisible()
+  await expect(panel.getByText(formatPlanMoney("0", "CRC"), { exact: true })).toBeVisible()
+})
 for (const mode of ["lost-fund", "malformed-fund"] as const)
   test(`${mode} never confirms an unverified receipt or posts another intent`, async ({ page }) => {
     const state = await fixture(page, mode)

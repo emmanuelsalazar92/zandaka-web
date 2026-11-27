@@ -9,6 +9,7 @@ export const emptyHistoryFilters = {
   type: "ALL",
   accountId: "ALL",
   envelopeId: "ALL",
+  accountEnvelopeId: "",
   amountMin: "",
   amountMax: "",
 }
@@ -23,6 +24,30 @@ export function accountContextHistoryFilters(params: URLSearchParams): HistoryFi
   return accountId && categoryId
     ? { ...emptyHistoryFilters, accountId, envelopeId: categoryId }
     : null
+}
+
+export function budgetTrackingHistoryFilters(params: URLSearchParams): HistoryFilters | null {
+  if (
+    params.get("source") !== "budget-tracking" ||
+    ["month", "accountId", "accountEnvelopeId"].some((key) => params.getAll(key).length !== 1)
+  )
+    return null
+  const accountId = dashboardAccountId(params.get("accountId"))
+  const accountEnvelopeId = dashboardAccountId(params.get("accountEnvelopeId"))
+  if (!accountId || !accountEnvelopeId) return null
+  try {
+    const range = dashboardMonthRange(params.get("month") ?? "")
+    return {
+      ...emptyHistoryFilters,
+      dateFrom: range.from,
+      dateTo: range.to,
+      type: "EXPENSE",
+      accountId,
+      accountEnvelopeId,
+    }
+  } catch {
+    return null
+  }
 }
 
 /** Dashboard links deliberately scope either a month or one account/category. */
@@ -126,6 +151,7 @@ export function historyQuery(
     ["type", "type"],
     ["accountId", "accountId"],
     ["envelopeId", "categoryId"],
+    ["accountEnvelopeId", "accountEnvelopeId"],
     ["keyword", "q"],
     ["amountMin", "amountMin"],
     ["amountMax", "amountMax"],

@@ -25,15 +25,17 @@ import { AmountField, PlanField } from "./plan-fields"
 import { PlanLineEditor } from "./plan-line-editor"
 import { planMonth } from "./plan-list"
 import { PlanMonthStart } from "./plan-month-start"
+import { PlanTracking } from "./plan-tracking"
 import styles from "./plan.module.css"
 import { useBudgetPlan } from "./use-budget-plan"
 
-type Tab = "plan" | "income" | "exchange" | "apply"
+type Tab = "plan" | "income" | "exchange" | "apply" | "tracking"
 const tabs: Array<[Tab, string]> = [
   ["plan", "Plan del mes"],
   ["income", "Ingreso"],
   ["exchange", "Tipo de cambio"],
   ["apply", "Revisar sobres"],
+  ["tracking", "Seguimiento"],
 ]
 const percent = (value: string | null, net: string | null) => {
   if (value === null || net === null || decimal(net).lte(0)) return "Por confirmar"
@@ -685,6 +687,10 @@ export function BudgetPlanWorkspace({ planId }: { planId: string }) {
                   ))}
                 </ul>
               </Feedback>
+            ) : status === "funded" ? (
+              <Feedback tone="warning" title="Recibo por verificar">
+                Los importes de asignación se pueden consultar en Seguimiento.
+              </Feedback>
             ) : (
               <>
                 <p className={styles.panelLead}>
@@ -846,6 +852,28 @@ export function BudgetPlanWorkspace({ planId }: { planId: string }) {
                 )}
               </>
             )}
+          </section>
+          <section
+            role="tabpanel"
+            id="plan-panel-tracking"
+            aria-labelledby="plan-tab-tracking"
+            hidden={tab !== "tracking"}
+          >
+            {tab === "tracking" &&
+              (saved ? (
+                <PlanTracking
+                  key={`${saved.id}.${saved.revision}`}
+                  planId={saved.id}
+                  month={saved.document.month}
+                  revision={saved.revision}
+                  dirty={plan.dirty}
+                  onReload={plan.reload}
+                />
+              ) : (
+                <Feedback tone="info" title="Guarda el presupuesto para ver su seguimiento">
+                  La comparación usa la revisión guardada del mes.
+                </Feedback>
+              ))}
           </section>
         </div>
         <aside className={styles.rail} aria-label="Revisión del mes">

@@ -52,6 +52,7 @@ import {
   emptyHistoryFilters,
   dashboardHistoryFilters,
   accountContextHistoryFilters,
+  budgetTrackingHistoryFilters,
   reconciliationHistoryFilters,
   historyFilterError,
   type HistoryFilters,
@@ -117,6 +118,7 @@ export function TransactionsContent({ initialMovementId }: { initialMovementId?:
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const initial =
+      budgetTrackingHistoryFilters(params) ??
       reconciliationHistoryFilters(params) ??
       dashboardHistoryFilters(params) ??
       accountContextHistoryFilters(params)
@@ -323,6 +325,7 @@ export function TransactionsContent({ initialMovementId }: { initialMovementId?:
     if (filters.type !== "ALL") count++
     if (filters.accountId !== "ALL") count++
     if (filters.envelopeId !== "ALL") count++
+    if (filters.accountEnvelopeId) count++
     if (filters.amountMin) count++
     if (filters.amountMax) count++
     return count
@@ -365,15 +368,20 @@ export function TransactionsContent({ initialMovementId }: { initialMovementId?:
                   (envelopesByAccount[filters.accountId]?.find(
                     (envelope) => String(envelope.categoryId) === value,
                   )?.name ?? "#" + value)
-                : key === "keyword"
-                  ? '"' + value + '"'
-                  : (key === "amountMin" ? "Mínimo: " : "Máximo: ") + value
+                : key === "accountEnvelopeId"
+                  ? "Sobre: " +
+                    (envelopesByAccount[filters.accountId]?.find(
+                      (envelope) => String(envelope.id) === value,
+                    )?.name ?? "#" + value)
+                  : key === "keyword"
+                    ? '"' + value + '"'
+                    : (key === "amountMin" ? "Mínimo: " : "Máximo: ") + value
     return [{ key, label }]
   })
   const removeFilter = (key: string) => {
     const reset = {
       [key]: emptyHistoryFilters[key as keyof HistoryFilters],
-      ...(key === "accountId" ? { envelopeId: "ALL" } : {}),
+      ...(key === "accountId" ? { envelopeId: "ALL", accountEnvelopeId: "" } : {}),
     }
     setFilters((current) => ({ ...current, ...reset }))
     setDraftFilters((current) => ({ ...current, ...reset }))
@@ -995,7 +1003,12 @@ export function TransactionsContent({ initialMovementId }: { initialMovementId?:
                     <Select
                       value={draftFilters.accountId}
                       onValueChange={(value) =>
-                        setDraftFilters({ ...draftFilters, accountId: value, envelopeId: "ALL" })
+                        setDraftFilters({
+                          ...draftFilters,
+                          accountId: value,
+                          envelopeId: "ALL",
+                          accountEnvelopeId: "",
+                        })
                       }
                       disabled={accountsLoading || activeAccounts.length === 0}
                     >
@@ -1040,9 +1053,18 @@ export function TransactionsContent({ initialMovementId }: { initialMovementId?:
                       Sobre
                     </Label>
                     <Select
-                      value={draftFilters.envelopeId}
+                      value={
+                        draftFilters.accountEnvelopeId
+                          ? "tracked-envelope"
+                          : draftFilters.envelopeId
+                      }
                       onValueChange={(value) =>
-                        setDraftFilters({ ...draftFilters, envelopeId: value })
+                        value !== "tracked-envelope" &&
+                        setDraftFilters({
+                          ...draftFilters,
+                          envelopeId: value,
+                          accountEnvelopeId: "",
+                        })
                       }
                       disabled={
                         draftFilters.accountId === "ALL" ||
@@ -1063,6 +1085,11 @@ export function TransactionsContent({ initialMovementId }: { initialMovementId?:
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ALL">Todos los sobres</SelectItem>
+                        {draftFilters.accountEnvelopeId && (
+                          <SelectItem value="tracked-envelope">
+                            Sobre de seguimiento #{draftFilters.accountEnvelopeId}
+                          </SelectItem>
+                        )}
                         {(envelopesByAccount[draftFilters.accountId] || []).map((env) => (
                           <SelectItem key={env.categoryId} value={env.categoryId.toString()}>
                             {env.name}

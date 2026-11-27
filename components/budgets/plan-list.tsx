@@ -10,7 +10,7 @@ import { Feedback, LoadingState } from "@/components/ui/feedback"
 import { calculateBudgetPlan } from "@/lib/budget-plan"
 import {
   PlanApiError,
-  parseSavedPlan,
+  parseSavedPlanForRead,
   planRequest,
   type SavedBudgetPlan,
 } from "@/lib/budget-plan-api"
@@ -48,7 +48,7 @@ export function BudgetPlansList() {
           result.totalPages < 0
         )
           throw new Error()
-        setPlans(result.items.map((item) => parseSavedPlan(item)))
+        setPlans(result.items.map((item) => parseSavedPlanForRead(item)))
         setPages(Math.max(1, result.totalPages))
       })
       .catch((cause) => {

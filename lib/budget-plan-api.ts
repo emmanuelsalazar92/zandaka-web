@@ -250,8 +250,20 @@ export function parseSavedPlan(value: unknown, id?: string): SavedBudgetPlan {
   }
   return result
 }
+export function parseSavedPlanForRead(raw: unknown, id?: string): SavedBudgetPlan {
+  try {
+    return parseSavedPlan(raw, id)
+  } catch (error) {
+    // A historical plan can still open for inspection when its receipt cannot be verified.
+    const historical = savedSchema
+      .extend({ receipt: z.unknown(), status: z.literal("funded") })
+      .safeParse(raw)
+    if (!historical.success || (id && historical.data.id !== id)) throw error
+    return { ...historical.data, receipt: null } as SavedBudgetPlan
+  }
+}
 export async function getPlan(id: string, signal?: AbortSignal) {
-  return parseSavedPlan(await planRequest(`/${id}`, "GET", undefined, signal), id)
+  return parseSavedPlanForRead(await planRequest(`/${id}`, "GET", undefined, signal), id)
 }
 export async function savePlan(id: string, expectedRevision: number, document: BudgetPlanDocument) {
   const result = parseSavedPlan(
