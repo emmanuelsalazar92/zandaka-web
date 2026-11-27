@@ -13,3 +13,13 @@ En el detalle de un proyecto activo, **Vincular movimientos** abre el buscador. 
 Para incluir un ingreso, cambia el tipo a **Reembolso** y confirma con **Vincular como reembolso**. La lista muestra el importe y la moneda de cada línea, el movimiento original y su categoría. Quitar un vínculo lo retira del proyecto y conserva el movimiento. Los proyectos finalizados o archivados permiten consultar la lista. Si otra pestaña modifica la revisión, actualiza el proyecto antes de actuar.
 
 Testing requiere la tabla `project_transaction_line` preparada por el instalador de la API. El recorrido sintético `e2e/projects.spec.ts` cubre búsqueda, vinculación parcial, vínculo completo, reembolso, retiro y consulta del proyecto cerrado.
+
+## Costo del proyecto · ZA-117
+
+El resumen muestra gastos, reembolsos y costo neto por moneda. Seleccionar CRC, USD u otra moneda registrada cambia el protagonista y la escala de la curva. Cada punto muestra el acumulado de un día contable con actividad. La tabla de evolución conserva las cifras exactas que devuelve la API.
+
+Las barras representan gasto bruto. Cada barra funciona como un botón que filtra los vínculos por categoría y moneda. El desglose permite comprobar también reembolsos y neto y abrir la ficha del movimiento original. Desde la lista se puede volver a todos los vínculos.
+
+La fecha de cálculo se presenta en horario de Costa Rica. Al actualizar, la pantalla indica si cambiaron las cifras de la misma revisión del proyecto. Si un movimiento aún vinculado registra una actualización posterior al cierre, aparece un aviso en el resumen. Los proyectos sin líneas elegibles conservan el estado vacío en la tabla.
+
+`e2e/project-analysis.spec.ts` cubre dos monedas, reintento, teclado, desglose, ficha histórica, temas claro y oscuro, corrección posterior al cierre y estado vacío.

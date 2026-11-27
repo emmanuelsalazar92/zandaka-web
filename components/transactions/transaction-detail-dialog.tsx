@@ -31,14 +31,14 @@ type State =
 export function TransactionDetailDialog({
   transactionId,
   userId,
+  projectId,
   onClose,
   returnFocus,
 }: {
   transactionId: number
-  userId: number
   onClose: () => void
   returnFocus: React.RefObject<HTMLButtonElement | null>
-}) {
+} & ({ userId: number; projectId?: never } | { projectId: string; userId?: never })) {
   const [state, setState] = React.useState<State>({ kind: "loading" })
   const [attempt, setAttempt] = React.useState(0)
   const title = React.useRef<HTMLHeadingElement>(null)
@@ -48,7 +48,10 @@ export function TransactionDetailDialog({
     const timeout = setTimeout(() => controller.abort(), 15_000)
     async function load() {
       try {
-        const response = await fetch(`/api/transactions/${transactionId}?userId=${userId}`, {
+        const url = projectId
+          ? `/api/projects/${encodeURIComponent(projectId)}/movements/${transactionId}`
+          : `/api/transactions/${transactionId}?userId=${userId}`
+        const response = await fetch(url, {
           signal: controller.signal,
           cache: "no-store",
           headers: { Accept: "application/json" },
@@ -87,7 +90,7 @@ export function TransactionDetailDialog({
       controller.abort()
       clearTimeout(timeout)
     }
-  }, [transactionId, userId, attempt])
+  }, [projectId, transactionId, userId, attempt])
 
   const detail = state.kind === "ready" ? state.detail : null
   const totals = detail ? detailTotals(detail) : null

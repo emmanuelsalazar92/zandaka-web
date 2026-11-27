@@ -32,11 +32,11 @@ const detailSchema = z.object({
 
 export type TransactionDetail = z.infer<typeof detailSchema>
 
-export function parseTransactionDetail(value: unknown, transactionId: number, userId: number) {
+export function parseTransactionDetail(value: unknown, transactionId: number, userId?: number) {
   const detail = detailSchema.parse(value)
   if (
     detail.id !== transactionId ||
-    detail.userId !== userId ||
+    (userId !== undefined && detail.userId !== userId) ||
     new Set(detail.lines.map((line) => line.id)).size !== detail.lines.length
   ) {
     throw new Error("Inconsistent transaction detail")

@@ -23,6 +23,7 @@ export type ProjectAction = "rename" | "finalize" | "reopen" | "archive" | "rest
 
 const identifier = z.number().int().positive().safe()
 const kind = z.enum(["expense", "refund"])
+const decimalAmount = z.string().regex(/^-?\d+(?:\.\d+)?$/)
 const movementLine = z.object({
   lineId: identifier,
   transactionId: identifier,
@@ -33,7 +34,7 @@ const movementLine = z.object({
   categoryId: identifier.nullable(),
   categoryName: z.string().nullable(),
   currency: z.string(),
-  amount: z.string().regex(/^-?\d+(?:\.\d+)?$/),
+  amount: decimalAmount,
 })
 const linkedLine = movementLine.extend({ kind, eligible: z.boolean() })
 const searchLine = movementLine.extend({ linkedKind: kind.nullable() })
@@ -55,6 +56,29 @@ const movementFilters = z.object({
   categories: z.array(option),
   currencies: z.array(z.string()),
 })
+
+const amounts = z.object({ expenses: decimalAmount, refunds: decimalAmount, net: decimalAmount })
+const categoryTotals = amounts.extend({
+  categoryId: identifier.nullable(),
+  categoryName: z.string().nullable(),
+})
+const projectAnalysis = z.object({
+  project: projectSchema,
+  calculatedAt: z.iso.datetime(),
+  latestLedgerUpdateAt: z.iso.datetime().nullable(),
+  excludedLineCount: z.number().int().nonnegative(),
+  currencies: z.array(
+    amounts.extend({
+      currency: z.string(),
+      series: z.array(z.object({ date: z.string(), net: decimalAmount })).min(1),
+      categories: z.array(categoryTotals),
+    }),
+  ),
+})
+
+export type ProjectAnalysis = z.infer<typeof projectAnalysis>
+export type ProjectCurrencyAnalysis = ProjectAnalysis["currencies"][number]
+export type ProjectBreakdownFilter = { currency: string; categoryId: number | null; label: string }
 
 export type ProjectMovementKind = z.infer<typeof kind>
 export type LinkedProjectLine = z.infer<typeof linkedLine>
@@ -132,9 +156,27 @@ export async function changeProject(project: Project, action: ProjectAction, tit
   return updated
 }
 
-export async function listProjectMovements(id: string, page: number, signal: AbortSignal) {
+export async function listProjectMovements(
+  id: string,
+  page: number,
+  signal: AbortSignal,
+  filter?: ProjectBreakdownFilter,
+) {
+  const query = new URLSearchParams({ page: String(page) })
+  if (filter) {
+    query.set("currency", filter.currency)
+    query.set("categoryId", String(filter.categoryId ?? "none"))
+  }
   const result = projectMovements.parse(
-    await request(`/${encodeURIComponent(id)}/movements?page=${page}`, { signal }),
+    await request(`/${encodeURIComponent(id)}/movements?${query}`, { signal }),
+  )
+  if (result.project.id !== id) throw new Error("Unexpected project")
+  return result
+}
+
+export async function getProjectAnalysis(id: string, signal: AbortSignal) {
+  const result = projectAnalysis.parse(
+    await request(`/${encodeURIComponent(id)}/analysis`, { signal }),
   )
   if (result.project.id !== id) throw new Error("Unexpected project")
   return result

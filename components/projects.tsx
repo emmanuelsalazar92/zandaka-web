@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import * as React from "react"
 
 import { PageHeader } from "@/components/page-header"
+import { ProjectAnalysisPanel } from "@/components/project-analysis"
 import { ProjectMovements } from "@/components/project-movements"
 import { Button } from "@/components/ui/button"
 import {
@@ -27,6 +28,7 @@ import {
   ProjectRequestError,
   type Project,
   type ProjectAction,
+  type ProjectBreakdownFilter,
   type ProjectPage,
   type ProjectView,
 } from "@/lib/project-api"
@@ -362,6 +364,8 @@ export function ProjectsList() {
 
 export function ProjectDetail({ id }: { id: string }) {
   const [action, setAction] = React.useState<ProjectAction>()
+  const [filter, setFilter] = React.useState<ProjectBreakdownFilter>()
+  const movementHeadingId = React.useId()
   const heading = React.useRef<HTMLHeadingElement>(null)
   const actionTrigger = React.useRef<HTMLButtonElement>(null)
   const load = React.useCallback((signal: AbortSignal) => getProject(id, signal), [id])
@@ -439,9 +443,26 @@ export function ProjectDetail({ id }: { id: string }) {
               </Button>
             ))}
           </div>
-          <ProjectMovements
+          <ProjectAnalysisPanel
             key={project.id}
             project={project}
+            filter={filter}
+            movementHeadingId={movementHeadingId}
+            onSelect={(next) => {
+              setFilter(next)
+              if (next)
+                requestAnimationFrame(() => document.getElementById(movementHeadingId)?.focus())
+            }}
+          />
+          <ProjectMovements
+            key={`${project.id}:${filter?.currency ?? "all"}:${filter?.categoryId ?? "none"}`}
+            project={project}
+            filter={filter}
+            headingId={movementHeadingId}
+            onClearFilter={() => {
+              setFilter(undefined)
+              requestAnimationFrame(() => document.getElementById(movementHeadingId)?.focus())
+            }}
             onProject={replace}
             onRefresh={refresh}
           />

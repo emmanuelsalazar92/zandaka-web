@@ -24,6 +24,16 @@ test("Proyectos lifecycle at 390 px with a lost creation response", async ({ pag
     const url = new URL(route.request().url())
     const method = route.request().method()
     if (method === "GET") {
+      if (url.pathname.endsWith("/analysis"))
+        return route.fulfill({
+          json: {
+            project,
+            calculatedAt: now,
+            latestLedgerUpdateAt: null,
+            excludedLineCount: 0,
+            currencies: [],
+          },
+        })
       if (url.pathname.endsWith("/movements"))
         return route.fulfill({ json: { project, items: [], total: 0, page: 1, pageSize: 20 } })
       if (url.pathname !== "/api/projects") return route.fulfill({ json: project })
@@ -135,6 +145,16 @@ test("Proyectos links split movements and explicitly marked refunds at 390 px", 
     const url = new URL(route.request().url())
     const method = route.request().method()
     const endpoint = url.pathname.split("/").at(-1)
+    if (endpoint === "analysis")
+      return route.fulfill({
+        json: {
+          project,
+          calculatedAt: now,
+          latestLedgerUpdateAt: null,
+          excludedLineCount: 0,
+          currencies: [],
+        },
+      })
     if (endpoint === "movement-filters") {
       return route.fulfill({
         json: {

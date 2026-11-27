@@ -3,6 +3,7 @@
 import { Link2, Plus, Search } from "lucide-react"
 import * as React from "react"
 
+import { TransactionDetailDialog } from "@/components/transactions/transaction-detail-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,8 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { EmptyState, Feedback, LoadingState } from "@/components/ui/feedback"
 import { Input } from "@/components/ui/input"
-import { formatSignedCurrency } from "@/lib/currency-formatter"
-import { currencyDigits, decimal, decimalNumber } from "@/lib/money"
+import { formatIsoDateOnly } from "@/lib/date-only"
 import {
   changeProjectMovements,
   listProjectMovements,
@@ -24,8 +24,10 @@ import {
   searchProjectMovements,
   type LinkedProjectLine,
   type Project,
+  type ProjectBreakdownFilter,
   type ProjectMovementSearch,
 } from "@/lib/project-api"
+import { formatProjectAmount } from "@/lib/project-money"
 import { useProjectRead } from "@/lib/use-project-read"
 
 const limit = 100
@@ -42,18 +44,11 @@ const initialSearch: ProjectMovementSearch = {
 }
 
 function showAmount(amount: string, currency: string) {
-  try {
-    if (decimal(amount).dp() <= currencyDigits(currency))
-      return formatSignedCurrency(decimalNumber(amount), currency)
-  } catch {
-    // Historical precision can exceed the numeric transport or currency display scale.
-  }
-  return `${currency} ${amount}`
+  return formatProjectAmount(amount, currency, true)
 }
 
 function showDate(date: string) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(date)
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : date
+  return formatIsoDateOnly(date.slice(0, 10))
 }
 
 function Pager({
@@ -498,22 +493,29 @@ function RemoveMovement({
 
 export function ProjectMovements({
   project,
+  filter,
+  headingId,
+  onClearFilter,
   onProject,
   onRefresh,
 }: {
   project: Project
+  filter?: ProjectBreakdownFilter
+  headingId: string
+  onClearFilter: () => void
   onProject: (value: Project) => void
   onRefresh: () => void
 }) {
   const [page, setPage] = React.useState(1)
   const [dialog, setDialog] = React.useState<"search" | LinkedProjectLine>()
   const [notice, setNotice] = React.useState("")
+  const [transactionId, setTransactionId] = React.useState<number>()
   const heading = React.useRef<HTMLHeadingElement>(null)
   const trigger = React.useRef<HTMLButtonElement>(null)
-  const id = React.useId()
+  const transactionTrigger = React.useRef<HTMLButtonElement>(null)
   const load = React.useCallback(
-    (signal: AbortSignal) => listProjectMovements(project.id, page, signal),
-    [project.id, page],
+    (signal: AbortSignal) => listProjectMovements(project.id, page, signal, filter),
+    [project.id, page, filter],
   )
   const { result, retry } = useProjectRead(load, project.revision)
   const data = result?.data
@@ -534,10 +536,15 @@ export function ProjectMovements({
     onRefresh()
   }
   return (
-    <section className="space-y-3 border-t pt-5" aria-labelledby={id}>
+    <section className="space-y-3 border-t pt-5" aria-labelledby={headingId}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 ref={heading} tabIndex={-1} id={id} className="text-lg font-semibold">
+          <h2
+            ref={heading}
+            tabIndex={-1}
+            id={headingId}
+            className="scroll-mt-24 text-lg font-semibold"
+          >
             Movimientos vinculados
           </h2>
           {data && (
@@ -559,6 +566,16 @@ export function ProjectMovements({
           </Button>
         )}
       </div>
+      {filter && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg bg-accent p-2">
+          <p className="wrap-anywhere text-sm font-medium">
+            Desglose · {filter.label} · {filter.currency}
+          </p>
+          <Button variant="ghost" onClick={onClearFilter}>
+            Ver todos los vínculos
+          </Button>
+        </div>
+      )}
       {notice && <Feedback tone="success" title={notice} />}
       {!result && <LoadingState>Cargando vínculos…</LoadingState>}
       {result?.error instanceof ProjectRequestError && result.error.status === 503 ? (
@@ -572,9 +589,11 @@ export function ProjectMovements({
         <>
           {data.items.length === 0 && (
             <EmptyState title="Sin movimientos en esta página">
-              {canEdit
-                ? "Usa Vincular movimientos para incluir gastos o reembolsos."
-                : "Los movimientos vinculados aparecerán aquí."}
+              {filter
+                ? "No hay líneas que computen en esta categoría y moneda."
+                : canEdit
+                  ? "Usa Vincular movimientos para incluir gastos o reembolsos."
+                  : "Los movimientos vinculados aparecerán aquí."}
             </EmptyState>
           )}
           <ul className="divide-border divide-y">
@@ -602,6 +621,16 @@ export function ProjectMovements({
                 <span className="font-semibold tabular-nums">
                   {showAmount(line.amount, line.currency)}
                 </span>
+                <Button
+                  variant="outline"
+                  aria-label={`Ver movimiento #${line.transactionId}, línea #${line.lineId}`}
+                  onClick={(event) => {
+                    transactionTrigger.current = event.currentTarget
+                    setTransactionId(line.transactionId)
+                  }}
+                >
+                  Ver #{line.transactionId}
+                </Button>
                 {canEdit && (
                   <Button
                     variant="ghost"
@@ -638,6 +667,14 @@ export function ProjectMovements({
           onSaved={saved}
           onRefresh={reload}
           returnFocus={returnFocus}
+        />
+      )}
+      {transactionId !== undefined && (
+        <TransactionDetailDialog
+          transactionId={transactionId}
+          projectId={project.id}
+          onClose={() => setTransactionId(undefined)}
+          returnFocus={transactionTrigger}
         />
       )}
     </section>
