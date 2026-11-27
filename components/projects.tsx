@@ -8,6 +8,7 @@ import * as React from "react"
 import { PageHeader } from "@/components/page-header"
 import { ProjectAnalysisPanel } from "@/components/project-analysis"
 import { ProjectMovements } from "@/components/project-movements"
+import { ProjectPdfDownload } from "@/components/project-pdf-download"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -385,7 +386,9 @@ export function ProjectDetail({ id }: { id: string }) {
           Proyectos
         </Link>
       </Button>
-      <PageHeader title={project?.title ?? "Proyecto"} />
+      <PageHeader title={project?.title ?? "Proyecto"}>
+        {project && <ProjectPdfDownload key={project.id} id={project.id} />}
+      </PageHeader>
       {!read && <LoadingState>Cargando proyecto…</LoadingState>}
       {error && (
         <Feedback tone="error" title="Proyecto no disponible">

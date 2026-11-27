@@ -141,10 +141,28 @@ test("Proyectos links split movements and explicitly marked refunds at 390 px", 
   const submitted: number[][] = []
   let lostResponse = true
   let findError = true
+  let exportAttempts = 0
+  let finishRender: () => void = () => undefined
+  const render = new Promise<void>((resolve) => {
+    finishRender = resolve
+  })
   await page.route(new RegExp(`/api/projects/${id}(?:/[^?]*)?(?:\\?.*)?$`), async (route) => {
     const url = new URL(route.request().url())
     const method = route.request().method()
     const endpoint = url.pathname.split("/").at(-1)
+    if (endpoint === "pdf") {
+      expect(project.finalizedAt).toBe(now)
+      expect(route.request().method()).toBe("GET")
+      expect(url.search).toBe("")
+      if (++exportAttempts === 1)
+        return route.fulfill({ status: 504, json: { error: { code: "PDF_TIMEOUT" } } })
+      await render
+      return route.fulfill({
+        body: "%PDF-1.7\nProyecto sintético",
+        contentType: "application/pdf",
+        headers: { "content-disposition": "attachment; filename=zandaka-proyecto-lote.pdf" },
+      })
+    }
     if (endpoint === "analysis")
       return route.fulfill({
         json: {
@@ -293,5 +311,17 @@ test("Proyectos links split movements and explicitly marked refunds at 390 px", 
   await expect(page.getByText("Fecha de cierre")).toBeVisible()
   await expect(open).toHaveCount(0)
   await expect(page.getByText("2 líneas vinculadas")).toBeVisible()
+  const exportButton = page.getByRole("button", { name: "Descargar PDF", exact: true })
+  await exportButton.focus()
+  await page.keyboard.press("Enter")
+  await expect(page.getByText(/El informe tardó demasiado/)).toBeVisible()
+  await exportButton.click()
+  await expect(page.getByRole("button", { name: "Generando PDF…" })).toBeDisabled()
+  const downloadEvent = page.waitForEvent("download")
+  finishRender()
+  const download = await downloadEvent
+  expect(download.suggestedFilename()).toBe("zandaka-proyecto-lote.pdf")
+  expect(await download.failure()).toBeNull()
+  expect(exportAttempts).toBe(2)
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
 })

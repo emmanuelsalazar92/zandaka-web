@@ -23,3 +23,9 @@ Las barras representan gasto bruto. Cada barra funciona como un botón que filtr
 La fecha de cálculo se presenta en horario de Costa Rica. Al actualizar, la pantalla indica si cambiaron las cifras de la misma revisión del proyecto. Si un movimiento aún vinculado registra una actualización posterior al cierre, aparece un aviso en el resumen. Los proyectos sin líneas elegibles conservan el estado vacío en la tabla.
 
 `e2e/project-analysis.spec.ts` cubre dos monedas, reintento, teclado, desglose, ficha histórica, temas claro y oscuro, corrección posterior al cierre y estado vacío.
+
+## Descargar el informe PDF · ZA-118
+
+El botón **Descargar PDF** aparece en el detalle de proyectos activos, finalizados y archivados. El archivo registra el costo que se ve al momento de generar el informe, con totales por moneda, categorías y un anexo de las líneas vinculadas. Para reflejar correcciones posteriores del libro, descarga un informe nuevo.
+
+Si el navegador no recibe el PDF, el botón vuelve a estar habilitado y muestra el motivo y cómo reintentar. El informe admite hasta 2.000 líneas elegibles. Los proyectos más grandes se pueden consultar en el desglose de la pantalla. `e2e/projects.spec.ts` verifica la descarga por teclado, el error por tiempo y el reintento a 390 px.

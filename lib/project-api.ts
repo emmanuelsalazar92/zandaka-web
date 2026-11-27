@@ -101,6 +101,11 @@ export class ProjectRequestError extends Error {
   }
 }
 
+function projectError(status: number, payload: unknown) {
+  const failure = z.object({ error: z.object({ code: z.string() }) }).safeParse(payload)
+  return new ProjectRequestError(status, failure.success ? failure.data.error.code : undefined)
+}
+
 async function request(path: string, init: RequestInit) {
   const response = await fetch("/api/projects" + path, {
     ...init,
@@ -111,14 +116,26 @@ async function request(path: string, init: RequestInit) {
     headers: init.body ? { "Content-Type": "application/json" } : undefined,
   })
   const payload: unknown = await response.json().catch(() => null)
-  if (!response.ok) {
-    const failure = z.object({ error: z.object({ code: z.string() }) }).safeParse(payload)
-    throw new ProjectRequestError(
-      response.status,
-      failure.success ? failure.data.error.code : undefined,
-    )
-  }
+  if (!response.ok) throw projectError(response.status, payload)
   return payload
+}
+
+export async function getProjectPdf(id: string, signal: AbortSignal) {
+  const response = await fetch(`/api/projects/${encodeURIComponent(id)}/pdf`, {
+    cache: "no-store",
+    signal: AbortSignal.any([signal, AbortSignal.timeout(25_000)]),
+    headers: { Accept: "application/pdf" },
+  })
+  if (!response.ok) throw projectError(response.status, await response.json().catch(() => null))
+  if (response.headers.get("content-type")?.split(";")[0].trim() !== "application/pdf")
+    throw new Error("Expected a project PDF")
+  const blob = await response.blob()
+  if ((await blob.slice(0, 5).text()) !== "%PDF-") throw new Error("Invalid project PDF")
+  const disposition = response.headers.get("content-disposition") ?? ""
+  const filename = /(?:^|;)\s*filename="?([a-z0-9-]{1,100}\.pdf)"?\s*(?:;|$)/i.exec(
+    disposition,
+  )?.[1]
+  return { blob, filename: filename ?? `zandaka-proyecto-${id.slice(0, 8)}.pdf` }
 }
 
 export async function listProjects(view: ProjectView, page: number, signal: AbortSignal) {
