@@ -23,6 +23,12 @@ Una respuesta de escritura perdida o inválida muestra **Resultado por confirmar
 
 La identidad mantiene el contrato actual `userId=1`; el módulo no incorpora login. El servidor es la autoridad de saldos, fechas, pertenencia y revisión. La previsualización no garantiza disponibilidad futura: al confirmar se vuelve a validar y el lote es atómico. No hay conversión bancaria, envío de dinero externo ni ejecución programada implícita.
 
+## Guía de inicio de mes
+
+**Revisar sobres** abre con una guía de solo lectura. Las estimaciones siguen el cálculo del borrador vigente y usan la tasa de compra presupuestaria, con margen y redondeo. Los USD a conservar equivalen al ingreso neto menos los USD estimados por convertir e incluyen tanto compromisos en USD como el libre. La distribución prevista a sobres con destino es parte de los compromisos. El colchón en CRC corresponde al contravalor estimado por encima de los compromisos en esa moneda.
+
+Los orígenes y destinos provienen de las cuentas y sobres seleccionados en el plan. Se muestra un dato pendiente cuando falta una referencia o cuando el cálculo es inválido. Un recibo validado confirma cada asignación por ID de línea y de movimiento. La conversión bancaria, su tasa ejecutada y los pagos externos quedan por verificar. Visitar la guía no escribe datos ni modifica el flujo de verificación y asignación. Este cambio de presentación no requiere preparación de base de datos.
+
 ## Panel del listado
 
 El listado en /budgets usa el mismo ancho, márgenes y superficie Marea de Conciliación. El panel reúne las acciones, el acceso histórico, los estados de carga y error, las filas y la paginación. La prueba visual compara ambas rutas en claro y oscuro a 390 y 1440 px.

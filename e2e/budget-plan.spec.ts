@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
 
 import { calculateBudgetPlan } from "../lib/budget-plan"
+import { formatPlanMoney } from "../lib/budget-plan-view"
 import { exampleSavedPlan, planId, planOptions } from "../tests/fixtures/budget-plan"
 
 import { installSyntheticAPI } from "./fixtures"
@@ -24,9 +25,14 @@ type Mode =
   | "malformed-fund"
   | "rejected-fund"
   | "missing-setup"
-async function fixture(page: Page, mode: Mode = "success") {
+async function fixture(
+  page: Page,
+  mode: Mode = "success",
+  initial = exampleSavedPlan(),
+  options = planOptions,
+) {
   await installSyntheticAPI(page)
-  let current = exampleSavedPlan(),
+  let current = initial,
     saveCount = 0,
     fundCount = 0,
     posted = 0
@@ -35,8 +41,8 @@ async function fixture(page: Page, mode: Mode = "success") {
     const values = calculateBudgetPlan(current.document)
     const transfers = values.lines.map((line) => {
       const original = current.document.lines.find((l) => l.id === line.id)!
-      const target = planOptions.envelopes.find((e) => e.id === original.targetEnvelopeId)!
-      const source = planOptions.envelopes.find(
+      const target = options.envelopes.find((e) => e.id === original.targetEnvelopeId)!
+      const source = options.envelopes.find(
         (e) =>
           e.id ===
           current.document.sources.find((s) => s.accountId === target.accountId)?.envelopeId,
@@ -71,7 +77,7 @@ async function fixture(page: Page, mode: Mode = "success") {
         json: { error: { code: "FEATURE_NOT_READY", message: "private server path" } },
       })
     if (req.method() === "GET") {
-      if (path === "/options") return route.fulfill({ json: planOptions })
+      if (path === "/options") return route.fulfill({ json: options })
       if (path === "")
         return route.fulfill({
           json: { items: [current], page: 1, pageSize: 20, total: 1, totalPages: 1 },
@@ -158,7 +164,15 @@ async function fixture(page: Page, mode: Mode = "success") {
       if (mode === "lost-fund" && fundCount === 1) return route.abort("failed")
       if (mode === "malformed-fund" && fundCount === 1)
         return route.fulfill({
-          json: { ...current, receipt: { ...current.receipt, transactions: [] } },
+          json: {
+            ...current,
+            receipt: {
+              ...current.receipt!,
+              transactions: current.receipt!.transactions.map((transaction, index) =>
+                index === 0 ? { ...transaction, lineId: crypto.randomUUID() } : transaction,
+              ),
+            },
+          },
         })
       return route.fulfill({ json: current })
     }
@@ -407,6 +421,80 @@ test("a lost save is recovered by querying the same plan rather than creating an
   expect(state.saves).toBe(1)
   expect(state.saved.document.exchange.margin).toBe("3")
 })
+test("the month-start guide follows the draft and stays read-only", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  const initial = exampleSavedPlan()
+  const doc = initial.document
+  initial.document = {
+    ...doc,
+    incomeMode: "net",
+    income: { ...doc.income, net: "1000" },
+    retainedAccountId: null,
+    exchange: { ...doc.exchange, source: "Grupo Mutual", margin: "0" },
+    lines: [
+      { ...doc.lines[0], amount: "200000" },
+      { ...doc.lines[1], kind: "fixed", currency: "CRC", amount: "100000" },
+      { ...doc.lines[3], amount: "100" },
+    ],
+  }
+  initial.calculation = calculateBudgetPlan(initial.document)
+  const institutions = new Map([
+    [1, "Grupo Mutual"],
+    [2, "Grupo Mutual"],
+    [3, "BAC Credomatic"],
+  ])
+  const options = {
+    accounts: planOptions.accounts.map((account) => ({
+      ...account,
+      institutionName: institutions.get(account.id)!,
+    })),
+    envelopes: planOptions.envelopes.map((envelope) => ({
+      ...envelope,
+      institutionName: institutions.get(envelope.accountId)!,
+    })),
+  }
+  const state = await fixture(page, "success", initial, options)
+  const tab = page.getByRole("tab", { name: "Revisar sobres", exact: true })
+  const guide = page.getByRole("region", { name: "Inicio de mes", exact: true })
+  const metric = (name: string) => guide.locator("dl > div").filter({ hasText: name }).locator("dd")
+  await open(page)
+  await tab.click()
+  for (const [label, value, currency] of [
+    ["USD estimados por convertir", "600", "USD"],
+    ["CRC estimados por recibir", "300000", "CRC"],
+    ["USD a conservar", "400", "USD"],
+    ["Compromisos y pagos en CRC", "300000", "CRC"],
+    ["CRC a distribuir a sobres con destino", "300000", "CRC"],
+    ["Colchón previsto en CRC", "0", "CRC"],
+    ["Comprometidos en USD", "100", "USD"],
+    ["Libres del plan", "300", "USD"],
+  ]) {
+    await expect(metric(label)).toHaveText(formatPlanMoney(value, currency))
+  }
+  await expect(guide.getByText("Pendiente · Por confirmar", { exact: true })).toBeVisible()
+  await expect(guide.getByText(/Pagos CRC · Grupo Mutual.*Destino: Casa/)).toBeVisible()
+  await expect(guide.getByText(/Tarjeta CRC · BAC Credomatic.*Destino: Personal/)).toBeVisible()
+  await expect(metric("Tasa ejecutada")).toHaveText("Por verificar")
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
+  const exchange = page.getByRole("tab", { name: "Tipo de cambio", exact: true })
+  await exchange.click()
+  const buy = page.getByLabel("Compra · CRC por USD", { exact: true })
+  await buy.fill("450")
+  await tab.click()
+  await expect(metric("USD estimados por convertir")).toHaveText(formatPlanMoney("667.22"))
+  await expect(metric("USD a conservar")).toHaveText(formatPlanMoney("332.78"))
+  await expect(metric("Colchón previsto en CRC")).toHaveText(formatPlanMoney("250", "CRC"))
+  await exchange.click()
+  await buy.fill("")
+  await tab.click()
+  await expect(metric("USD estimados por convertir")).toHaveText("Por confirmar")
+  await expect(metric("CRC a distribuir a sobres con destino")).toHaveText("Por confirmar")
+  await page.reload()
+  await tab.click()
+  await expect(guide).toBeVisible()
+  expect(state.bodies).toHaveLength(0)
+})
+
 test("applying is explicit, single-shot and leaves a persistent receipt", async ({ page }) => {
   const state = await fixture(page)
   await open(page)
@@ -420,6 +508,9 @@ test("applying is explicit, single-shot and leaves a persistent receipt", async 
   await page.reload()
   await page.getByRole("tab", { name: "Revisar sobres", exact: true }).click()
   await expect(page.getByText("Presupuesto asignado", { exact: true })).toBeVisible()
+  const guide = page.getByRole("region", { name: "Inicio de mes", exact: true })
+  await expect(guide.getByText("Confirmado · Movimiento 100", { exact: true })).toBeVisible()
+  await expect(guide.getByText("Por verificar", { exact: true })).toHaveCount(2)
   await expect(page.getByRole("button", { name: "Asignar a sobres", exact: true })).toHaveCount(0)
 })
 for (const mode of ["lost-fund", "malformed-fund"] as const)
@@ -432,6 +523,7 @@ for (const mode of ["lost-fund", "malformed-fund"] as const)
       page.getByRole("button", { name: "Consultar resultado", exact: true }),
     ).toBeVisible()
     expect(state.posted).toBe(1)
+    await expect(page.getByText(/Confirmado · Movimiento/)).toHaveCount(0)
     await page.getByRole("button", { name: "Consultar resultado", exact: true }).click()
     await page.getByRole("tab", { name: "Revisar sobres", exact: true }).click()
     await expect(page.getByText("Presupuesto asignado", { exact: true })).toBeVisible()

@@ -17,14 +17,14 @@ import { Feedback, LoadingState } from "@/components/ui/feedback"
 import { Input } from "@/components/ui/input"
 import { calculateBudgetPlan, type BudgetPlanDocument, type PlanLine } from "@/lib/budget-plan"
 import { planDocumentSchema, planRequest, type FundingPreview } from "@/lib/budget-plan-api"
-import { formatPlanMoney as money } from "@/lib/budget-plan-view"
+import { formatPlanMoney as money, planDecimal as decimal } from "@/lib/budget-plan-view"
 import { formatIsoDateOnly, getAccountingDate } from "@/lib/date-only"
-import { decimal } from "@/lib/money"
 import { secureUuid } from "@/lib/uuid"
 
 import { AmountField, PlanField } from "./plan-fields"
 import { PlanLineEditor } from "./plan-line-editor"
 import { planMonth } from "./plan-list"
+import { PlanMonthStart } from "./plan-month-start"
 import styles from "./plan.module.css"
 import { useBudgetPlan } from "./use-budget-plan"
 
@@ -652,6 +652,14 @@ export function BudgetPlanWorkspace({ planId }: { planId: string }) {
             aria-labelledby="plan-tab-apply"
             hidden={tab !== "apply"}
           >
+            {tab === "apply" && (
+              <PlanMonthStart
+                document={doc}
+                calculation={c}
+                options={plan.options}
+                receipt={saved?.receipt ?? null}
+              />
+            )}
             <div className={styles.sectionTitle}>
               <h2>
                 {status === "funded" ? "Asignaciones confirmadas" : "Así se repartirá el mes"}
