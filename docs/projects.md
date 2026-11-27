@@ -1,6 +1,6 @@
 # Proyectos · ZA-115
 
-El módulo se abre desde Proyectos en el menú principal. La lista muestra activos y finalizados por defecto y ofrece una vista Archivados. Desde el detalle se puede renombrar un proyecto activo, finalizarlo, reabrirlo, archivarlo y restaurarlo. La fecha de cierre se muestra en la zona contable de Costa Rica. Restaurar un proyecto finalizado conserva su cierre. Para cambiar su título, restaurar primero si está archivado y reabrir después.
+El módulo se abre desde Proyectos en el menú principal. La vista **Sin archivar** muestra activos y finalizados. La vista **Archivados** muestra los proyectos archivados. Desde el detalle se puede renombrar un proyecto activo, finalizarlo, reabrirlo, archivarlo y restaurarlo. La fecha de cierre se muestra en la zona contable de Costa Rica. Restaurar un proyecto finalizado conserva su cierre. Para cambiar su título, restaurar primero si está archivado y reabrir después.
 
 Una revisión concurrente solicita actualizar antes de actuar de nuevo. Si se pierde la respuesta de creación, Reintentar creación usa la misma clave y el mismo título mientras el diálogo permanezca abierto. Si se cierra ese diálogo o se recarga la página, consultar la lista antes de iniciar otra creación. Los cambios de estado se comprueban actualizando antes de repetirlos cuando el resultado es incierto.
 
@@ -35,3 +35,7 @@ Si el navegador no recibe el PDF, el botón vuelve a estar habilitado y muestra 
 El listado y la ficha ocupan el ancho disponible del área de contenido de Zandaka, con los mismos bordes exteriores que Conciliación. El límite de escritorio y los márgenes vienen de `AppLayout`. El panel de Proyectos conserva la superficie Marea y su espaciado interno.
 
 `e2e/projects-layout.spec.ts` compara los bordes de las tres pantallas con datos sintéticos a 390, 1.280 y 1.920 px, en claro y oscuro. En escritorio cubre la barra lateral expandida y colapsada. El informe de Playwright adjunta capturas de las tres pantallas a 1.920 px con la barra expandida.
+
+## Selector del listado · ZA-142
+
+**Nuevo proyecto** es la acción principal. **Sin archivar** y **Archivados** son botones de vista con una línea de selección y estado anunciado mediante `aria-pressed`. Se recorren con Tab y se activan con Enter o Espacio. Cada cambio de vista abre su primera página. `e2e/projects.spec.ts` verifica el selector por teclado, la creación y la presencia de los finalizados en **Sin archivar** hasta que se archivan.

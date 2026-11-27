@@ -1,6 +1,6 @@
 "use client"
 
-import { Archive, ArrowLeft, ArrowRight, FolderOpen, Plus } from "lucide-react"
+import { ArrowLeft, ArrowRight, Plus } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import * as React from "react"
@@ -302,7 +302,7 @@ export function ProjectsList() {
     <div className={surface}>
       <PageHeader
         title="Proyectos"
-        description="Organiza el seguimiento de una obra, un lote o una ocasión especial."
+        description="Vincula movimientos para seguir el costo de cada proyecto."
       >
         <Button
           className={controls}
@@ -314,29 +314,25 @@ export function ProjectsList() {
           Nuevo proyecto
         </Button>
       </PageHeader>
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Vista de proyectos">
-        <Button
-          className={controls}
-          variant={view === "visible" ? "default" : "outline"}
-          aria-pressed={view === "visible"}
-          onClick={() => {
-            if (view !== "visible") move("visible", 1)
-          }}
-        >
-          <FolderOpen aria-hidden="true" />
-          En la lista
-        </Button>
-        <Button
-          className={controls}
-          variant={view === "archived" ? "default" : "outline"}
-          aria-pressed={view === "archived"}
-          onClick={() => {
-            if (view !== "archived") move("archived", 1)
-          }}
-        >
-          <Archive aria-hidden="true" />
-          Archivados
-        </Button>
+      <div className="flex flex-wrap gap-x-3 gap-y-1" role="group" aria-label="Vista de proyectos">
+        {(
+          [
+            ["visible", "Sin archivar"],
+            ["archived", "Archivados"],
+          ] as const
+        ).map(([nextView, label]) => (
+          <Button
+            key={nextView}
+            variant="ghost"
+            className="relative min-h-11 px-3 text-muted-foreground after:pointer-events-none after:absolute after:inset-x-3 after:bottom-0 after:border-primary aria-pressed:text-primary aria-pressed:after:border-b-2"
+            aria-pressed={view === nextView}
+            onClick={() => {
+              if (view !== nextView) move(nextView, 1)
+            }}
+          >
+            {label}
+          </Button>
+        ))}
       </div>
       {!read && <LoadingState>Cargando proyectos…</LoadingState>}
       {error && (
