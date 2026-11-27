@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, ArrowRight, Plus } from "lucide-react"
+import { ArrowRight, Plus } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import * as React from "react"
@@ -391,13 +391,45 @@ export function ProjectDetail({ id }: { id: string }) {
       : ["rename", "finalize", "archive"]
   return (
     <div className={surface}>
-      <Button variant="ghost" className={controls} asChild>
-        <Link href="/projects">
-          <ArrowLeft aria-hidden="true" />
-          Proyectos
-        </Link>
-      </Button>
-      <PageHeader title={project?.title ?? "Proyecto"}>
+      <PageHeader
+        title={project?.title ?? "Proyecto"}
+        titleRef={heading}
+        meta={
+          project && (
+            <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
+              <div>
+                <dt className="sr-only">Estado</dt>
+                <dd className="font-medium text-foreground">
+                  {states(project)}
+                  {project.archivedAt ? " · Archivado" : ""}
+                </dd>
+              </div>
+              <div className="flex flex-wrap gap-x-1.5">
+                <dt>Creado</dt>
+                <dd className="text-foreground">
+                  <ProjectDate value={project.createdAt} />
+                </dd>
+              </div>
+              {project.finalizedAt && (
+                <div className="flex flex-wrap gap-x-1.5">
+                  <dt>Fecha de cierre</dt>
+                  <dd className="text-foreground">
+                    <ProjectDate value={project.finalizedAt} />
+                  </dd>
+                </div>
+              )}
+              {project.archivedAt && (
+                <div className="flex flex-wrap gap-x-1.5">
+                  <dt>Fecha de archivo</dt>
+                  <dd className="text-foreground">
+                    <ProjectDate value={project.archivedAt} />
+                  </dd>
+                </div>
+              )}
+            </dl>
+          )
+        }
+      >
         {project && <ProjectPdfDownload key={project.id} id={project.id} />}
       </PageHeader>
       {!read && <LoadingState>Cargando proyecto…</LoadingState>}
@@ -411,45 +443,17 @@ export function ProjectDetail({ id }: { id: string }) {
       )}
       {project && (
         <>
-          <section
-            className="space-y-4 rounded-2xl border bg-card p-5"
-            aria-labelledby="project-status"
-          >
-            <h2 ref={heading} tabIndex={-1} id="project-status" className="text-lg font-semibold">
-              Estado del proyecto
-            </h2>
-            <dl className="flex flex-wrap gap-x-8 gap-y-3">
-              <div>
-                <dt className="text-sm text-muted-foreground">Estado</dt>
-                <dd>
-                  {states(project)}
-                  {project.archivedAt ? " · Archivado" : ""}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Creado</dt>
-                <dd>
-                  <ProjectDate value={project.createdAt} />
-                </dd>
-              </div>
-              {project.finalizedAt && (
-                <div>
-                  <dt className="text-sm text-muted-foreground">Fecha de cierre</dt>
-                  <dd>
-                    <ProjectDate value={project.finalizedAt} />
-                  </dd>
-                </div>
-              )}
-              {project.archivedAt && (
-                <div>
-                  <dt className="text-sm text-muted-foreground">Fecha de archivo</dt>
-                  <dd>
-                    <ProjectDate value={project.archivedAt} />
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </section>
+          <ProjectAnalysisPanel
+            key={project.id}
+            project={project}
+            filter={filter}
+            movementHeadingId={movementHeadingId}
+            onSelect={(next) => {
+              setFilter(next)
+              if (next)
+                requestAnimationFrame(() => document.getElementById(movementHeadingId)?.focus())
+            }}
+          />
           <div className="flex flex-wrap gap-2" role="group" aria-label="Acciones del proyecto">
             {available.map((item) => (
               <Button
@@ -469,17 +473,6 @@ export function ProjectDetail({ id }: { id: string }) {
               </Button>
             ))}
           </div>
-          <ProjectAnalysisPanel
-            key={project.id}
-            project={project}
-            filter={filter}
-            movementHeadingId={movementHeadingId}
-            onSelect={(next) => {
-              setFilter(next)
-              if (next)
-                requestAnimationFrame(() => document.getElementById(movementHeadingId)?.focus())
-            }}
-          />
           <ProjectMovements
             key={`${project.id}:${filter?.currency ?? "all"}:${filter?.categoryId ?? "none"}`}
             project={project}

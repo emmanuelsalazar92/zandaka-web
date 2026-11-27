@@ -60,7 +60,24 @@ async function installHeaderFixtures(page: Page) {
           calculatedAt: now,
           latestLedgerUpdateAt: null,
           excludedLineCount: 0,
-          currencies: [],
+          currencies: [
+            {
+              currency: "CRC",
+              expenses: "150",
+              refunds: "0",
+              net: "150",
+              series: [{ date: "2026-11-26", net: "150" }],
+              categories: [
+                {
+                  categoryId: 1,
+                  categoryName: "Materiales",
+                  expenses: "150",
+                  refunds: "0",
+                  net: "150",
+                },
+              ],
+            },
+          ],
         },
       })
     if (pathname.endsWith("/movements"))
@@ -123,7 +140,7 @@ async function scrollPage(page: Page, ratio: number) {
 
 const scrollRoutes = [
   { path: "/transactions", ready: "Compra sintética 1" },
-  { path: `/projects/${projectId}`, ready: "Sin movimientos que computen", parent: "Proyectos" },
+  { path: `/projects/${projectId}`, ready: "Costo neto · CRC", parent: "Proyectos" },
   { path: "/budgets/7", ready: "Categoría de prueba 20", parent: "Presupuestos" },
   { path: `/budgets/plans/${planId}`, ready: "Desde 01/11/2026", parent: "Presupuestos" },
 ]
@@ -202,11 +219,12 @@ test("skip link, focus, dialogs and mobile navigation work with the sticky app b
   await page.emulateMedia({ colorScheme: "light" })
   await installHeaderFixtures(page)
   await page.goto(`/projects/${projectId}`)
-  await expect(page.getByText("Sin movimientos que computen")).toBeVisible()
+  await expect(page.getByText("Costo neto · CRC", { exact: true })).toBeVisible()
   const header = appHeader(page)
   const trigger = header.getByRole("button", { name: "Abrir navegación" })
   const main = page.getByRole("main")
-  const rename = main.getByRole("button", { name: "Editar título" })
+  const download = main.getByRole("button", { name: "Descargar PDF" })
+  const updateCost = main.getByRole("button", { name: "Actualizar costo" })
   const finalize = main.getByRole("button", { name: "Finalizar proyecto" })
 
   await scrollPage(page, 0.5)
@@ -219,16 +237,17 @@ test("skip link, focus, dialogs and mobile navigation work with the sticky app b
   await expect(trigger).toBeFocused()
   await expect(page.getByRole("dialog")).toHaveCount(0)
 
-  await rename.focus()
+  await download.focus()
   const bar = (await header.boundingBox())!
-  const next = (await finalize.boundingBox())!
+  const next = (await updateCost.boundingBox())!
   await page.evaluate((offset) => window.scrollBy(0, offset), next.y - bar.height / 2)
-  expect((await finalize.boundingBox())!.y).toBeLessThan(bar.height)
+  expect((await updateCost.boundingBox())!.y).toBeLessThan(bar.height)
   await page.keyboard.press("Tab")
-  await expect(finalize).toBeFocused()
+  await expect(updateCost).toBeFocused()
   await expect
-    .poll(async () => (await finalize.boundingBox())!.y)
+    .poll(async () => (await updateCost.boundingBox())!.y)
     .toBeGreaterThanOrEqual(bar.height)
+  await finalize.focus()
   await page.keyboard.press("Enter")
   await expect(page.getByRole("dialog", { name: "Finalizar proyecto" })).toBeVisible()
   await page.keyboard.press("Escape")

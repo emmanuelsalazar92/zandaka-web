@@ -45,3 +45,9 @@ El listado y la ficha ocupan el ancho disponible del área de contenido de Zanda
 El listado muestra una fecha por fila. **Creado el** identifica cuándo se registró un proyecto activo en Zandaka. **Cerrado el** identifica su finalización. **Archivado el** tiene prioridad cuando el proyecto está archivado. La ficha muestra la creación y las fechas aplicables de cierre y archivo.
 
 Las fechas se muestran en español de Costa Rica, usando la zona contable `America/Costa_Rica`. Reabrir quita el cierre vigente. Restaurar quita la fecha de archivo y conserva el cierre si existía. La prueba de ciclo de vida en `e2e/projects.spec.ts` cubre estas transiciones y verifica el día de Costa Rica con el navegador configurado en UTC.
+
+## Composición de la ficha · ZA-145
+
+La ficha muestra el estado y las fechas junto al título. **Costo del proyecto** es la primera sección. Presenta el costo neto de la moneda seleccionada y muestra la hora de cálculo debajo del importe. **Actualizar costo** queda junto al encabezado de la sección. Los avisos y desgloses siguen disponibles después del resumen.
+
+El regreso a Proyectos está en la [barra superior persistente](navigation.md#barra-superior-durante-el-desplazamiento--za-144). Si una acción cambia el estado y retira su botón, el diálogo devuelve el foco al título de la ficha. La prueba de análisis adjunta capturas del primer pantallazo en claro y oscuro a 390 y 1.440 px.

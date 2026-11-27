@@ -264,6 +264,28 @@ export function ProjectAnalysisPanel({
         ))}
       {data && (
         <>
+          {active && (
+            <div className="atlantic-hero rounded-2xl p-5 sm:p-7">
+              <p className="hero-caption text-sm">Costo neto · {active.currency}</p>
+              <p className="hero-amount wrap-anywhere mt-1 text-3xl font-semibold tabular-nums sm:text-4xl">
+                {formatProjectAmount(active.net, active.currency)}
+              </p>
+              <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2">
+                <div>
+                  <dt className="hero-caption text-sm">Gastos</dt>
+                  <dd className="tabular-nums">
+                    {formatProjectAmount(active.expenses, active.currency)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="hero-caption text-sm">Reembolsos</dt>
+                  <dd className="tabular-nums">
+                    {formatProjectAmount(active.refunds, active.currency)}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          )}
           <p className="text-sm text-muted-foreground">
             Calculado el {formatAccountingTimestamp(data.calculatedAt)} con los importes vigentes
             del libro.
@@ -348,26 +370,6 @@ export function ProjectAnalysisPanel({
                   ))}
                 </div>
               )}
-              <div className="atlantic-hero rounded-2xl p-5 sm:p-7">
-                <p className="hero-caption text-sm">Costo neto · {active.currency}</p>
-                <p className="hero-amount wrap-anywhere mt-1 text-3xl font-semibold tabular-nums sm:text-4xl">
-                  {formatProjectAmount(active.net, active.currency)}
-                </p>
-                <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2">
-                  <div>
-                    <dt className="hero-caption text-sm">Gastos</dt>
-                    <dd className="tabular-nums">
-                      {formatProjectAmount(active.expenses, active.currency)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="hero-caption text-sm">Reembolsos</dt>
-                    <dd className="tabular-nums">
-                      {formatProjectAmount(active.refunds, active.currency)}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
               <CurrencyCurve data={active} />
               <CategoryBreakdown
                 data={active}

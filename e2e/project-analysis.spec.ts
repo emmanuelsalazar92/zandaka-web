@@ -4,7 +4,7 @@ import { installSyntheticAPI } from "./fixtures"
 
 test("project cost has exact tables, keyboard drill-down, and updates after closing", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" })
   await page.addInitScript(() => localStorage.setItem("theme", "system"))
@@ -160,6 +160,31 @@ test("project cost has exact tables, keyboard drill-down, and updates after clos
   await page.getByRole("button", { name: "Reintentar cálculo" }).click()
   const chart = page.getByRole("application", { name: "Costo acumulado en CRC" })
   await expect(chart).toBeVisible()
+
+  const cost = page.getByRole("region", { name: "Costo del proyecto" })
+  await expect(page.locator('[data-slot="page-header"] + section')).toHaveAccessibleName(
+    "Costo del proyecto",
+  )
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 844 })
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme })
+      await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${colorScheme}\\b`))
+      await page.evaluate(() => window.scrollTo(0, 0))
+      const hero = cost.getByText("Costo neto · CRC")
+      const timestamp = cost.getByText(/^Calculado el/)
+      await expect(hero).toBeInViewport()
+      expect((await timestamp.boundingBox())!.y).toBeGreaterThan((await hero.boundingBox())!.y)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
+      const capture = `costo-${width}-${colorScheme}`
+      const path = testInfo.outputPath(`${capture}.png`)
+      await page.screenshot({ path, animations: "disabled" })
+      await testInfo.attach(capture, { path, contentType: "image/png" })
+    }
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ colorScheme: "light" })
+
   await chart.focus()
   await page.keyboard.press("ArrowRight")
   await expect(page.locator(".recharts-tooltip-wrapper")).toContainText(/CRC\s+(150|130),00/)

@@ -101,7 +101,7 @@ testInUtc("Proyectos lifecycle at 390 px with a lost creation response", async (
   await expect(page.getByLabel("Título del proyecto")).toHaveAttribute("readonly", "")
   await page.getByRole("button", { name: "Reintentar creación" }).click()
   await expect(page.getByRole("heading", { name: "Construcción del lote" })).toBeVisible()
-  const status = page.getByRole("region", { name: "Estado del proyecto" })
+  const status = page.getByRole("main").locator('[data-slot="page-header"]')
   await expect(status.locator("time")).toHaveText(["25 nov 2026"])
 
   const confirm = async (open: string, submit: string) => {
@@ -116,12 +116,18 @@ testInUtc("Proyectos lifecycle at 390 px with a lost creation response", async (
   await expect(page.getByRole("heading", { name: longTitle })).toBeVisible()
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
   await confirm("Finalizar proyecto", "Finalizar")
+  await expect(status.getByRole("heading", { level: 1 })).toBeFocused()
   await expect(status.getByText("Fecha de cierre")).toBeVisible()
   await expect(status.locator("time")).toHaveText(["25 nov 2026", "26 nov 2026"])
   await expect(page.getByRole("button", { name: "Editar título" })).toHaveCount(0)
-  const back = page.getByRole("main").getByRole("link", { name: "Proyectos", exact: true })
+  const back = page.getByRole("link", { name: "Volver a Proyectos", exact: true })
+  await expect(back).toHaveCount(1)
+  await expect(
+    page.getByRole("main").getByRole("link", { name: "Proyectos", exact: true }),
+  ).toHaveCount(0)
   const projectRow = page.getByRole("link", { name: new RegExp(longTitle) })
-  await back.click()
+  await back.focus()
+  await page.keyboard.press("Enter")
   await expect(unarchived).toHaveAttribute("aria-pressed", "true")
   await expect(projectRow).toContainText("Finalizado · Cerrado el 26 nov 2026")
   await expect(projectRow.locator("time")).toHaveText(["26 nov 2026"])
