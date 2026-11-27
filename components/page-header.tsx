@@ -1,13 +1,14 @@
 import { ArrowUpRight } from "lucide-react"
 import Link from "next/link"
 
-import type { ReactNode } from "react"
+import type { ReactNode, Ref } from "react"
 
 type RelatedLink = { href: string; label: string }
 
 /** One task title; actions wrap within the usable width, including enlarged system fonts. */
 export function PageHeader({
   title,
+  titleRef,
   description,
   eyebrow,
   meta,
@@ -17,6 +18,7 @@ export function PageHeader({
   ...props
 }: {
   title: ReactNode
+  titleRef?: Ref<HTMLHeadingElement>
   description?: ReactNode
   eyebrow?: ReactNode
   meta?: ReactNode
@@ -37,7 +39,13 @@ export function PageHeader({
             {eyebrow}
           </p>
         )}
-        <h1 className="text-3xl leading-tight font-semibold tracking-tight">{title}</h1>
+        <h1
+          ref={titleRef}
+          tabIndex={titleRef ? -1 : undefined}
+          className="text-3xl leading-tight font-semibold tracking-tight"
+        >
+          {title}
+        </h1>
         {description && (
           <p className="mt-2 max-w-2xl leading-relaxed text-muted-foreground">{description}</p>
         )}

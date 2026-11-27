@@ -27,6 +27,14 @@ No se agregan redirecciones, parámetros arbitrarios de retorno ni nuevos permis
 
 La barra superior contiene herramientas y, en subpantallas, un enlace al destino padre. Deja de repetir el título actual. En móvil, ese regreso tiene una fila propia para que la ampliación de texto no lo comprima entre los iconos. La cabecera principal crece con el texto y permite envolver acciones; no usa recortes ni alturas rígidas para ocultar desbordamientos.
 
+### Barra superior durante el desplazamiento · ZA-144
+
+La barra de herramientas permanece arriba al desplazar la página. Su altura real reserva espacio al navegar a secciones con el teclado y al usar «Saltar al contenido», incluso con la segunda fila del enlace de regreso. Los paneles de Presupuestos que se fijan arriba se colocan debajo de la barra. El menú móvil y los diálogos se muestran por encima.
+
+`e2e/app-header.spec.ts` comprueba el inicio, la mitad y el final de páginas desplazables en Movimientos, una ficha de Proyecto y los detalles de Presupuestos. Usa datos sintéticos, anchos de 360, 390 y 1.440 px, claro y oscuro, texto ampliado y barra lateral expandida y colapsada en escritorio. También verifica foco, el enlace para saltar al contenido y el cierre de los diálogos con Escape.
+
+La comprobación local de zoom nativo al 200 % usó un perfil temporal de Chromium con datos sintéticos. La barra mantuvo sus controles disponibles en las cuatro rutas, en ambos temas y en tres posiciones de desplazamiento. El resultado está en `operaciones/ZA-144/native/native-zoom.json` del workspace.
+
 Los selectores de los encabezados limitan su ancho al área disponible. Los enlaces de gestión tienen foco visible y objetivo cómodo. Los encabezados de Sobres, Conciliación, Ajustes y detalle de presupuesto permanecen durante carga, error y estados vacíos; los controles que requieren datos se muestran cuando corresponde. Una indisponibilidad temporal no elimina el contexto de navegación.
 
 Para una nueva pantalla, usar `PageHeader` y sus slots. No añadir otro título en el shell ni poner el contenido completo de la página en el slot de acciones. `related` corresponde a destinos secundarios; las operaciones principales van en `children`. El componente presenta información y no gestiona peticiones ni modifica datos.

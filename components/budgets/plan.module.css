@@ -274,7 +274,7 @@
   color: var(--accent-foreground);
   padding: 1.4rem;
   position: sticky;
-  top: 1rem;
+  top: calc(var(--app-header-height) + 1rem);
 }
 .rail h2 {
   display: flex;

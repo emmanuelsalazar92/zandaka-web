@@ -1,0 +1,235 @@
+import { z } from "zod"
+
+const projectSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  revision: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  finalizedAt: z.string().datetime().nullable(),
+  archivedAt: z.string().datetime().nullable(),
+})
+const pageSchema = z.object({
+  items: z.array(projectSchema),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+})
+
+export type Project = z.infer<typeof projectSchema>
+export type ProjectPage = z.infer<typeof pageSchema>
+export type ProjectView = "visible" | "archived"
+export type ProjectAction = "rename" | "finalize" | "reopen" | "archive" | "restore"
+
+const identifier = z.number().int().positive().safe()
+const kind = z.enum(["expense", "refund"])
+const decimalAmount = z.string().regex(/^-?\d+(?:\.\d+)?$/)
+const movementLine = z.object({
+  lineId: identifier,
+  transactionId: identifier,
+  date: z.string(),
+  description: z.string(),
+  accountId: identifier,
+  accountName: z.string(),
+  categoryId: identifier.nullable(),
+  categoryName: z.string().nullable(),
+  currency: z.string(),
+  amount: decimalAmount,
+})
+const linkedLine = movementLine.extend({ kind, eligible: z.boolean() })
+const searchLine = movementLine.extend({ linkedKind: kind.nullable() })
+const paging = pageSchema.omit({ items: true })
+const projectMovements = paging.extend({ items: z.array(linkedLine), project: projectSchema })
+const movementResults = paging.extend({
+  items: z.array(
+    z.object({
+      id: identifier,
+      date: z.string(),
+      description: z.string(),
+      lines: z.array(searchLine).min(1),
+    }),
+  ),
+})
+const option = z.object({ id: identifier, name: z.string() })
+const movementFilters = z.object({
+  accounts: z.array(option.extend({ currency: z.string() })),
+  categories: z.array(option),
+  currencies: z.array(z.string()),
+})
+
+const amounts = z.object({ expenses: decimalAmount, refunds: decimalAmount, net: decimalAmount })
+const categoryTotals = amounts.extend({
+  categoryId: identifier.nullable(),
+  categoryName: z.string().nullable(),
+})
+const projectAnalysis = z.object({
+  project: projectSchema,
+  calculatedAt: z.iso.datetime(),
+  latestLedgerUpdateAt: z.iso.datetime().nullable(),
+  excludedLineCount: z.number().int().nonnegative(),
+  currencies: z.array(
+    amounts.extend({
+      currency: z.string(),
+      series: z.array(z.object({ date: z.string(), net: decimalAmount })).min(1),
+      categories: z.array(categoryTotals),
+    }),
+  ),
+})
+
+export type ProjectAnalysis = z.infer<typeof projectAnalysis>
+export type ProjectCurrencyAnalysis = ProjectAnalysis["currencies"][number]
+export type ProjectBreakdownFilter = { currency: string; categoryId: number | null; label: string }
+
+export type ProjectMovementKind = z.infer<typeof kind>
+export type LinkedProjectLine = z.infer<typeof linkedLine>
+export type ProjectMovementSearch = {
+  q: string
+  kind: ProjectMovementKind
+  from: string
+  to: string
+  accountId: string
+  categoryId: string
+  currency: string
+}
+
+export class ProjectRequestError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super("Project request failed")
+  }
+}
+
+function projectError(status: number, payload: unknown) {
+  const failure = z.object({ error: z.object({ code: z.string() }) }).safeParse(payload)
+  return new ProjectRequestError(status, failure.success ? failure.data.error.code : undefined)
+}
+
+async function request(path: string, init: RequestInit) {
+  const response = await fetch("/api/projects" + path, {
+    ...init,
+    cache: "no-store",
+    signal: init.signal
+      ? AbortSignal.any([init.signal, AbortSignal.timeout(15_000)])
+      : AbortSignal.timeout(15_000),
+    headers: init.body ? { "Content-Type": "application/json" } : undefined,
+  })
+  const payload: unknown = await response.json().catch(() => null)
+  if (!response.ok) throw projectError(response.status, payload)
+  return payload
+}
+
+export async function getProjectPdf(id: string, signal: AbortSignal) {
+  const response = await fetch(`/api/projects/${encodeURIComponent(id)}/pdf`, {
+    cache: "no-store",
+    signal: AbortSignal.any([signal, AbortSignal.timeout(25_000)]),
+    headers: { Accept: "application/pdf" },
+  })
+  if (!response.ok) throw projectError(response.status, await response.json().catch(() => null))
+  if (response.headers.get("content-type")?.split(";")[0].trim() !== "application/pdf")
+    throw new Error("Expected a project PDF")
+  const blob = await response.blob()
+  if ((await blob.slice(0, 5).text()) !== "%PDF-") throw new Error("Invalid project PDF")
+  const disposition = response.headers.get("content-disposition") ?? ""
+  const filename = /(?:^|;)\s*filename="?([a-z0-9-]{1,100}\.pdf)"?\s*(?:;|$)/i.exec(
+    disposition,
+  )?.[1]
+  return { blob, filename: filename ?? `zandaka-proyecto-${id.slice(0, 8)}.pdf` }
+}
+
+export async function listProjects(view: ProjectView, page: number, signal: AbortSignal) {
+  return pageSchema.parse(await request(`?view=${view}&page=${page}`, { signal }))
+}
+
+export async function getProject(id: string, signal: AbortSignal) {
+  const project = projectSchema.parse(await request(`/${encodeURIComponent(id)}`, { signal }))
+  if (project.id !== id) throw new Error("Unexpected project")
+  return project
+}
+
+export async function createProject(title: string, requestId: string) {
+  return projectSchema.parse(
+    await request("", {
+      method: "POST",
+      body: JSON.stringify({ title, requestId }),
+    }),
+  )
+}
+
+export async function changeProject(project: Project, action: ProjectAction, title: string) {
+  const rename = action === "rename"
+  const updated = projectSchema.parse(
+    await request(`/${encodeURIComponent(project.id)}${rename ? "" : "/" + action}`, {
+      method: rename ? "PATCH" : "POST",
+      body: JSON.stringify({
+        expectedRevision: project.revision,
+        ...(rename ? { title } : {}),
+      }),
+    }),
+  )
+  if (updated.id !== project.id || updated.revision !== project.revision + 1)
+    throw new Error("Unexpected project confirmation")
+  return updated
+}
+
+export async function listProjectMovements(
+  id: string,
+  page: number,
+  signal: AbortSignal,
+  filter?: ProjectBreakdownFilter,
+) {
+  const query = new URLSearchParams({ page: String(page) })
+  if (filter) {
+    query.set("currency", filter.currency)
+    query.set("categoryId", String(filter.categoryId ?? "none"))
+  }
+  const result = projectMovements.parse(
+    await request(`/${encodeURIComponent(id)}/movements?${query}`, { signal }),
+  )
+  if (result.project.id !== id) throw new Error("Unexpected project")
+  return result
+}
+
+export async function getProjectAnalysis(id: string, signal: AbortSignal) {
+  const result = projectAnalysis.parse(
+    await request(`/${encodeURIComponent(id)}/analysis`, { signal }),
+  )
+  if (result.project.id !== id) throw new Error("Unexpected project")
+  return result
+}
+
+export async function projectMovementFilters(id: string, signal: AbortSignal) {
+  return movementFilters.parse(
+    await request(`/${encodeURIComponent(id)}/movement-filters`, { signal }),
+  )
+}
+
+export async function searchProjectMovements(
+  id: string,
+  filters: ProjectMovementSearch,
+  page: number,
+  signal: AbortSignal,
+) {
+  const query = new URLSearchParams({ page: String(page) })
+  for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value)
+  return movementResults.parse(
+    await request(`/${encodeURIComponent(id)}/movement-search?${query}`, { signal }),
+  )
+}
+
+export async function changeProjectMovements(
+  project: Project,
+  lineIds: number[],
+  kind?: ProjectMovementKind,
+) {
+  const updated = projectSchema.parse(
+    await request(`/${encodeURIComponent(project.id)}/movements`, {
+      method: kind ? "POST" : "DELETE",
+      body: JSON.stringify({ expectedRevision: project.revision, lineIds, ...(kind && { kind }) }),
+    }),
+  )
+  if (updated.id !== project.id || updated.revision < project.revision)
+    throw new Error("Unexpected project confirmation")
+  return updated
+}
