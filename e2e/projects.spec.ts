@@ -2,21 +2,25 @@ import { expect, test } from "@playwright/test"
 
 import { installSyntheticAPI } from "./fixtures"
 
-test("Proyectos lifecycle at 390 px with a lost creation response", async ({ page }) => {
+const testInUtc = test.extend({ timezoneId: "UTC" })
+
+testInUtc("Proyectos lifecycle at 390 px with a lost creation response", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await installSyntheticAPI(page)
   await page.addInitScript(() => {
     Object.defineProperty(globalThis.crypto, "randomUUID", { value: undefined, configurable: true })
   })
   const id = "00000000-0000-4000-8000-000000000115"
-  const now = "2026-11-26T18:00:00.000Z"
+  const createdAt = "2026-11-26T02:00:00.000Z"
+  const finalizedAt = "2026-11-27T03:00:00.000Z"
+  const archivedAt = "2026-11-28T04:00:00.000Z"
   const requests: string[] = []
   let project = {
     id,
     title: "",
     revision: 1,
-    createdAt: now,
-    updatedAt: now,
+    createdAt,
+    updatedAt: createdAt,
     archivedAt: null as string | null,
     finalizedAt: null as string | null,
   }
@@ -28,7 +32,7 @@ test("Proyectos lifecycle at 390 px with a lost creation response", async ({ pag
         return route.fulfill({
           json: {
             project,
-            calculatedAt: now,
+            calculatedAt: "2026-11-28T18:00:00.000Z",
             latestLedgerUpdateAt: null,
             excludedLineCount: 0,
             currencies: [],
@@ -54,8 +58,8 @@ test("Proyectos lifecycle at 390 px with a lost creation response", async ({ pag
     project.revision++
     const action = url.pathname.split("/").at(-1)
     if (method === "PATCH") project.title = body.title
-    else if (action === "finalize") project.finalizedAt = now
-    else if (action === "archive") project.archivedAt = now
+    else if (action === "finalize") project.finalizedAt = finalizedAt
+    else if (action === "archive") project.archivedAt = archivedAt
     else if (action === "restore") project.archivedAt = null
     else if (action === "reopen") project.finalizedAt = null
     else throw new Error("Unexpected project operation")
@@ -63,6 +67,7 @@ test("Proyectos lifecycle at 390 px with a lost creation response", async ({ pag
   })
 
   await page.goto("/projects")
+  expect(await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone)).toBe("UTC")
   await expect(page.getByText("Aún no tienes proyectos")).toBeVisible()
   const create = page.getByRole("button", { name: "Nuevo proyecto" })
   const views = page.getByRole("group", { name: "Vista de proyectos" })
@@ -96,6 +101,8 @@ test("Proyectos lifecycle at 390 px with a lost creation response", async ({ pag
   await expect(page.getByLabel("Título del proyecto")).toHaveAttribute("readonly", "")
   await page.getByRole("button", { name: "Reintentar creación" }).click()
   await expect(page.getByRole("heading", { name: "Construcción del lote" })).toBeVisible()
+  const status = page.getByRole("region", { name: "Estado del proyecto" })
+  await expect(status.locator("time")).toHaveText(["25 nov 2026"])
 
   const confirm = async (open: string, submit: string) => {
     await page.getByRole("button", { name: open, exact: true }).click()
@@ -109,26 +116,42 @@ test("Proyectos lifecycle at 390 px with a lost creation response", async ({ pag
   await expect(page.getByRole("heading", { name: longTitle })).toBeVisible()
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
   await confirm("Finalizar proyecto", "Finalizar")
-  await expect(page.getByText("Fecha de cierre")).toBeVisible()
+  await expect(status.getByText("Fecha de cierre")).toBeVisible()
+  await expect(status.locator("time")).toHaveText(["25 nov 2026", "26 nov 2026"])
   await expect(page.getByRole("button", { name: "Editar título" })).toHaveCount(0)
   const back = page.getByRole("main").getByRole("link", { name: "Proyectos", exact: true })
   const projectRow = page.getByRole("link", { name: new RegExp(longTitle) })
   await back.click()
   await expect(unarchived).toHaveAttribute("aria-pressed", "true")
-  await expect(projectRow).toContainText("Finalizado")
+  await expect(projectRow).toContainText("Finalizado · Cerrado el 26 nov 2026")
+  await expect(projectRow.locator("time")).toHaveText(["26 nov 2026"])
   await projectRow.click()
   await confirm("Archivar proyecto", "Archivar")
   await page.reload()
-  await expect(page.getByText("Finalizado · Archivado")).toBeVisible()
+  await expect(status.getByText("Finalizado · Archivado")).toBeVisible()
+  await expect(status.getByText("Fecha de archivo")).toBeVisible()
+  await expect(status.locator("time")).toHaveText(["25 nov 2026", "26 nov 2026", "27 nov 2026"])
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
   await back.click()
   await expect(page.getByText("Aún no tienes proyectos")).toBeVisible()
   await archived.press("Enter")
   await expect(archived).toHaveAttribute("aria-pressed", "true")
+  await expect(projectRow).toContainText("Finalizado · Archivado el 27 nov 2026")
+  await expect(projectRow.locator("time")).toHaveText(["27 nov 2026"])
   await projectRow.click()
   await confirm("Restaurar proyecto", "Restaurar")
-  await expect(page.getByText("Fecha de cierre")).toBeVisible()
+  await expect(status.getByText("Fecha de archivo")).toHaveCount(0)
+  await expect(status.locator("time")).toHaveText(["25 nov 2026", "26 nov 2026"])
+  await back.click()
+  await expect(projectRow).toContainText("Finalizado · Cerrado el 26 nov 2026")
+  await projectRow.click()
   await confirm("Reabrir proyecto", "Reabrir")
   await expect(page.getByRole("button", { name: "Editar título" })).toBeVisible()
+  await expect(status.getByText("Fecha de cierre")).toHaveCount(0)
+  await expect(status.locator("time")).toHaveText(["25 nov 2026"])
+  await back.click()
+  await expect(projectRow).toContainText("Activo · Creado el 25 nov 2026")
+  await expect(projectRow.locator("time")).toHaveText(["25 nov 2026"])
 })
 
 test("Proyectos links split movements and explicitly marked refunds at 390 px", async ({

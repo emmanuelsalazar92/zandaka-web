@@ -21,6 +21,7 @@ import {
 import { Feedback, LoadingState } from "@/components/ui/feedback"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ACCOUNTING_TIME_ZONE } from "@/lib/date-only"
 import {
   changeProject,
   createProject,
@@ -40,11 +41,28 @@ const controls = "min-h-11"
 const surface = "marea-surface min-w-0 space-y-6 rounded-2xl bg-background p-4 sm:p-7"
 
 const states = (project: Project) => (project.finalizedAt ? "Finalizado" : "Activo")
-const displayDate = (date: string) =>
-  new Intl.DateTimeFormat("es-CR", {
-    dateStyle: "medium",
-    timeZone: "America/Costa_Rica",
-  }).format(new Date(date))
+const projectDateFormatter = new Intl.DateTimeFormat("es-CR", {
+  dateStyle: "medium",
+  timeZone: ACCOUNTING_TIME_ZONE,
+})
+
+function ProjectDate({ value }: { value: string }) {
+  return <time dateTime={value}>{projectDateFormatter.format(new Date(value))}</time>
+}
+
+function ProjectRowMetadata({ project }: { project: Project }) {
+  const [label, date] = project.archivedAt
+    ? ["Archivado el", project.archivedAt]
+    : project.finalizedAt
+      ? ["Cerrado el", project.finalizedAt]
+      : ["Creado el", project.createdAt]
+
+  return (
+    <p className="text-sm text-muted-foreground">
+      {states(project)} · {label} <ProjectDate value={date} />
+    </p>
+  )
+}
 
 function readMessage(error: unknown) {
   if (error instanceof ProjectRequestError) {
@@ -243,10 +261,7 @@ function ProjectRows({
             >
               <div className="min-w-0 flex-1">
                 <p className="font-medium [overflow-wrap:anywhere]">{project.title}</p>
-                <p className="text-sm text-muted-foreground">
-                  {states(project)}
-                  {project.finalizedAt ? " · " + displayDate(project.finalizedAt) : ""}
-                </p>
+                <ProjectRowMetadata project={project} />
               </div>
               <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             </Link>
@@ -413,12 +428,24 @@ export function ProjectDetail({ id }: { id: string }) {
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Creado</dt>
-                <dd>{displayDate(project.createdAt)}</dd>
+                <dd>
+                  <ProjectDate value={project.createdAt} />
+                </dd>
               </div>
               {project.finalizedAt && (
                 <div>
                   <dt className="text-sm text-muted-foreground">Fecha de cierre</dt>
-                  <dd>{displayDate(project.finalizedAt)}</dd>
+                  <dd>
+                    <ProjectDate value={project.finalizedAt} />
+                  </dd>
+                </div>
+              )}
+              {project.archivedAt && (
+                <div>
+                  <dt className="text-sm text-muted-foreground">Fecha de archivo</dt>
+                  <dd>
+                    <ProjectDate value={project.archivedAt} />
+                  </dd>
                 </div>
               )}
             </dl>

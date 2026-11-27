@@ -39,3 +39,9 @@ El listado y la ficha ocupan el ancho disponible del área de contenido de Zanda
 ## Selector del listado · ZA-142
 
 **Nuevo proyecto** es la acción principal. **Sin archivar** y **Archivados** son botones de vista con una línea de selección y estado anunciado mediante `aria-pressed`. Se recorren con Tab y se activan con Enter o Espacio. Cada cambio de vista abre su primera página. `e2e/projects.spec.ts` verifica el selector por teclado, la creación y la presencia de los finalizados en **Sin archivar** hasta que se archivan.
+
+## Fechas del proyecto · ZA-143
+
+El listado muestra una fecha por fila. **Creado el** identifica cuándo se registró un proyecto activo en Zandaka. **Cerrado el** identifica su finalización. **Archivado el** tiene prioridad cuando el proyecto está archivado. La ficha muestra la creación y las fechas aplicables de cierre y archivo.
+
+Las fechas se muestran en español de Costa Rica, usando la zona contable `America/Costa_Rica`. Reabrir quita el cierre vigente. Restaurar quita la fecha de archivo y conserva el cierre si existía. La prueba de ciclo de vida en `e2e/projects.spec.ts` cubre estas transiciones y verifica el día de Costa Rica con el navegador configurado en UTC.
