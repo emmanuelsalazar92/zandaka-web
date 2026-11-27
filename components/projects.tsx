@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, Plus } from "lucide-react"
+import { ArrowRight, Ellipsis, Plus } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import * as React from "react"
@@ -18,6 +18,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Feedback, LoadingState } from "@/components/ui/feedback"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -377,12 +383,15 @@ export function ProjectsList() {
 export function ProjectDetail({ id }: { id: string }) {
   const [action, setAction] = React.useState<ProjectAction>()
   const [filter, setFilter] = React.useState<ProjectBreakdownFilter>()
+  const [linkActionSlot, setLinkActionSlot] = React.useState<HTMLDivElement | null>(null)
   const movementHeadingId = React.useId()
   const heading = React.useRef<HTMLHeadingElement>(null)
-  const actionTrigger = React.useRef<HTMLButtonElement>(null)
+  const menuTrigger = React.useRef<HTMLButtonElement>(null)
+  const selectedAction = React.useRef<ProjectAction>(undefined)
   const load = React.useCallback((signal: AbortSignal) => getProject(id, signal), [id])
   const { result: read, replace, retry: refresh } = useProjectRead(load)
   const project = read?.data
+  const active = project && !project.finalizedAt && !project.archivedAt
   const error = read && "error" in read ? readMessage(read.error) : null
   const available: ProjectAction[] = project?.archivedAt
     ? ["restore"]
@@ -394,6 +403,7 @@ export function ProjectDetail({ id }: { id: string }) {
       <PageHeader
         title={project?.title ?? "Proyecto"}
         titleRef={heading}
+        actionsLabel="Acciones del proyecto"
         meta={
           project && (
             <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
@@ -430,7 +440,46 @@ export function ProjectDetail({ id }: { id: string }) {
           )
         }
       >
-        {project && <ProjectPdfDownload key={project.id} id={project.id} />}
+        {project && (
+          <div className="flex min-w-0 max-w-full flex-wrap items-start gap-2 sm:justify-end">
+            {active && <div ref={setLinkActionSlot} className="max-sm:basis-full" />}
+            <ProjectPdfDownload
+              key={project.id}
+              id={project.id}
+              variant={active ? "outline" : "default"}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button ref={menuTrigger} className={controls} variant="ghost">
+                  <Ellipsis aria-hidden="true" />
+                  Más acciones
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                onCloseAutoFocus={(event) => {
+                  if (selectedAction.current) {
+                    event.preventDefault()
+                    setAction(selectedAction.current)
+                    selectedAction.current = undefined
+                  }
+                }}
+              >
+                {available.map((item) => (
+                  <DropdownMenuItem
+                    key={item}
+                    className={controls}
+                    onSelect={() => {
+                      selectedAction.current = item
+                    }}
+                  >
+                    {actions[item][0]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </PageHeader>
       {!read && <LoadingState>Cargando proyecto…</LoadingState>}
       {error && (
@@ -454,30 +503,13 @@ export function ProjectDetail({ id }: { id: string }) {
                 requestAnimationFrame(() => document.getElementById(movementHeadingId)?.focus())
             }}
           />
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Acciones del proyecto">
-            {available.map((item) => (
-              <Button
-                key={item}
-                className={controls}
-                variant={
-                  item === "rename" || item === "restore" || item === "reopen"
-                    ? "default"
-                    : "outline"
-                }
-                onClick={(event) => {
-                  actionTrigger.current = event.currentTarget
-                  setAction(item)
-                }}
-              >
-                {actions[item][0]}
-              </Button>
-            ))}
-          </div>
           <ProjectMovements
             key={`${project.id}:${filter?.currency ?? "all"}:${filter?.categoryId ?? "none"}`}
             project={project}
             filter={filter}
             headingId={movementHeadingId}
+            linkActionSlot={active ? linkActionSlot : null}
+            onReturnFocus={() => heading.current?.focus()}
             onClearFilter={() => {
               setFilter(undefined)
               requestAnimationFrame(() => document.getElementById(movementHeadingId)?.focus())
@@ -490,7 +522,7 @@ export function ProjectDetail({ id }: { id: string }) {
               action={action}
               project={project}
               returnFocus={() => {
-                if (actionTrigger.current?.isConnected) actionTrigger.current.focus()
+                if (menuTrigger.current?.isConnected) menuTrigger.current.focus()
                 else heading.current?.focus()
               }}
               onClose={() => setAction(undefined)}

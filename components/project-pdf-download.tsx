@@ -25,7 +25,13 @@ function errorMessage(error: unknown) {
   return "Vuelve a seleccionar Descargar PDF para reintentar."
 }
 
-export function ProjectPdfDownload({ id }: { id: string }) {
+export function ProjectPdfDownload({
+  id,
+  variant,
+}: {
+  id: string
+  variant: "default" | "outline"
+}) {
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState("")
   const [downloaded, setDownloaded] = React.useState(false)
@@ -65,7 +71,7 @@ export function ProjectPdfDownload({ id }: { id: string }) {
 
   return (
     <div className="min-w-0 space-y-2">
-      <Button onClick={download} disabled={busy}>
+      <Button variant={variant} onClick={download} disabled={busy}>
         <Download aria-hidden="true" />
         {busy ? "Generando PDF…" : "Descargar PDF"}
       </Button>

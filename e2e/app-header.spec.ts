@@ -223,9 +223,8 @@ test("skip link, focus, dialogs and mobile navigation work with the sticky app b
   const header = appHeader(page)
   const trigger = header.getByRole("button", { name: "Abrir navegación" })
   const main = page.getByRole("main")
-  const download = main.getByRole("button", { name: "Descargar PDF" })
+  const more = main.getByRole("button", { name: "Más acciones" })
   const updateCost = main.getByRole("button", { name: "Actualizar costo" })
-  const finalize = main.getByRole("button", { name: "Finalizar proyecto" })
 
   await scrollPage(page, 0.5)
   await expect(page.locator("html")).toHaveClass(/\blight\b/)
@@ -237,7 +236,7 @@ test("skip link, focus, dialogs and mobile navigation work with the sticky app b
   await expect(trigger).toBeFocused()
   await expect(page.getByRole("dialog")).toHaveCount(0)
 
-  await download.focus()
+  await more.focus()
   const bar = (await header.boundingBox())!
   const next = (await updateCost.boundingBox())!
   await page.evaluate((offset) => window.scrollBy(0, offset), next.y - bar.height / 2)
@@ -247,11 +246,12 @@ test("skip link, focus, dialogs and mobile navigation work with the sticky app b
   await expect
     .poll(async () => (await updateCost.boundingBox())!.y)
     .toBeGreaterThanOrEqual(bar.height)
-  await finalize.focus()
+  await more.focus()
   await page.keyboard.press("Enter")
+  await page.getByRole("menuitem", { name: "Finalizar proyecto" }).click()
   await expect(page.getByRole("dialog", { name: "Finalizar proyecto" })).toBeVisible()
   await page.keyboard.press("Escape")
-  await expect(finalize).toBeFocused()
+  await expect(more).toBeFocused()
 
   const skip = page.getByRole("link", { name: "Saltar al contenido" })
   await skip.focus()

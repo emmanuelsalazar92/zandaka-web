@@ -50,4 +50,10 @@ Las fechas se muestran en español de Costa Rica, usando la zona contable `Ameri
 
 La ficha muestra el estado y las fechas junto al título. **Costo del proyecto** es la primera sección. Presenta el costo neto de la moneda seleccionada y muestra la hora de cálculo debajo del importe. **Actualizar costo** queda junto al encabezado de la sección. Los avisos y desgloses siguen disponibles después del resumen.
 
-El regreso a Proyectos está en la [barra superior persistente](navigation.md#barra-superior-durante-el-desplazamiento--za-144). Si una acción cambia el estado y retira su botón, el diálogo devuelve el foco al título de la ficha. La prueba de análisis adjunta capturas del primer pantallazo en claro y oscuro a 390 y 1.440 px.
+El regreso a Proyectos está en la [barra superior persistente](navigation.md#barra-superior-durante-el-desplazamiento--za-144). El título de la ficha es el destino de foco si el control que abrió un diálogo deja de estar disponible. La prueba de análisis adjunta capturas del primer pantallazo en claro y oscuro a 390 y 1.440 px.
+
+## Acciones de la ficha · ZA-146
+
+En un proyecto activo, **Vincular movimientos** abre el buscador desde el encabezado. Se habilita cuando se cargan los vínculos y la revisión permite editarlos. **Descargar PDF** acompaña como acción secundaria. En proyectos finalizados o archivados, **Descargar PDF** es la acción principal.
+
+**Más acciones** ofrece editar, finalizar y archivar en proyectos activos, reabrir y archivar en finalizados, y restaurar en archivados. El menú y los diálogos se operan con teclado. Al cerrar un diálogo de gestión, el foco vuelve al menú o al título de la ficha si el menú ya no está disponible. El recorrido de `e2e/projects.spec.ts` comprueba las acciones por estado, la vinculación desde el encabezado y la descarga con reintento.

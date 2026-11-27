@@ -2,6 +2,7 @@
 
 import { Link2, Plus, Search } from "lucide-react"
 import * as React from "react"
+import { createPortal } from "react-dom"
 
 import { TransactionDetailDialog } from "@/components/transactions/transaction-detail-dialog"
 import { Button } from "@/components/ui/button"
@@ -495,6 +496,8 @@ export function ProjectMovements({
   project,
   filter,
   headingId,
+  linkActionSlot,
+  onReturnFocus,
   onClearFilter,
   onProject,
   onRefresh,
@@ -502,6 +505,8 @@ export function ProjectMovements({
   project: Project
   filter?: ProjectBreakdownFilter
   headingId: string
+  linkActionSlot: HTMLDivElement | null
+  onReturnFocus: () => void
   onClearFilter: () => void
   onProject: (value: Project) => void
   onRefresh: () => void
@@ -519,10 +524,18 @@ export function ProjectMovements({
   )
   const { result, retry } = useProjectRead(load, project.revision)
   const data = result?.data
-  const canEdit = Boolean(data && !data.project.finalizedAt && !data.project.archivedAt)
+  const canEdit = Boolean(
+    data &&
+    !project.finalizedAt &&
+    !project.archivedAt &&
+    !data.project.finalizedAt &&
+    !data.project.archivedAt,
+  )
   const returnFocus = () => {
-    if (trigger.current?.isConnected) trigger.current.focus()
-    else heading.current?.focus()
+    const target = trigger.current
+    if (target?.isConnected && !target.disabled) target.focus()
+    else if (heading.current) heading.current.focus()
+    else onReturnFocus()
   }
   const saved = (value: Project) => {
     setNotice(dialog === "search" ? "Movimientos vinculados" : "Vínculo eliminado")
@@ -537,6 +550,23 @@ export function ProjectMovements({
   }
   return (
     <section className="space-y-3 border-t pt-5" aria-labelledby={headingId}>
+      {/* Keep the header action on the same read and revision as the movement dialog. */}
+      {linkActionSlot &&
+        createPortal(
+          <Button
+            disabled={!canEdit}
+            aria-haspopup="dialog"
+            onClick={(event) => {
+              trigger.current = event.currentTarget
+              setNotice("")
+              setDialog("search")
+            }}
+          >
+            <Plus aria-hidden="true" />
+            Vincular movimientos
+          </Button>,
+          linkActionSlot,
+        )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2
@@ -553,18 +583,6 @@ export function ProjectMovements({
             </p>
           )}
         </div>
-        {canEdit && (
-          <Button
-            onClick={(event) => {
-              trigger.current = event.currentTarget
-              setNotice("")
-              setDialog("search")
-            }}
-          >
-            <Plus aria-hidden="true" />
-            Vincular movimientos
-          </Button>
-        )}
       </div>
       {filter && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg bg-accent p-2">

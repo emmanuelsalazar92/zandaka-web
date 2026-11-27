@@ -1,8 +1,16 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 
 import { installSyntheticAPI } from "./fixtures"
 
 const testInUtc = test.extend({ timezoneId: "UTC" })
+
+const projectActions = (page: Page) =>
+  page.getByRole("group", { name: "Acciones del proyecto", exact: true })
+
+async function chooseProjectAction(page: Page, name: string) {
+  await projectActions(page).getByRole("button", { name: "Más acciones" }).click()
+  await page.getByRole("menu").getByRole("menuitem", { name, exact: true }).click()
+}
 
 testInUtc("Proyectos lifecycle at 390 px with a lost creation response", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -103,23 +111,54 @@ testInUtc("Proyectos lifecycle at 390 px with a lost creation response", async (
   await expect(page.getByRole("heading", { name: "Construcción del lote" })).toBeVisible()
   const status = page.getByRole("main").locator('[data-slot="page-header"]')
   await expect(status.locator("time")).toHaveText(["25 nov 2026"])
+  const actions = projectActions(page)
+  const more = actions.getByRole("button", { name: "Más acciones" })
+  const link = actions.getByRole("button", { name: "Vincular movimientos" })
+  const pdf = actions.getByRole("button", { name: "Descargar PDF" })
+  const menu = page.getByRole("menu")
+
+  await expect(link).toBeEnabled()
+  const primaryColor = await link.evaluate((element) => getComputedStyle(element).backgroundColor)
+  await expect(pdf).not.toHaveCSS("background-color", primaryColor)
+  await link.focus()
+  await page.keyboard.press("Tab")
+  await expect(pdf).toBeFocused()
+  await page.keyboard.press("Tab")
+  await expect(more).toBeFocused()
+  await page.keyboard.press("ArrowDown")
+  await expect(menu.getByRole("menuitem")).toHaveText([
+    "Editar título",
+    "Finalizar proyecto",
+    "Archivar proyecto",
+  ])
+  await page.keyboard.press("Escape")
+  await expect(menu).toHaveCount(0)
+  await expect(more).toBeFocused()
 
   const confirm = async (open: string, submit: string) => {
-    await page.getByRole("button", { name: open, exact: true }).click()
+    await chooseProjectAction(page, open)
     await page.getByRole("dialog").getByRole("button", { name: submit, exact: true }).click()
     await expect(page.getByRole("dialog")).toHaveCount(0)
+    await expect(more).toBeFocused()
   }
   const longTitle = "Construcción del lote " + "A".repeat(85)
-  await page.getByRole("button", { name: "Editar título" }).click()
+  await page.keyboard.press("ArrowDown")
+  await expect(menu.getByRole("menuitem", { name: "Editar título" })).toBeFocused()
+  await page.keyboard.press("Enter")
   await page.getByLabel("Título del proyecto").fill(longTitle)
   await page.getByRole("button", { name: "Guardar título" }).click()
   await expect(page.getByRole("heading", { name: longTitle })).toBeVisible()
+  await expect(more).toBeFocused()
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
   await confirm("Finalizar proyecto", "Finalizar")
-  await expect(status.getByRole("heading", { level: 1 })).toBeFocused()
   await expect(status.getByText("Fecha de cierre")).toBeVisible()
   await expect(status.locator("time")).toHaveText(["25 nov 2026", "26 nov 2026"])
-  await expect(page.getByRole("button", { name: "Editar título" })).toHaveCount(0)
+  await expect(link).toHaveCount(0)
+  await expect(pdf).toHaveCSS("background-color", primaryColor)
+  expect((await more.boundingBox())!.y).toBe((await pdf.boundingBox())!.y)
+  await more.click()
+  await expect(menu.getByRole("menuitem")).toHaveText(["Reabrir proyecto", "Archivar proyecto"])
+  await page.keyboard.press("Escape")
   const back = page.getByRole("link", { name: "Volver a Proyectos", exact: true })
   await expect(back).toHaveCount(1)
   await expect(
@@ -137,6 +176,11 @@ testInUtc("Proyectos lifecycle at 390 px with a lost creation response", async (
   await expect(status.getByText("Finalizado · Archivado")).toBeVisible()
   await expect(status.getByText("Fecha de archivo")).toBeVisible()
   await expect(status.locator("time")).toHaveText(["25 nov 2026", "26 nov 2026", "27 nov 2026"])
+  await expect(link).toHaveCount(0)
+  await expect(pdf).toHaveCSS("background-color", primaryColor)
+  await more.click()
+  await expect(menu.getByRole("menuitem")).toHaveText(["Restaurar proyecto"])
+  await page.keyboard.press("Escape")
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
   await back.click()
   await expect(page.getByText("Aún no tienes proyectos")).toBeVisible()
@@ -152,7 +196,7 @@ testInUtc("Proyectos lifecycle at 390 px with a lost creation response", async (
   await expect(projectRow).toContainText("Finalizado · Cerrado el 26 nov 2026")
   await projectRow.click()
   await confirm("Reabrir proyecto", "Reabrir")
-  await expect(page.getByRole("button", { name: "Editar título" })).toBeVisible()
+  await expect(link).toBeEnabled()
   await expect(status.getByText("Fecha de cierre")).toHaveCount(0)
   await expect(status.locator("time")).toHaveText(["25 nov 2026"])
   await back.click()
@@ -162,7 +206,7 @@ testInUtc("Proyectos lifecycle at 390 px with a lost creation response", async (
 
 test("Proyectos links split movements and explicitly marked refunds at 390 px", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await installSyntheticAPI(page)
   const id = "00000000-0000-4000-8000-000000000116"
@@ -197,6 +241,11 @@ test("Proyectos links split movements and explicitly marked refunds at 390 px", 
   const submitted: number[][] = []
   let lostResponse = true
   let findError = true
+  let firstMovementRead = true
+  let failInitialRead: () => void = () => undefined
+  const initialRead = new Promise<void>((resolve) => {
+    failInitialRead = resolve
+  })
   let exportAttempts = 0
   let finishRender: () => void = () => undefined
   const render = new Promise<void>((resolve) => {
@@ -280,6 +329,11 @@ test("Proyectos links split movements and explicitly marked refunds at 390 px", 
     }
     if (endpoint === "movements") {
       if (method === "GET") {
+        if (firstMovementRead) {
+          firstMovementRead = false
+          await initialRead
+          return route.fulfill({ status: 500, json: {} })
+        }
         const items = lines.flatMap((line) => {
           const kind = linked.get(line.lineId)
           return kind ? [{ ...line, kind, eligible: true }] : []
@@ -318,7 +372,36 @@ test("Proyectos links split movements and explicitly marked refunds at 390 px", 
   })
 
   await page.goto(`/projects/${id}`)
-  const open = page.getByRole("button", { name: "Vincular movimientos" })
+  const actions = projectActions(page)
+  const open = actions.getByRole("button", { name: "Vincular movimientos" })
+  const exportButton = actions.getByRole("button", { name: "Descargar PDF", exact: true })
+  const more = actions.getByRole("button", { name: "Más acciones" })
+  const links = page.getByRole("region", { name: "Movimientos vinculados" })
+  await expect(open).toBeDisabled()
+  failInitialRead()
+  await expect(links.getByText("No pudimos cargar los vínculos")).toBeVisible()
+  await expect(open).toBeDisabled()
+  await links.getByRole("button", { name: "Reintentar", exact: true }).click()
+  await expect(open).toBeEnabled()
+  await expect(page.getByRole("button", { name: "Vincular movimientos" })).toHaveCount(1)
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 844 })
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme })
+      await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${colorScheme}\\b`))
+      await page.evaluate(() => window.scrollTo(0, 0))
+      const primary = (await open.boundingBox())!
+      const secondary = (await exportButton.boundingBox())!
+      if (width === 390) expect(primary.y).toBeLessThan(secondary.y)
+      else expect(primary.x).toBeLessThan(secondary.x)
+      await expect(more).toBeInViewport({ ratio: 1 })
+      const capture = `acciones-activas-${width}-${colorScheme}`
+      const path = testInfo.outputPath(`${capture}.png`)
+      await page.screenshot({ path, animations: "disabled" })
+      await testInfo.attach(capture, { path, contentType: "image/png" })
+    }
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
   await open.focus()
   await page.keyboard.press("Enter")
   const dialog = page.getByRole("dialog")
@@ -362,12 +445,11 @@ test("Proyectos links split movements and explicitly marked refunds at 390 px", 
   await expect(page.getByText("2 líneas vinculadas")).toBeVisible()
   expect(linked.has(12)).toBe(false)
 
-  await page.getByRole("button", { name: "Finalizar proyecto" }).click()
+  await chooseProjectAction(page, "Finalizar proyecto")
   await dialog.getByRole("button", { name: "Finalizar", exact: true }).click()
   await expect(page.getByText("Fecha de cierre")).toBeVisible()
   await expect(open).toHaveCount(0)
   await expect(page.getByText("2 líneas vinculadas")).toBeVisible()
-  const exportButton = page.getByRole("button", { name: "Descargar PDF", exact: true })
   await exportButton.focus()
   await page.keyboard.press("Enter")
   await expect(page.getByText(/El informe tardó demasiado/)).toBeVisible()
