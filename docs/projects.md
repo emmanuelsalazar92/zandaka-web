@@ -5,3 +5,11 @@ El módulo se abre desde Proyectos en el menú principal. La lista muestra activ
 Una revisión concurrente solicita actualizar antes de actuar de nuevo. Si se pierde la respuesta de creación, Reintentar creación usa la misma clave y el mismo título mientras el diálogo permanezca abierto. Si se cierra ese diálogo o se recarga la página, consultar la lista antes de iniciar otra creación. Los cambios de estado se comprueban actualizando antes de repetirlos cuando el resultado es incierto.
 
 Este ticket entrega el ciclo de vida. ZA-116 incorpora vínculos con movimientos, ZA-117 agregados y gráficos, y ZA-118 PDF. La Web usa el proxy de la API y necesita la imagen que implementa el contrato. Si el entorno todavía no prepara la tabla project, muestra que la función no está habilitada. La guía de la API describe preparación, comprobación y reversión. El recorrido e2e/projects.spec.ts verifica diálogo con teclado, pérdida de respuesta en creación, título largo a 390 px, cierre, archivo, recarga y restauración con API sintética.
+
+## Vínculos con movimientos · ZA-116
+
+En el detalle de un proyecto activo, **Vincular movimientos** abre el buscador. Busca por descripción o por el ID exacto del movimiento, como `#123`. Los filtros de fecha, cuenta, categoría y moneda se combinan. Puedes elegir líneas individuales o seleccionar todas las líneas elegibles de un movimiento, incluidas las de otras categorías que aparecen en el resultado. La selección se conserva al cambiar de página, con un máximo de 100 líneas por envío.
+
+Para incluir un ingreso, cambia el tipo a **Reembolso** y confirma con **Vincular como reembolso**. La lista muestra el importe y la moneda de cada línea, el movimiento original y su categoría. Quitar un vínculo lo retira del proyecto y conserva el movimiento. Los proyectos finalizados o archivados permiten consultar la lista. Si otra pestaña modifica la revisión, actualiza el proyecto antes de actuar.
+
+Testing requiere la tabla `project_transaction_line` preparada por el instalador de la API. El recorrido sintético `e2e/projects.spec.ts` cubre búsqueda, vinculación parcial, vínculo completo, reembolso, retiro y consulta del proyecto cerrado.

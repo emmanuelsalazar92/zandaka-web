@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import * as React from "react"
 
 import { PageHeader } from "@/components/page-header"
+import { ProjectMovements } from "@/components/project-movements"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -29,6 +30,7 @@ import {
   type ProjectPage,
   type ProjectView,
 } from "@/lib/project-api"
+import { useProjectRead } from "@/lib/use-project-read"
 import { secureUuid } from "@/lib/uuid"
 
 const controls = "min-h-11"
@@ -48,29 +50,6 @@ function readMessage(error: unknown) {
       return "Proyectos aún no está habilitado en este entorno."
   }
   return "No pudimos consultar Proyectos. Intenta de nuevo."
-}
-
-type ReadState<T> = { value: T } | { error: string }
-function useProjectRead<T>(load: (signal: AbortSignal) => Promise<T>) {
-  const [read, setRead] = React.useState<ReadState<T> | null>(null)
-  const [version, setVersion] = React.useState(0)
-  const refresh = () => {
-    setRead(null)
-    setVersion((n) => n + 1)
-  }
-  React.useEffect(() => {
-    const controller = new AbortController()
-    load(controller.signal).then(
-      (value) => {
-        if (!controller.signal.aborted) setRead({ value })
-      },
-      (error: unknown) => {
-        if (!controller.signal.aborted) setRead({ error: readMessage(error) })
-      },
-    )
-    return () => controller.abort()
-  }, [load, version])
-  return { read, setRead, refresh }
 }
 
 const actions = {
@@ -308,9 +287,9 @@ export function ProjectsList() {
     (signal: AbortSignal) => listProjects(view, page, signal),
     [view, page],
   )
-  const { read, refresh } = useProjectRead(load)
-  const result = read && "value" in read ? read.value : null
-  const error = read && "error" in read ? read.error : null
+  const { result: read, retry: refresh } = useProjectRead(load)
+  const result = read?.data
+  const error = read && "error" in read ? readMessage(read.error) : null
   function move(nextView: ProjectView, nextPage: number) {
     setView(nextView)
     setPage(nextPage)
@@ -386,9 +365,9 @@ export function ProjectDetail({ id }: { id: string }) {
   const heading = React.useRef<HTMLHeadingElement>(null)
   const actionTrigger = React.useRef<HTMLButtonElement>(null)
   const load = React.useCallback((signal: AbortSignal) => getProject(id, signal), [id])
-  const { read, setRead, refresh } = useProjectRead(load)
-  const project = read && "value" in read ? read.value : null
-  const error = read && "error" in read ? read.error : null
+  const { result: read, replace, retry: refresh } = useProjectRead(load)
+  const project = read?.data
+  const error = read && "error" in read ? readMessage(read.error) : null
   const available: ProjectAction[] = project?.archivedAt
     ? ["restore"]
     : project?.finalizedAt
@@ -460,6 +439,12 @@ export function ProjectDetail({ id }: { id: string }) {
               </Button>
             ))}
           </div>
+          <ProjectMovements
+            key={project.id}
+            project={project}
+            onProject={replace}
+            onRefresh={refresh}
+          />
           {action && (
             <ProjectDialog
               action={action}
@@ -470,7 +455,7 @@ export function ProjectDetail({ id }: { id: string }) {
               }}
               onClose={() => setAction(undefined)}
               onSaved={(value) => {
-                setRead({ value })
+                replace(value)
                 setAction(undefined)
               }}
               onRefresh={() => {
