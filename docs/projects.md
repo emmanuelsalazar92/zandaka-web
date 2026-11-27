@@ -29,3 +29,9 @@ La fecha de cálculo se presenta en horario de Costa Rica. Al actualizar, la pan
 El botón **Descargar PDF** aparece en el detalle de proyectos activos, finalizados y archivados. El archivo registra el costo que se ve al momento de generar el informe, con totales por moneda, categorías y un anexo de las líneas vinculadas. Para reflejar correcciones posteriores del libro, descarga un informe nuevo.
 
 Si el navegador no recibe el PDF, el botón vuelve a estar habilitado y muestra el motivo y cómo reintentar. El informe admite hasta 2.000 líneas elegibles. Los proyectos más grandes se pueden consultar en el desglose de la pantalla. `e2e/projects.spec.ts` verifica la descarga por teclado, el error por tiempo y el reintento a 390 px.
+
+## Ancho del panel · ZA-140
+
+El listado y la ficha ocupan el ancho disponible del área de contenido de Zandaka, con los mismos bordes exteriores que Conciliación. El límite de escritorio y los márgenes vienen de `AppLayout`. El panel de Proyectos conserva la superficie Marea y su espaciado interno.
+
+`e2e/projects-layout.spec.ts` compara los bordes de las tres pantallas con datos sintéticos a 390, 1.280 y 1.920 px, en claro y oscuro. En escritorio cubre la barra lateral expandida y colapsada. El informe de Playwright adjunta capturas de las tres pantallas a 1.920 px con la barra expandida.

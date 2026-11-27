@@ -37,7 +37,7 @@ import { useProjectRead } from "@/lib/use-project-read"
 import { secureUuid } from "@/lib/uuid"
 
 const controls = "min-h-11"
-const surface = "marea-surface mx-auto max-w-5xl space-y-6 rounded-2xl bg-background p-4 sm:p-7"
+const surface = "marea-surface min-w-0 space-y-6 rounded-2xl bg-background p-4 sm:p-7"
 
 const states = (project: Project) => (project.finalizedAt ? "Finalizado" : "Activo")
 const displayDate = (date: string) =>
