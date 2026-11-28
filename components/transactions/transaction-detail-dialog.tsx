@@ -1,6 +1,7 @@
 "use client"
 
 import { ArrowDownLeft, ArrowRightLeft, ArrowUpRight, LockKeyhole } from "lucide-react"
+import Link from "next/link"
 import * as React from "react"
 
 import { Badge } from "@/components/ui/badge"
@@ -293,6 +294,11 @@ export function TransactionDetailDialog({
           </>
         )}
         <DialogFooter className="sticky bottom-0 min-w-0 border-t bg-card pt-3">
+          {detail?.type === "EXPENSE" && userId && (
+            <Button asChild variant="ghost">
+              <Link href={`/budgets?subscriptionCharge=${detail.id}`}>Vincular a suscripción</Link>
+            </Button>
+          )}
           <Button variant="outline" onClick={onClose}>
             Volver al historial
           </Button>

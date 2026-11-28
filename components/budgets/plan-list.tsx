@@ -24,7 +24,7 @@ export const planMonth = (value: string) =>
   new Intl.DateTimeFormat("es-CR", { month: "long", year: "numeric", timeZone: "UTC" }).format(
     new Date(`${value}-01T12:00:00Z`),
   )
-export function BudgetPlansList() {
+export function BudgetPlansList({ subscriptionCharge }: { subscriptionCharge?: number } = {}) {
   const [plans, setPlans] = React.useState<SavedBudgetPlan[]>([]),
     [page, setPage] = React.useState(1),
     [pages, setPages] = React.useState(1),
@@ -113,7 +113,11 @@ export function BudgetPlansList() {
             {plans.map((plan) => {
               const calculation = calculateBudgetPlan(plan.document)
               return (
-                <Link className={styles.planCard} key={plan.id} href={`/budgets/plans/${plan.id}`}>
+                <Link
+                  className={styles.planCard}
+                  key={plan.id}
+                  href={`/budgets/plans/${plan.id}${subscriptionCharge ? `?subscriptionCharge=${subscriptionCharge}` : ""}`}
+                >
                   <div>
                     <span className={styles.eyebrow}>
                       {plan.status === "draft"

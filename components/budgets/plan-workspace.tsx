@@ -25,17 +25,19 @@ import { AmountField, PlanField } from "./plan-fields"
 import { PlanLineEditor } from "./plan-line-editor"
 import { planMonth } from "./plan-list"
 import { PlanMonthStart } from "./plan-month-start"
+import { PlanSubscriptions } from "./plan-subscriptions"
 import { PlanTracking } from "./plan-tracking"
 import styles from "./plan.module.css"
 import { useBudgetPlan } from "./use-budget-plan"
 
-type Tab = "plan" | "income" | "exchange" | "apply" | "tracking"
+type Tab = "plan" | "income" | "exchange" | "apply" | "tracking" | "subscriptions"
 const tabs: Array<[Tab, string]> = [
   ["plan", "Plan del mes"],
   ["income", "Ingreso"],
   ["exchange", "Tipo de cambio"],
   ["apply", "Revisar sobres"],
   ["tracking", "Seguimiento"],
+  ["subscriptions", "Suscripciones"],
 ]
 const percent = (value: string | null, net: string | null) => {
   if (value === null || net === null || decimal(net).lte(0)) return "Por confirmar"
@@ -46,9 +48,17 @@ const progress = (used: string | null, cap: string | null) => {
   return Math.max(0, Math.min(100, decimal(used).div(cap).mul(100).toNumber()))
 }
 
-export function BudgetPlanWorkspace({ planId }: { planId: string }) {
+export function BudgetPlanWorkspace({
+  planId,
+  subscriptionCharge,
+}: {
+  planId: string
+  subscriptionCharge?: number
+}) {
   const plan = useBudgetPlan(planId)
-  const [tab, setTab] = React.useState<Tab>(planId === "new" ? "income" : "plan"),
+  const [tab, setTab] = React.useState<Tab>(
+      subscriptionCharge ? "subscriptions" : planId === "new" ? "income" : "plan",
+    ),
     [editing, setEditing] = React.useState<PlanLine | null>(null),
     [preview, setPreview] = React.useState<FundingPreview | null>(null),
     [checking, setChecking] = React.useState(false),
@@ -874,6 +884,34 @@ export function BudgetPlanWorkspace({ planId }: { planId: string }) {
                   La comparación usa la revisión guardada del mes.
                 </Feedback>
               ))}
+          </section>
+          <section
+            role="tabpanel"
+            id="plan-panel-subscriptions"
+            aria-labelledby="plan-tab-subscriptions"
+            hidden={tab !== "subscriptions"}
+          >
+            {tab === "subscriptions" && (
+              <PlanSubscriptions
+                key={`${plan.id}.${saved?.revision ?? 0}`}
+                planId={plan.id}
+                revision={saved?.revision ?? 0}
+                chargeId={subscriptionCharge}
+                blocked={plan.dirty || !!plan.pending || !!plan.recovery || plan.busy}
+                canAdd={!locked && doc.lines.length < 200}
+                onReload={plan.reload}
+                onAdd={(item) =>
+                  setEditing({
+                    ...item.definition,
+                    id: secureUuid(),
+                    kind: "subscription",
+                    group: 30,
+                    targetEnvelopeId: null,
+                    subscriptionSource: { id: item.id, revision: item.revision },
+                  })
+                }
+              />
+            )}
           </section>
         </div>
         <aside className={styles.rail} aria-label="Revisión del mes">

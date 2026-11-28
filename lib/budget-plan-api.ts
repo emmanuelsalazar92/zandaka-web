@@ -98,6 +98,9 @@ const lineSchema = z.object({
   iva: decimalInput,
   roundUsd: z.enum(["up", "none"]),
   targetEnvelopeId: z.number().int().positive().nullable(),
+  subscriptionSource: z
+    .object({ id: z.guid(), revision: z.number().int().positive().safe() })
+    .optional(),
 })
 export const planDocumentSchema = z.object({
   version: z.literal(1),

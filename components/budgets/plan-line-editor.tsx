@@ -38,7 +38,15 @@ export function PlanLineEditor({
   const [draft, setDraft] = React.useState(line),
     [error, setError] = React.useState("")
   const patch = (value: Partial<PlanLine>) => {
-    setDraft((current) => ({ ...current, ...value }))
+    setDraft((current) => ({
+      ...current,
+      ...value,
+      ...(["name", "kind", "amount", "currency", "payCurrency", "iva", "roundUsd"].some(
+        (key) => key in value,
+      )
+        ? { subscriptionSource: undefined }
+        : {}),
+    }))
     setError("")
   }
   const preview = calculateBudgetPlan({ ...document, lines: [draft] })

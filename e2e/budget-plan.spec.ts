@@ -10,6 +10,7 @@ import { installSyntheticAPI } from "./fixtures"
 import type { MonthStart } from "../lib/budget-month-start"
 import type { BudgetPlanDocument } from "../lib/budget-plan"
 import type { FundingPreview } from "../lib/budget-plan-api"
+import type { SubscriptionCatalogItem, SubscriptionOccurrence } from "../lib/budget-subscriptions"
 
 test.beforeEach(async ({ page }) => {
   // Localhost is a secure context; reproduce the capability of the real LAN HTTP origin.
@@ -688,6 +689,160 @@ test("month-start reviews the actual conversion and recovers the same transfer a
   await expect(page.getByRole("dialog").getByText("Salida bancaria", { exact: true })).toBeVisible()
   expect(posts).toBe(2)
   expect(existing.bodies).toHaveLength(0)
+})
+
+test("subscription forecast copies the catalog and links the selected imported expense line", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.emulateMedia({ colorScheme: "dark" })
+  const initial = exampleSavedPlan()
+  initial.document.exchange = { ...initial.document.exchange, buy: "434", sell: "468", margin: "0" }
+  initial.document.lines = []
+  initial.calculation = calculateBudgetPlan(initial.document)
+  const state = await fixture(page, "success", initial)
+  let item: SubscriptionCatalogItem | undefined
+  let receipt: SubscriptionOccurrence["receipt"] = null
+  let links = 0
+  await page.route(/\/api\/budget-plans\/subscriptions(?:\?|\/)/, async (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({ json: { items: item ? [item] : [] } })
+    const payload = route.request().postDataJSON()
+    const id = new URL(route.request().url()).pathname.split("/").at(-1)!
+    item = { id, revision: payload.revision + 1, definition: payload.definition }
+    return route.fulfill({ json: item })
+  })
+  await page.route(/\/api\/budget-plans\/[^/]+\/subscriptions(?:\?|\/)/, async (route) => {
+    const current = state.saved
+    const doc = current.document
+    const line = doc.lines[0]
+    const calc = current.calculation
+    const value = calc.lines[0]
+    const forecast = line && {
+      lineId: line.id,
+      name: line.name,
+      originalAmount: line.amount,
+      originalCurrency: line.currency,
+      iva: line.iva,
+      currency: line.payCurrency,
+      roundUsd: line.roundUsd,
+      source: line.subscriptionSource ?? null,
+      engineVersion: 1 as const,
+      buy: calc.buy,
+      sell: calc.sell,
+      quoteSource: doc.exchange.source,
+      quoteDate: doc.exchange.date,
+      envelopeId: line.targetEnvelopeId,
+      accountId: 3,
+      accountName: "Tarjeta CRC",
+      categoryName: "Suscripción",
+      planned: value.payAmount,
+      reserveUsd: value.reserveUsd,
+      explanation: value.explanation,
+    }
+    if (route.request().method() === "PUT") {
+      const payload = route.request().postDataJSON()
+      expect(payload).toEqual({
+        userId: 1,
+        revision: current.revision,
+        transactionId: 92,
+        transactionLineId: 921,
+      })
+      links++
+      receipt = {
+        transactionId: 92,
+        transactionLineId: 921,
+        date: "2026-11-10",
+        description: "Cargo de streaming",
+        amount: "8100",
+        difference: "150",
+        current: true,
+        forecast,
+      }
+    }
+    return route.fulfill({
+      json: {
+        planId,
+        revision: current.revision,
+        month: doc.month,
+        detachedCount: 0,
+        occurrences: forecast ? [{ ...forecast, receipt }] : [],
+      },
+    })
+  })
+  await page.route(/\/api\/transactions\/92\?/, (route) =>
+    route.fulfill({
+      json: {
+        id: 92,
+        userId: 1,
+        date: "2026-11-10",
+        description: "Cargo de streaming",
+        createdAt: null,
+        type: "EXPENSE",
+        correction: { available: false, reason: "NO_AUDITED_CORRECTION_FLOW" },
+        lines: [
+          {
+            id: 921,
+            accountId: 3,
+            accountName: "Tarjeta CRC",
+            accountCurrency: "CRC",
+            institutionName: "Banco de ejemplo",
+            envelopeId: 33,
+            categoryName: "Suscripción",
+            envelopeActive: true,
+            amount: -8100,
+          },
+          {
+            id: 922,
+            accountId: 2,
+            accountName: "Pagos CRC",
+            accountCurrency: "CRC",
+            institutionName: "Banco de ejemplo",
+            envelopeId: 22,
+            categoryName: "Casa",
+            envelopeActive: true,
+            amount: -8100,
+          },
+        ],
+      },
+    }),
+  )
+  await open(page)
+  await page.getByRole("tab", { name: "Suscripciones" }).click()
+  await page.getByRole("button", { name: "Nueva suscripción" }).click()
+  const dialog = page.getByRole("dialog")
+  await dialog.getByLabel("Nombre del servicio").fill("Streaming sintético")
+  await dialog.getByLabel("Precio original").fill("14.99")
+  await dialog.getByRole("button", { name: "Guardar suscripción" }).click()
+  await page.getByRole("button", { name: "Añadir Streaming sintético al mes" }).click()
+  await dialog.getByText("Ver cálculo y redondeo", { exact: true }).click()
+  await expect(dialog.getByText(/468 = CRC 7927\.3116/)).toBeVisible()
+  await dialog.getByLabel("Sobre de destino", { exact: true }).selectOption("33")
+  await dialog.getByRole("button", { name: "Actualizar plan" }).click()
+  await page.getByRole("button", { name: "Guardar borrador", exact: true }).click()
+  await expect(page.getByText(formatPlanMoney("7950", "CRC"), { exact: true }).last()).toBeVisible()
+  expect(state.saved.document.lines[0].subscriptionSource?.revision).toBe(1)
+  await page.getByRole("button", { name: "Editar suscripción Streaming sintético" }).click()
+  await dialog.getByLabel("Precio original").fill("20")
+  await dialog.getByRole("button", { name: "Guardar suscripción" }).click()
+  await expect(page.getByText(formatPlanMoney("7950", "CRC"), { exact: true }).last()).toBeVisible()
+  await expect(page.getByText(/20,00 · IVA 13 %/)).toBeVisible()
+  expect(state.saved.document.lines[0].amount).toBe("14.99")
+  await page.goto("/transactions?movementId=92")
+  await dialog.getByRole("link", { name: "Vincular a suscripción" }).click()
+  await page.getByRole("link", { name: /noviembre de 2026/i }).click()
+  await page.getByRole("button", { name: "Vincular cargo" }).click()
+  await expect(dialog.getByLabel("ID del movimiento")).toHaveValue("92")
+  await dialog.getByRole("button", { name: "Revisar cargo" }).click()
+  await expect(dialog.getByRole("radio", { name: /Pagos CRC/ })).toBeDisabled()
+  await expect(dialog.getByText(/Diferencia.*150/)).toBeVisible()
+  expect(links).toBe(0)
+  await dialog.getByRole("button", { name: "Confirmar cargo" }).click()
+  await expect(page.getByRole("link", { name: "Movimiento #92", exact: true })).toBeVisible()
+  expect(links).toBe(1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
+  const a11y = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  expect(a11y.violations.map((violation) => violation.id)).toEqual([])
 })
 
 test("applying is explicit, single-shot and leaves a persistent receipt", async ({ page }) => {

@@ -47,6 +47,14 @@ Abre **Seguimiento** en un presupuesto guardado para consultar el mes contable, 
 
 **Ver gastos** lleva al período y al sobre exactos en Movimientos y admite sobres hoy inactivos. La ficha de un movimiento sigue mostrando todas sus líneas. Este cambio usa una lectura agregada y no requiere preparar tablas nuevas.
 
+## Previsión y cargos de suscripciones · ZA-122
+
+En **Suscripciones**, guarda una definición reutilizable y elige **Añadir al mes**. El editor muestra el precio con IVA, la venta presupuestaria en cobros USD a CRC, el redondeo al múltiplo de CRC 50 más cercano y la reserva USD a la tasa de compra. Al guardar el mes se conserva una copia de los parámetros. Los cambios al catálogo se aplican al volver a incorporar un servicio. Los borradores siguen usando la cotización que elijas explícitamente para el mes.
+
+En **Vincular cargo**, consulta el ID del movimiento y selecciona la línea del gasto en la cuenta y moneda previstas. También puedes iniciar desde **Vincular a suscripción** en la ficha de un gasto importado y elegir su mes. La revisión muestra la diferencia entre el monto del cargo y la previsión. Confirmar guarda el vínculo a esa línea contable, con la fecha y el importe de la previsión. El mismo identificador de línea no puede confirmar otra previsión. Un cambio a la previsión guardada deja el vínculo **Por revisar**.
+
+ZA-122 requiere preparar explícitamente `subscription_definition` y `subscription_charge` en testing. La edición manual de suscripciones de ZA-97 sigue disponible en **Plan del mes**.
+
 ## Panel del listado
 
 El listado en /budgets usa el mismo ancho, márgenes y superficie Marea de Conciliación. El panel reúne las acciones, el acceso histórico, los estados de carga y error, las filas y la paginación. La prueba visual compara ambas rutas en claro y oscuro a 390 y 1440 px.
